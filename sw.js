@@ -1,5 +1,5 @@
 /* 伴学宠物 · 离线缓存 Service Worker */
-const VERSION = 'beast-v3.19.1';
+const VERSION = 'beast-v3.19.2';
 const SHELL = [
   './',
   './index.html',

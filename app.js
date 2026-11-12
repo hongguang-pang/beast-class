@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.20.9 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.21.0 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -2819,13 +2819,15 @@
           rows += '<div class="qf-diag">📱 浏览器：' + esc(e.br) + (e.inFrame ? ' · 被嵌在别的网页里' : e.standalone ? ' · 桌面图标打开（独立窗口）' : ' · 独立页面打开') + '</div>';
           rows += '<div class="qf-diag">🔐 网站摄像头权限：' + ({ granted: '已允许 ✓', denied: '已拒绝 ✗', prompt: '还没询问过' }[state] || '查不到（这个浏览器不支持查询）') + '　·　错误码：' + (nm || '未知') + '</div>';
           let concl;
+          const silentDeny = (state === 'prompt' || !state) && (nm === 'NotAllowedError' || nm === 'SecurityError');
           if (!e.secure) concl = '问题在<b>网址</b>：请用 https:// 开头的地址打开（当前是 ' + location.protocol.replace(':', '') + '）。';
           else if (e.inFrame) concl = '问题在<b>页面被嵌套</b>：请点「复制网址」后在浏览器新标签页里直接打开。';
           else if (e.isWx) concl = '问题在<b>微信内置浏览器</b>：它调不起摄像头。点右上角 ··· → 在浏览器打开。';
-          else if (e.standalone) concl = '问题在<b>桌面图标方式</b>：安装到手机桌面的网页窗口拿不到相机授权。点「复制网址」后，回到浏览器（Chrome / 小米浏览器）粘贴打开同一个网址，就能正常扫码。';
-          else if (/小米浏览器/.test(e.br)) concl = '问题在<b>小米浏览器</b>：它对网页调摄像头支持不完整，设置里也没有相机权限项。请用 <b>Chrome</b> 打开同一个网址（应用商店可装）。';
+          else if (e.standalone) concl = '问题在<b>桌面图标方式</b>：安装到手机桌面的网页窗口拿不到相机授权。点「复制网址」后，回到浏览器粘贴打开同一个网址，就能正常扫码。';
+          else if (silentDeny) concl = '没弹授权框就被拒 —— 多半是从<b>手机桌面的图标</b>打开的：这种独立窗口拿不到相机授权（微信和浏览器里都正常）。点「复制网址」，回到浏览器粘贴打开同一个网址，或者点「重试摄像头」再试一次让它弹授权框。';
+          else if (state === 'prompt') concl = '浏览器在等你的授权：弹出「使用相机」说明时点<b>允许</b>（有「始终允许」就选它），然后点「重试摄像头」。';
           else if (e.webview) concl = '问题在<b>App 内嵌网页</b>：宿主 App 没给网页摄像头授权。请用系统 Chrome 打开这个网址。';
-          else concl = '网址、系统权限、打开方式都正常，卡在<b>浏览器这一层</b>：它把「网站使用摄像头」整体关掉了（见下面第 ②③ 步），或当前是<b>无痕/隐私模式</b>。';
+          else concl = '浏览器把摄像头拦下了：地址栏 🔒 / ⓘ → 摄像头 → 允许，然后点「重试摄像头」。';
           rows += '<div class="qf-diag" style="margin-top:6px">👉 结论：' + concl + '</div>';
           return rows;
         };
@@ -2843,13 +2845,11 @@
           } else { setTimeout(() => showDiag(''), 0); }
         } catch (e) { setTimeout(() => showDiag(''), 0); }
         if (nm === 'NotAllowedError' || nm === 'SecurityError') {
-          showFail('摄像头被浏览器拦住了',
-            '手机系统里给浏览器的相机权限已经开着，所以问题不在系统开关，而在<b>浏览器这一层</b>。按顺序试：<br>' +
-            '① 先看下面「👉 结论」：是网址、微信、内嵌网页，还是浏览器本身<br>' +
-            '② 地址栏最左边 🔒 / ⓘ → 「摄像头」→ <b>允许</b><br>' +
-            '③ 浏览器设置 → <b>网站设置 → 摄像头</b> → 不要选「不允许网站使用摄像头」，改「先询问」或「允许」<br>' +
-            '④ 别用<b>无痕 / 隐私模式</b>，关掉省电模式，完全关闭页面再打开<br>' +
-            '⑤ 还不行就换 <b>Chrome</b> 打开同一个网址（多数安卓机这样就好了）');
+          showFail('摄像头被拦住了',
+            '手机系统里给浏览器的相机权限已经开着，微信里打开、浏览器里直接打开也都能调起摄像头。<br>' +
+            '像现在这样<b>没弹授权框就直接失败</b>，几乎都是从<b>手机桌面的图标</b>进入的 —— 那种独立窗口拿不到相机授权。<br>' +
+            '<b>解决：</b>点下方「复制网址」→ 回到浏览器粘贴打开 → 再进「老师 → 数据备份 → 扫码接收」。<br>' +
+            '如果这次弹出了「使用相机」授权框：点<b>允许</b>（有「始终允许」就选它），再点「重试摄像头」。');
         } else if (nm === 'NotFoundError') {
           showFail('没找到可用的摄像头',
             '这台设备可能没有摄像头（或都被禁用了）。<br>可以直接在下面<b>粘贴</b>二维码文本导入。');
@@ -3053,7 +3053,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3209', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3210', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

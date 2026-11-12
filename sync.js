@@ -82,11 +82,18 @@
         if (remote[k] !== undefined) out[k] = remote[k];
       });
     }
-    /* 当前班的内容回填到 kids/cls 镜像（以合并后的班级为准） */
+    /* 当前班的内容回填到 kids/cls 镜像（以合并后的班级为准）
+       注意：新设备本地是空白文档时 clsId 为空，需要先补上再回填 */
     var cur = out.clsId ? map[out.clsId] : null;
+    if (!cur && out.classes.length) {
+      cur = out.classes[0];
+      out.clsId = cur.id;
+    }
     if (cur) {
+      out.clsId = cur.id;
       out.kids = cur.kids || [];
       out.cls = out.cls || {};
+      out.cls.on = true;
       out.cls.name = cur.name || '我的班级';
       out.cls.groups = (cur.groups || []).slice();
       out.cls.period = cur.period || 'today';

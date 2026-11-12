@@ -16,6 +16,11 @@
     background:var(--bg);color:var(--text);line-height:1.75;font-size:15.5px}
   .wrap{max-width:760px;margin:0 auto;padding:0 18px 60px}
 
+  /* 顶部返回条 */
+  .backbar{position:sticky;top:0;z-index:50;display:block;max-width:760px;margin:0 auto;
+    padding:10px 18px;font-size:13.5px;font-weight:650;color:var(--brand);text-decoration:none;
+    background:rgba(246,244,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+
   /* 头部 */
   .hero{background:linear-gradient(135deg,#4c2fa8,#7c3aed 55%,#a855f7);
     color:#fff;padding:46px 18px 34px;text-align:center;margin-bottom:26px}
@@ -100,6 +105,7 @@
 </style>
 </head>
 <body>
+<a class="backbar" href="./index.html">‹ 返回应用</a>
 <div class="hero">
   <h1>🐾 伴学宠物</h1>
   <p>班级积分 · 宠物养成 —— 老师投屏随堂加分，学生看大屏就行<br><span style="opacity:.9">一张大屏 + 一位老师，全班 45 人一起养宠物；手机扫码就能把数据带走</span></p>

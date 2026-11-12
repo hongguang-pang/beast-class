@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.20.3 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.20.4 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -2707,6 +2707,20 @@
         clearTimeout(camTimer);
         failShown = true;
         const nm = (err && err.name) || '';
+        /* 诊断：显示浏览器记录的“本网站”摄像头权限状态，区分系统权限与网站权限 */
+        const showDiag = (state) => {
+          const map = { granted: '已允许 ✓', denied: '已拒绝 ✗（问题就在这，按上面步骤改成允许）', prompt: '还没询问过' };
+          const el = q('#qsFailD');
+          if (el) el.innerHTML += '<div class="qf-diag">🔎 浏览器对本网站的摄像头权限：' + (map[state] || state) +
+            '　·　错误码：' + (nm || '未知') + '</div>';
+        };
+        try {
+          if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'camera' })
+              .then((pst) => showDiag(pst.state))
+              .catch(() => showDiag(''));
+          } else { setTimeout(() => showDiag(''), 0); }
+        } catch (e) { setTimeout(() => showDiag(''), 0); }
         if (nm === 'NotAllowedError' || nm === 'SecurityError') {
           /* 点过一次「拒绝」后浏览器会记住，重试也不会再弹窗 —— 给手动开权限的路径 */
           showFail('摄像头权限被拒绝了',
@@ -2913,7 +2927,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3203', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3204', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

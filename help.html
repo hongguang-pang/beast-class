@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="robots" content="noindex,nofollow" />
+<title>幻兽班级 · 操作说明</title>
+<style>
+  :root{
+    --brand:#7c3aed; --brand-2:#a855f7; --bg:#f6f4fb; --card:#fff;
+    --text:#1f2333; --t2:#5a5f75; --t3:#9aa0b5; --line:#e8e5f3;
+    --gold:#d97706; --ok:#16a34a; --bad:#dc2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.75;font-size:15.5px}
+  .wrap{max-width:760px;margin:0 auto;padding:0 18px 60px}
+
+  /* 头部 */
+  .hero{background:linear-gradient(135deg,#4c2fa8,#7c3aed 55%,#a855f7);
+    color:#fff;padding:46px 18px 34px;text-align:center;margin-bottom:26px}
+  .hero h1{font-size:26px;font-weight:800;letter-spacing:1px}
+  .hero p{font-size:14px;opacity:.85;margin-top:8px}
+  .hero .v{display:inline-block;margin-top:12px;font-size:12px;background:rgba(255,255,255,.18);
+    padding:4px 14px;border-radius:99px}
+
+  /* 目录 */
+  .toc{background:var(--card);border-radius:16px;padding:16px 18px;box-shadow:0 4px 16px rgba(90,60,160,.08);margin-bottom:26px}
+  .toc b{font-size:14px;color:var(--t2)}
+  .toc a{display:inline-block;margin:6px 8px 0 0;font-size:13.5px;color:var(--brand);text-decoration:none;
+    background:#f3edff;padding:5px 12px;border-radius:99px}
+  .toc a:active{background:#e4d9ff}
+
+  /* 章节 */
+  section{background:var(--card);border-radius:18px;padding:22px 20px;margin-bottom:22px;
+    box-shadow:0 4px 16px rgba(90,60,160,.08)}
+  section h2{font-size:19px;font-weight:800;display:flex;align-items:center;gap:9px;margin-bottom:4px}
+  section h2 .no{width:26px;height:26px;border-radius:9px;background:var(--brand);color:#fff;
+    font-size:14px;display:grid;place-items:center;flex:0 0 auto}
+  section .lead{font-size:13.5px;color:var(--t2);margin-bottom:14px}
+
+  /* 步骤 */
+  .steps{counter-reset:st}
+  .step{position:relative;padding:10px 0 10px 40px;counter-increment:st}
+  .step::before{content:counter(st);position:absolute;left:0;top:12px;width:24px;height:24px;border-radius:50%;
+    background:#f3edff;color:var(--brand);font-size:13px;font-weight:800;display:grid;place-items:center}
+  .step:not(:last-child)::after{content:'';position:absolute;left:12px;top:40px;bottom:-4px;width:2px;background:var(--line)}
+  .step b{font-weight:750}
+  .step small{display:block;color:var(--t3);font-size:12.5px;margin-top:2px}
+
+  .tip{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;font-size:13.5px;
+    color:#92400e;margin-top:12px}
+  .tip::before{content:'💡 ';}
+  .warn{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:10px 14px;font-size:13.5px;
+    color:#991b1b;margin-top:12px}
+  .warn::before{content:'⚠️ ';}
+  .ok{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:10px 14px;font-size:13.5px;
+    color:#166534;margin-top:12px}
+  .ok::before{content:'✅ ';}
+
+  code.k{background:#f1eef9;border:1px solid var(--line);border-radius:6px;padding:1px 7px;
+    font-size:13px;color:#6d28d9;font-family:inherit}
+
+  /* 手机示意框 */
+  .demo{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 4px}
+  .phone{width:150px;flex:0 0 auto;border:3px solid #2b2340;border-radius:18px;overflow:hidden;
+    background:#fbfaff;font-size:10px;line-height:1.5}
+  .phone .ph-top{background:#f1eef9;padding:5px 8px;font-weight:700;font-size:10.5px;display:flex;justify-content:space-between}
+  .phone .ph-body{padding:8px}
+  .phone .ph-tab{background:#fff;border-top:1px solid var(--line);padding:4px 6px;display:flex;justify-content:space-around;color:var(--t3);font-size:9px}
+  .pill{display:inline-block;background:var(--brand);color:#fff;border-radius:99px;padding:2px 9px;font-size:9.5px;font-weight:700}
+  .pill.g{background:var(--gold)} .pill.o{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+  .row{display:flex;gap:5px;align-items:center;margin:4px 0}
+  .av{width:16px;height:16px;border-radius:50%;flex:0 0 auto}
+  .bar{height:6px;border-radius:99px;background:#ece8f8;overflow:hidden;flex:1}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7)}
+  .chip{display:inline-block;background:#f1eef9;border-radius:99px;padding:1px 7px;font-size:9px;color:var(--t2);margin:0 3px 3px 0}
+  .demo-cap{font-size:12px;color:var(--t3);margin-top:8px;flex:1;min-width:150px}
+
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:#f7f4fd;font-size:13px}
+  td b{color:var(--brand)}
+
+  footer{text-align:center;color:var(--t3);font-size:12.5px;margin-top:8px}
+  footer a{color:var(--brand)}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>🐉 幻兽班级 · 积分乐园</h1>
+  <p>老师投屏展示、随堂加分，学生看大屏就行 —— 班级和家庭都能用<br><span style="opacity:.9">一张大屏 + 一位老师，全班 45 人一起养幻兽</span></p>
+  <span class="v">操作说明 · 适用 v3.13 及以上</span>
+</div>
+
+<div class="wrap">
+
+  <nav class="toc">
+    <b>📑 目录</b><br>
+    <a href="#s1">① 快速开始</a><a href="#s2">② 建班与名单</a><a href="#s3">③ 日常加减分</a>
+    <a href="#s4">④ 光荣榜</a><a href="#s5">⑤ 多班与对比</a><a href="#s6">⑥ 礼品商店</a>
+    <a href="#s3b">🎡 幸运抽奖</a><a href="#s7">⑦ 老师面板</a><a href="#s7b">📱 二维码迁移</a><a href="#s8">⑧ 成长卡</a><a href="#s9">⑨ 家庭模式</a>
+    <a href="#s10">⑩ 常见问题</a>
+  </nav>
+
+  <!-- 1 -->
+  <section id="s1">
+    <h2><span class="no">1</span>快速开始（30 秒上手）</h2>
+    <p class="lead">第一次打开会出现身份选择页，选一个即可开始。</p>
+    <div class="steps">
+      <div class="step"><b>打开链接</b><small>首次进入会显示「我是老师 / 我是家长」选择页</small></div>
+      <div class="step"><b>点「🎒 我是老师 · 带一个班」</b><small>填班级名、粘贴学生名单（可以不填，之后随时导入）</small></div>
+      <div class="step"><b>点「开启班级模式」</b><small>系统自动给每个学生随机分配一只幻兽，班内不重复</small></div>
+      <div class="step"><b>开始加减分</b><small>学生攒积分 → 幻兽升级进化（幼年期→成长期→成年期→究极体）</small></div>
+    </div>
+    <div class="ok">建议马上做两件事：① 右上角「老师」→ 设置 PIN，防止学生误入老师面板；② 「数据备份」里导出一次 JSON 存档。</div>
+  </section>
+
+  <!-- 2 -->
+  <section id="s2">
+    <h2><span class="no">2</span>建班与导入名单</h2>
+    <p class="lead">名单支持从 Excel / 花名册直接复制粘贴。</p>
+    <div class="steps">
+      <div class="step"><b>粘贴格式</b>：一行一个学生，姓名后空格写分组名（可选）<small><code class="k">张小明 第一组</code>　<code class="k">李小红 第一组</code>　<code class="k">王小刚 第二组</code></small></div>
+      <div class="step"><b>自动处理</b>：序号（1. 2. 、）自动去掉；重名学生自动跳过；新分组自动创建</small></div>
+      <div class="step"><b>追加导入</b>：之后在「老师 → 名单管理」随时补人；「替换导入」会清空当前班重新开始</small></div>
+    </div>
+    <div class="tip">每个学生随机分到一只幻兽，全站共 <b>50 种</b>（5 只经典 + 45 只班级专属），<b>同班不重复</b>；超过 50 人才允许重复。</div>
+    <div class="warn">删除学生不会立刻消失在名单导入里——请用「名单管理」逐个删除或整班替换，删除前会二次确认。</div>
+  </section>
+
+  <!-- 3 -->
+  <section id="s3">
+    <h2><span class="no">3</span>日常加减分（老师最常用）</h2>
+    <div class="demo">
+      <div class="phone">
+        <div class="ph-top"><span>全班</span><span>老师</span></div>
+        <div class="ph-body">
+          <div style="font-weight:700;margin-bottom:4px">六年三班 ⌄</div>
+          <div><span class="pill">⚡ 全班加分</span> <span class="pill">☑️ 批量加分</span> <span class="pill">🎲 随机点名</span></div>
+          <div class="row"><span class="av" style="background:linear-gradient(135deg,#86efac,#22c55e)"></span><span>学生01</span><span style="margin-left:auto;color:var(--gold);font-weight:700">5</span></div>
+          <div class="row"><span class="av" style="background:linear-gradient(135deg,#c4b5fd,#8b5cf6)"></span><span>学生02</span><span style="margin-left:auto;color:var(--gold);font-weight:700">12</span></div>
+        </div>
+        <div class="ph-tab"><span>我的</span><span><b style="color:var(--brand)">全班</b></span><span>光荣榜</span><span>商店</span><span>记录</span></div>
+      </div>
+      <div class="demo-cap">底部 5 个标签页：<b>我的</b>（个人幻兽）、<b>全班</b>（学生墙）、<b>光荣榜</b>、<b>商店</b>、<b>记录</b>。学生墙按分数自动排前三名，金银铜牌标记。</div>
+    </div>
+    <table>
+      <tr><th>操作</th><th>怎么用</th><th>适合场景</th></tr>
+      <tr><td><b>单人加分</b></td><td>点任意学生卡片 → 选 +1/+2/+3/+5/+10/-1/-2，或点「± 自定」输入任意分值 → 点理由胶囊（积极回答、作业优秀…）或自己输入 → 确认</td><td>课上随堂表扬</td></tr>
+      <tr><td><b>批量加减分</b></td><td>全班页「☑️ 批量加分」→ 点选多个学生（支持全选、按组选）→ 选统一分值 → 一次提交</td><td>整组作业完成、集体扣分</td></tr>
+      <tr><td><b>自定义分值</b></td><td>任何加减分面板点「± 自定」→ 输入如 8 或 -3 → 确定；最近用过的自定义分值会自动变成快捷按钮</td><td>测验加 8 分、特殊奖惩</td></tr>
+      <tr><td><b>改默认按钮</b></td><td>右上「老师」→「快捷分值」（或 班级设置 → 自定义加减分按钮）→ 填常用分值（逗号隔开，扣分填正数会自动变 −）→ 保存，实时预览</td><td>让按钮贴合自己的课堂习惯</td></tr>
+      <tr><td><b>全班加分</b></td><td>「⚡ 全班加分」→ 一键给班里每个人加同样的分</td><td>全班晨读达标、流动红旗</td></tr>
+      <tr><td><b>随机点名</b></td><td>「🎲 随机点名」→ 先选范围（全班或某一组）→ 名字快速滚动、逐渐减速，定格的「就是你！」 → 可顺手 +1/+2 分或「再来一次」</td><td>抽过的人本轮不再出现，一轮抽完自动开新一轮；右下角可静音</td></tr>
+    </table>
+    <div class="tip">加分同时幻兽获得 EXP 并升级进化，学生看到的是「自己养宠物」——正向激励就这么来的。</div>
+  </section>
+
+  <!-- 3b 抽奖 -->
+  <section id="s3b">
+    <h2><span class="no">🎡</span>幸运抽奖</h2>
+    <table>
+      <tr><th>功能</th><th>怎么用</th><th>说明</th></tr>
+      <tr><td><b>幸运大转盘</b></td><td>商店页顶部横幅 / 个人页「🎡 幸运抽奖」进入 → 按显示价格抽一次</td><td><b>奖池就是老师上架的奖品</b>，票价按奖品定价自动计算（约 30% 空奖、长期返还 65%）</td></tr>
+      <tr><td><b>实物礼品</b></td><td>抽中后自动进「待确认」，老师点 ✓ 发放</td><td>不再二次扣积分，属于免费领奖</td></tr>
+      <tr><td><b>经验道具 🧪</b></td><td>抽中后<b>立即生效</b>：直接给当前幻兽加经验，可能当场升级</td><td>不需要老师确认，不进待确认；弹窗会显示 +多少经验、升了几级</td></tr>
+      <tr><td><b>动态票价</b></td><td>老师改奖品定价，抽奖价格自动跟着变；也可直接指定票价</td><td>「管理奖池」里填票价：0 = 按奖池自动算，正整数 = 用你定的价（如全班统一 10 分一次）</td></tr>
+      <tr><td><b>概率公开</b></td><td>抽奖页「奖池与概率」表格，学生看得见</td><td>越贵的奖品中奖概率越低（按定价反比分配），改票价后返还率会实时重算；奖池最多放 7 件奖品</td></tr>
+    </table>
+    <div class="tip">转盘只是动画展示，落点按真实概率计算；扇区大小不代表概率大小，以概率表为准。</div>
+  </section>
+
+  <!-- 4 -->
+  <section id="s4">
+    <h2><span class="no">4</span>光荣榜与小组 PK</h2>
+    <div class="steps">
+      <div class="step"><b>三个周期</b>：今日 / 本周 / 总榜，按天记录得分，不怕历史记录被清理</div>
+      <div class="step"><b>前三名领奖台</b>：金银铜牌 + 大头像，4 名以后排序列表</div>
+      <div class="step"><b>小组 PK</b>：按<b>人均分</b>画条形图（人数不等的小组也公平），点榜单右上角「小组」切换查看</div>
+    </div>
+    <div class="ok">投屏小技巧：电脑 / 平板横屏打开会自动切换成<b>大屏横屏模式</b>——领奖台和榜单左右并排、学生墙多列铺满、底部导航变成悬浮胶囊，用浏览器全屏（F11）就是一块即时的班级大屏。</div>
+  </section>
+
+  <!-- 5 -->
+  <section id="s5">
+    <h2><span class="no">5</span>多班管理与跨班对比</h2>
+    <div class="steps">
+      <div class="step"><b>切换班级</b>：全班页点顶部「班级名 ⌄」→ 弹出班级列表 → 点一下即切换</div>
+      <div class="step"><b>新建班级</b>：班级列表底部「＋ 新建班级」；每个班的名单、积分、幻兽完全独立</div>
+      <div class="step"><b>删除班级</b>：「老师 → 班级设置 → 删除当前班级」（红色按钮，二次确认）</div>
+      <div class="step"><b>跨班对比</b>：有 2 个班以上时，全班页出现「📊 跨班对比」→ 看各班<b>人均积分</b>排名 + 年级 TOP10 混排榜，点学生可直接跨班加分</div>
+    </div>
+    <div class="tip">任务规则和礼品清单是所有班共用的，改一次全班生效；学生名单和数据按班隔离。</div>
+  </section>
+
+  <!-- 6 -->
+  <section id="s6">
+    <h2><span class="no">6</span>礼品商店（积分兑换）</h2>
+    <div class="steps">
+      <div class="step"><b>维护奖品</b>：商店页右上角「管理礼品 ›」（仅老师可见）→ 添加 / 编辑 / 上下架 / 删除 / 恢复默认 / 改抽奖票价</div>
+      <div class="step"><b>添加奖品</b>：先选类型——🎁 <b>实物礼品</b> 或 🧪 <b>经验道具</b>；再选图标（30 个 emoji）+ 名称 + 积分 + 说明</div>
+      <div class="step"><b>经验道具</b>：填「增加经验」（如 30），并设定一个兑换价。学生兑换或抽中后<b>立刻加给幻兽</b>，不需要老师确认；定价同时决定抽奖中奖概率</div>
+      <div class="step"><b>上下架</b>：奖品临时发完就「下架」，学生端立即隐藏，随时再上架</div>
+      <div class="step"><b>兑换流程</b>：学生点实物礼品 → 提交兑换请求 → 老师在「兑换记录 / 待确认」里批准或拒绝 → 批准后扣积分；经验道具点一下直接扣分并加经验</div>
+      <div class="step"><b>兑换记录</b>：老师面板「🎁 兑换记录」→ 分「待兑换」和「已兑换」两个页签，全班同学的兑换申请和历史一目了然，可直接 ✓ / ✕ 处理</div>
+    </div>
+    <div class="warn">学生的兑换申请必须由老师在「待确认」里处理才生效；拒绝不扣分。</div>
+  </section>
+
+  <!-- 7 -->
+  <section id="s7">
+    <h2><span class="no">7</span>老师面板（右上角「老师」）</h2>
+    <table>
+      <tr><th>入口</th><th>功能</th></tr>
+      <tr><td><b>⚡ 批量加减分 / 🎲 随机点名（可选组） / 👥 名单管理 / 🏆 光荣榜 / 📊 跨班 / 🎁 兑换记录</b></td><td>高频工具直达</td></tr>
+      <tr><td><b>待确认</b></td><td>处理学生的兑换申请</td></tr>
+      <tr><td><b>任务管理 / 奖励管理</b></td><td>配置日常任务和商店奖品；<b>每个任务的分值、每个奖品的定价都能随时改</b>（列表里点 ✏️）；分值填<b>负数</b>（如 -2）就是扣分项；面板顶部「📋 一键加入课堂常用项」可快速导入作业 / 考试 / 纪律加减分模板</td></tr>
+      <tr><td><b>班级设置</b></td><td>改班名、分组管理、学期重置（只清积分保留幻兽 / 全新开始）、关闭班级回到家庭模式</td></tr>
+      <tr><td><b>设置 PIN</b></td><td>进老师面板要输 4 位 PIN，防学生误触</td></tr>
+      <tr><td><b>数据备份</b></td><td><b>导出 JSON</b> 存档 / <b>导入</b> 恢复；换设备推荐用<b>「📱 二维码迁移」</b>，见下方</td></tr>
+    </table>
+    <div class="warn">所有数据只保存在<b>当前设备</b>的浏览器里，不会自动云同步。定期「导出 JSON」就是最好的保险。</div>
+  </section>
+
+  <section id="s7b">
+    <h2><span class="no">📱</span>二维码迁移（换设备最方便）</h2>
+    <p class="lead">电脑建好班想搬到手机？不用传文件，扫一扫就行。</p>
+    <div class="demo">
+      <div class="phone">
+        <div class="ph-top"><span>电脑</span></div>
+        <div class="ph-body" style="text-align:center">
+          <div style="border:4px solid #2b2340;border-radius:8px;width:74px;height:74px;margin:2px auto;background:conic-gradient(#000 25%,#fff 0 50%,#000 0 75%,#fff 0)"></div>
+          <div style="font-size:9px;color:var(--t3);margin-top:3px">第 1 / 2 张</div>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="ph-top"><span>手机 · 扫码导入</span></div>
+        <div class="ph-body">
+          <div style="height:52px;border-radius:8px;background:#1a1626;position:relative">
+            <div style="position:absolute;inset:22% 30%;border:2px solid #ffd76e;border-radius:6px"></div>
+          </div>
+          <div style="text-align:center;margin-top:4px"><span class="pill g">已收到 1/2 张</span></div>
+        </div>
+      </div>
+      <div class="demo-cap">两台设备同时打开本应用，扫码即可迁移全部数据（班级、名单、积分、幻兽、礼品）。</div>
+    </div>
+    <div class="steps">
+      <div class="step"><b>发送端（数据所在的设备）</b>：「老师 → 数据备份 → 📱 二维码迁移」→ 屏幕上出现二维码，数据多时会分成几张，点「下一张」切换</div>
+      <div class="step"><b>接收端（新设备）</b>：打开应用 → 右上角「老师」→ 数据备份 → <b>扫码导入</b>，对准二维码逐张扫描；全新设备可直接在<b>身份选择页点「📲 从其它设备迁移数据」</b></div>
+      <div class="step"><b>确认导入</b>：全部扫完后显示预览（班级名、人数），点「确认导入」完成，页面自动刷新</div>
+    </div>
+    <div class="tip">扫不了码（如摄像头坏了）也有兜底：发送端每张码下方有文字版，复制后接收端点「粘贴导入」即可；数据特别大时仍建议用「导出 JSON 文件」。</div>
+    <div class="warn">导入会<b>覆盖</b>接收设备上的现有数据；迁移是<b>一次性快照</b>，之后两台设备各自独立，不再自动同步。日常加分建议固定用一台设备。</div>
+  </section>
+
+  <!-- 8 -->
+  <section id="s8">
+    <h2><span class="no">8</span>生成学生成长卡</h2>
+    <div class="steps">
+      <div class="step"><b>入口</b>：点学生 → 操作面板里「生成成长卡」</div>
+      <div class="step"><b>内容</b>：自动绘制一张图片——幻兽立绘 + 姓名 + 积分 + 等级 + 班级排名 + 最近表现</div>
+      <div class="step"><b>用途</b>：长按 / 点击可直接下载图片，发家长群表扬学生</div>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section id="s9">
+    <h2><span class="no">9</span>家庭模式（家长用）</h2>
+    <div class="steps">
+      <div class="step"><b>适合</b>：家里 1-3 个孩子，从幻兽蛋开始养成</div>
+      <div class="step"><b>任务</b>：家长配置「叠被子 +2」「练琴 20 分钟 +3」等，孩子自己勾选提交，家长确认到账</div>
+      <div class="step"><b>奖励</b>：孩子用积分兑换奖励（看动画、小零食…），家长确认后兑现</div>
+      <div class="step"><b>切换</b>：老师随时可在「班级设置 → 关闭班级模式」回到家庭版，两边数据互不影响</div>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section id="s10">
+    <h2><span class="no">10</span>常见问题</h2>
+    <table>
+      <tr><th>问题</th><th>解答</th></tr>
+      <tr><td>打开还是旧版？</td><td>把页面<b>完全关闭后重新打开</b>一次即可自动更新；首页底部/首次页会显示版本号（v3.4+）</td></tr>
+      <tr><td>两台设备数据互通吗？</td><td>不会自动同步，但可以用「<b>二维码迁移</b>」十几秒搬完：发送端生成二维码，接收端扫码导入（见第 ⑦ 章后的详细说明）</td></tr>
+      <tr><td>学生能看到别的学生吗？</td><td>同一设备打开就是老师视角；建议班里的设备由老师保管，或设置 PIN</td></tr>
+      <tr><td>幻兽会重复吗？</td><td>同班内 50 种幻兽不重复分配；跨班可能重复；超过 50 人的班允许重复</td></tr>
+      <tr><td>电脑/大屏能用吗？</td><td>能。横屏（或电脑浏览器）打开会自动切换<b>横屏大屏模式</b>：光荣榜左右分栏、学生墙多列、弹窗居中，适合教室一体机投屏</td></tr>
+      <tr><td>断网能用吗？</td><td>能。已加载过的页面支持离线使用（PWA）；联网打开会自动更新到最新版</td></tr>
+      <tr><td>能装到手机桌面吗？</td><td>能。浏览器菜单 →「添加到主屏幕」，之后像 App 一样全屏打开</td></tr>
+      <tr><td>误扣分了怎么撤？</td><td>再给该学生加回相应分数即可；「记录」页有完整流水可查</td></tr>
+    </table>
+  </section>
+
+  <footer>
+    🐉 幻兽班级 · 积分乐园 — 把这本说明转发给同事，30 秒就能上手<br>
+    <a href="./index.html">返回应用 ›</a>
+  </footer>
+</div>
+</body>
+</html>

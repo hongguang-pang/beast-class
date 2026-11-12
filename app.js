@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.20.1 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.20.2 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -2678,10 +2678,7 @@
                  : '可能没给摄像头权限。可以点「重试摄像头」，或直接在下面<b>粘贴</b>二维码文本。');
         }
       }, 3500);
-      navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false
-      }).then((st) => {
+      const openCam = (c) => navigator.mediaDevices.getUserMedia(c).then((st) => {
         clearTimeout(camTimer);
         stream = st;
         const v = q('#qsV');
@@ -2704,11 +2701,41 @@
           }
         } catch (e) {}
         tick();
-      }).catch(() => {
-        clearTimeout(camTimer);
-        showFail('摄像头没打开',
-          isWx ? '微信里不能直接调摄像头。<br>点右上角 <b>「···」→「在浏览器打开」</b>，再回到「老师 → 数据备份 → 扫码接收」。'
-               : '可能是没给摄像头权限，或这台设备没有摄像头。<br>也可以直接在下面<b>粘贴</b>二维码文本导入。');
+      });
+      const camFail = (err) => {
+        const nm = (err && err.name) || '';
+        if (nm === 'NotAllowedError' || nm === 'SecurityError') {
+          /* 点过一次「拒绝」后浏览器会记住，重试也不会再弹窗 —— 给手动开权限的路径 */
+          showFail('摄像头权限被拒绝了',
+            '刚才弹权限框时点过「拒绝」，浏览器会记住。<br>' +
+            '<b>恢复方法（Chrome / 多数安卓浏览器）：</b><br>' +
+            '① 点地址栏最左边的 🔒 或 ⓘ 图标<br>' +
+            '② 找到「摄像头 / 相机」→ 改成<b>允许</b><br>' +
+            '③ 回这里点「重试摄像头」<br>' +
+            '找不到就走系统设置：<b>手机设置 → 应用 → 浏览器 → 权限 → 相机 → 允许</b>，然后重开本页。');
+        } else if (nm === 'NotFoundError') {
+          showFail('没找到可用的摄像头',
+            '这台设备可能没有摄像头（或都被禁用了）。<br>可以直接在下面<b>粘贴</b>二维码文本导入。');
+        } else if (nm === 'NotReadableError' || nm === 'TrackStartError') {
+          showFail('摄像头被别的应用占用了',
+            '可能微信 / 视频通话正在使用摄像头，关掉后再点「重试摄像头」。<br>也可以直接在下面<b>粘贴</b>二维码文本导入。');
+        } else {
+          showFail('摄像头没打开',
+            isWx ? '微信里不能直接调摄像头。<br>点右上角 <b>「···」→「在浏览器打开」</b>，再回到「老师 → 数据备份 → 扫码接收」。'
+                 : '也可能手机没给浏览器 App 相机权限：<b>手机设置 → 应用 → 浏览器 → 权限 → 相机 → 允许</b>。<br>也可以直接在下面<b>粘贴</b>二维码文本导入。');
+        }
+      };
+      openCam({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      }).catch((err) => {
+        const nm = (err && err.name) || '';
+        /* 个别浏览器不支持后置/分辨率参数，会报 OverconstrainedError —— 去掉参数降级重试 */
+        if (nm === 'OverconstrainedError') {
+          openCam({ video: true, audio: false }).catch(camFail);
+          return;
+        }
+        camFail(err);
       });
     };
 
@@ -2883,7 +2910,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3201', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3202', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

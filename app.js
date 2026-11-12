@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.19.1 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.19.2 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -1198,7 +1198,7 @@
         m.querySelector('#mgReward').onclick = () => { close(); giftManageSheet(); };
         const mgk = m.querySelector('#mgKid');
         if (mgk) mgk.onclick = () => kidManageSheet();
-        m.querySelector('#mgData').onclick = () => dataSheet();
+        m.querySelector('#mgData').onclick = () => { close(); dataSheet(); };
         m.querySelector('#exitAdmin').onclick = () => { P.d.admin = false; P.save(); close(); toast('已退出' + (isClass() ? '老师' : '家长') + '模式'); render(); };
         const tt = (id, fn) => { const b = m.querySelector('#' + id); if (b) b.onclick = fn; };
         tt('ttBatch', () => { close(); quickAward([]); });
@@ -2480,8 +2480,15 @@
       });
   }
 
+  /* 打开全屏扫码/发码页前先清掉所有弹层遮罩：
+     老师面板 → 数据备份 是两层弹层，残留的遮罩会盖住扫码页（表现为「点开闪一下就没反应」） */
+  function clearSheets() {
+    document.querySelectorAll('.sheet-mask').forEach((m) => m.remove());
+  }
+
   function qrExportSheet() {
     let chunks = [], idx = 0, timer = null;
+    clearSheets();
     openSheet(
       '<div class="sheet-h">发到手机</div>' +
       '<div class="tiny" style="margin-top:6px">手机打开<b>同一个网址</b> → 右上角「老师」→ 数据备份 → <b>扫码接收</b>，对准屏幕上的码即可。多张请逐张扫，扫齐自动合并。</div>' +
@@ -2531,16 +2538,23 @@
 
   function qrImportSheet(fromWelcome) {
     let stream = null, store = [], total = 0, done = false, lastHit = '', torchOn = false;
+    clearSheets();
     const el = document.createElement('div');
     el.className = 'qr-scan';
     el.innerHTML =
       '<div class="qs-box">' +
       '<div class="qs-h">扫码接收</div>' +
-      '<div class="qs-v">' +
+      '<div class="qs-v" id="qsVWrap">' +
       '<video id="qsV" playsinline muted autoplay></video>' +
       '<div class="qs-frame"></div>' +
       '<div class="qs-load" id="qsLoad">正在打开摄像头…</div>' +
       '<button class="qs-torch" id="qsTorch" style="display:none">💡 补光</button>' +
+      '</div>' +
+      '<div class="qs-fail" id="qsFail" style="display:none">' +
+      '<div class="qf-ico">📷</div>' +
+      '<div class="qf-t" id="qsFailT">摄像头打不开</div>' +
+      '<div class="qf-d" id="qsFailD"></div>' +
+      '<div class="qf-row"><button class="btn ghost mini" id="qsCopy">复制网址</button><button class="btn ghost mini" id="qsRetry">重试摄像头</button></div>' +
       '</div>' +
       '<div class="qs-bar"><i id="qsBar"></i></div>' +
       '<div class="qs-tip" id="qsTip">把手机对准另一台设备上的二维码<span id="qsP">等待识别…</span></div>' +
@@ -2551,6 +2565,7 @@
       '</div>';
     document.body.appendChild(el);
     const q = (s) => el.querySelector(s);
+    const isWx = /MicroMessenger/i.test(navigator.userAgent);
     const stop = () => {
       done = true;
       if (stream) { stream.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} }); stream = null; }
@@ -2564,10 +2579,32 @@
       stop(); el.remove();
       confirmQrImport(d);
     };
+    const showFail = (title, desc) => {
+      q('#qsVWrap').style.display = 'none';
+      q('#qsFail').style.display = 'block';
+      q('#qsFailT').textContent = title;
+      q('#qsFailD').innerHTML = desc;
+      q('#qsBox').style.display = 'block';   /* 摄像头不可用时直接露出粘贴框 */
+      q('#qsBar').style.display = 'none';
+      q('#qsTip').style.display = 'none';
+    };
+
     q('#qsStop').onclick = () => { stop(); el.remove(); if (fromWelcome) welcome(); };
     q('#qsPaste').onclick = () => {
       const b = q('#qsBox');
       b.style.display = b.style.display === 'none' ? 'block' : 'none';
+    };
+    q('#qsCopy').onclick = () => {
+      const url = location.href.split('#')[0];
+      const done2 = () => toast('网址已复制，粘贴到浏览器打开即可');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done2).catch(() => {});
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done2(); } catch (e) {}
+        ta.remove();
+      }
     };
     q('#qsGo').onclick = () => {
       const t = collectChunks(q('#qsTxt').value, store);
@@ -2582,6 +2619,15 @@
     try {
       if ('BarcodeDetector' in window) detector = new BarcodeDetector({ formats: ['qr_code'] });
     } catch (e) { detector = null; }
+
+    const handle = (data) => {
+      const n = collectChunks(data, store);
+      if (!n) return;
+      lastHit = data;
+      total = n; paint();
+      if (navigator.vibrate) { try { navigator.vibrate(35); } catch (e) {} }
+      tryFinish(store, total, finish);
+    };
 
     const tick = () => {
       if (done || !stream) return;
@@ -2607,20 +2653,36 @@
       if (!done) setTimeout(tick, 140);
     };
 
-    const handle = (data) => {
-      const n = collectChunks(data, store);
-      if (!n) return;
-      lastHit = data;
-      total = n; paint();
-      if (navigator.vibrate) { try { navigator.vibrate(35); } catch (e) {} }
-      tryFinish(store, total, finish);
-    };
-
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    let camTimer = null;
+    const startCam = () => {
+      clearTimeout(camTimer);
+      q('#qsFail').style.display = 'none';
+      q('#qsVWrap').style.display = '';
+      q('#qsBar').style.display = '';
+      q('#qsTip').style.display = '';
+      q('#qsLoad').style.display = 'grid';
+      q('#qsLoad').textContent = '正在打开摄像头…';
+      if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+        showFail('这个浏览器不支持摄像头',
+          isWx ? '微信里不能直接调摄像头。<br>点右上角 <b>「···」→「在浏览器打开」</b>，再回到「老师 → 数据备份 → 扫码接收」。'
+               : '请换用手机自带浏览器（Chrome / Safari）打开本页。');
+        return;
+      }
+      /* 微信 WebView 里 getUserMedia 有时既不成功也不报错，卡在这句；
+         3.5 秒还没画面就直接给提示，别让老师干等 */
+      camTimer = setTimeout(() => {
+        if (!stream && !done) {
+          try { if (stream) stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+          showFail('摄像头没有响应',
+            isWx ? '微信里不能直接调摄像头。<br>点右上角 <b>「···」→「在浏览器打开」</b>，再回到「老师 → 数据备份 → 扫码接收」。'
+                 : '可能没给摄像头权限。可以点「重试摄像头」，或直接在下面<b>粘贴</b>二维码文本。');
+        }
+      }, 3500);
       navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false
       }).then((st) => {
+        clearTimeout(camTimer);
         stream = st;
         const v = q('#qsV');
         v.srcObject = st;
@@ -2643,11 +2705,15 @@
         } catch (e) {}
         tick();
       }).catch(() => {
-        q('#qsLoad').textContent = '摄像头打不开，请点「粘贴导入」';
+        clearTimeout(camTimer);
+        showFail('摄像头没打开',
+          isWx ? '微信里不能直接调摄像头。<br>点右上角 <b>「···」→「在浏览器打开」</b>，再回到「老师 → 数据备份 → 扫码接收」。'
+               : '可能是没给摄像头权限，或这台设备没有摄像头。<br>也可以直接在下面<b>粘贴</b>二维码文本导入。');
       });
-    } else {
-      q('#qsLoad').textContent = '此浏览器不支持摄像头，请点「粘贴导入」';
-    }
+    };
+
+    q('#qsRetry').onclick = startCam;
+    startCam();
   }
   /* ---------- 成长卡 ---------- */
   function growthCard(k) {
@@ -2787,7 +2853,7 @@
     document.getElementById('classBtn').onclick = () => { location.hash = '#/class'; };
     render();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3191', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3192', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

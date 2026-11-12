@@ -225,6 +225,7 @@
   /* ---------- 保存拦截：打时间戳 + 防抖推送 ---------- */
   var rawSet = localStorage.setItem.bind(localStorage);
   var pushTimer = null, pushing = false, pendingPush = false;
+  var lastTouchAt = 0;   /* 最近一次老师操作的时间，用于避开操作中刷新 */
 
   function stampAndStore(value) {
     try {
@@ -240,7 +241,10 @@
   localStorage.setItem = function (k, v) {
     var val = k === KEY ? stampAndStore(v) : v;
     rawSet(k, val);
-    if (k === KEY && cfgOn()) schedulePush();
+    if (k === KEY) {
+      lastTouchAt = Date.now();
+      if (cfgOn()) schedulePush();
+    }
   };
 
   function schedulePush() {
@@ -422,6 +426,18 @@
     if (document.querySelector('.sheet')) return;
     pullAndApply(false).then(function (applied) { if (applied) location.reload(); });
   });
+
+  /* 页面一直开着（如投屏常亮）时，每 60 秒悄悄检查一次云端
+     - 只在窗口可见、无弹层、且老师 45 秒内没操作时才应用，避免打断课堂 */
+  setInterval(function () {
+    if (!cfgOn() || !readCfg().tid) return;
+    if (document.visibilityState !== 'visible') return;
+    if (document.querySelector('.sheet-mask')) return;
+    if (Date.now() - lastTouchAt < 45000) return;
+    pullAndApply(false).then(function (applied) {
+      if (applied) location.reload();
+    });
+  }, 60000);
 
   /* 页面隐藏前，把待推送的改动立刻发出去（尽力而为） */
   document.addEventListener('visibilitychange', function () {

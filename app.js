@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.20.6 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.20.7 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -552,11 +552,6 @@
       '<div><b>' + weekPts + '</b><span>本周获得</span></div>' +
       '<div><b>' + third + '</b><span>' + thirdLbl + '</span></div></div>' +
       '</div>' +
-      '<div class="pet-actions">' +
-      '<button class="act-btn" id="actPet"><span class="em">🤚</span>摸摸头<small>免费 · 开心</small></button>' +
-      '<button class="act-btn" id="actFeed"><span class="em">🍖</span>喂食<small>2 积分 +2EXP</small></button>' +
-      '<button class="act-btn" id="actPlay"><span class="em">🎈</span>陪玩<small>3 积分 +3EXP</small></button>' +
-      '</div>' +
       (isClass() ? '<div class="quick-links">' +
         '<a href="#/dex">📖 我的图鉴</a><a href="#/tasks">✅ 今日任务</a><a href="#/board">🏆 光荣榜</a><a href="#/lucky">🎡 幸运抽奖</a></div>'
         : '<button class="cls-cta" id="homeClsCta"><span>🏫</span><div><b>我是老师？开启班级模式</b><small>全班加减分 · 光荣榜 · 随机点名</small></div><i>›</i></button>') +
@@ -572,18 +567,6 @@
       setTimeout(() => (p.style.transform = ''), 220);
       toast(k.pet.name + ' 很开心 ✨');
     };
-    document.getElementById('actPet').onclick = () => toast(k.pet.name + ' 眯起眼睛享受 🥰');
-    document.getElementById('actFeed').onclick = () => spendAct(k, 2, 2, '🍖 喂了一顿大餐', '吃饱啦！');
-    document.getElementById('actPlay').onclick = () => spendAct(k, 3, 3, '🎈 陪它玩了一场', '玩得超开心！');
-  }
-  function spendAct(k, cost, exp, logText, msg) {
-    if (k.points < cost) { toast('积分不够啦，先去完成任务赚积分吧'); return; }
-    k.points -= cost;
-    addLog(k, cost === 2 ? '🍖' : '🎈', logText, -cost);
-    addExp(k, exp);
-    P.save();
-    toast(k.pet.name + ' ' + msg + ' +' + exp + 'EXP');
-    viewHome();
   }
   function kidsRow() {
     if (isClass()) {
@@ -1111,8 +1094,9 @@
       '<div class="tiny">' + (isClass() ? '数据只保存在这台设备上，换设备请用「数据备份」迁移' : '退出家长模式请在底部点「退出」，或等待下次打开自动退出') + '</div>' +
       (isClass() ? '<div class="cls-now" id="ppCls"><span>🏫</span><b>' + esc(P.d.cls.name || '我的班级') + '</b>' +
         '<small>' + P.d.kids.length + ' 人 · 共 ' + P.d.classes.length + ' 个班</small><i>切换 ›</i></div>' : '') +
-      (isClass() ? '<div class="teacher-tools"' + (P.d.classes.length > 1 ? ' style="grid-template-columns:repeat(5,1fr)"' : '') + '>' +
+      (isClass() ? '<div class="teacher-tools"' + (P.d.classes.length > 1 ? ' style="grid-template-columns:repeat(6,1fr)"' : ' style="grid-template-columns:repeat(5,1fr)"') + '>' +
         '<button id="ttBatch"><b>⚡</b>批量加分</button>' +
+        '<button id="ttGroup"><b>🏷️</b>小组加分</button>' +
         '<button id="ttRnd"><b>🎲</b>随机点名</button>' +
         '<button id="ttRos"><b>👥</b>名单</button>' +
         '<button id="ttBrd"><b>🏆</b>光荣榜</button>' +
@@ -1202,6 +1186,7 @@
         m.querySelector('#exitAdmin').onclick = () => { P.d.admin = false; P.save(); close(); toast('已退出' + (isClass() ? '老师' : '家长') + '模式'); render(); };
         const tt = (id, fn) => { const b = m.querySelector('#' + id); if (b) b.onclick = fn; };
         tt('ttBatch', () => { close(); quickAward([]); });
+        tt('ttGroup', () => { close(); groupAwardPick(); });
         tt('ttRnd', () => { close(); randomPick(); });
         tt('mgRnd', () => { close(); randomPick(); });
         tt('mgRedeem', () => { close(); redeemBoardSheet(); });
@@ -1862,11 +1847,11 @@
   }
 
   /* ---------- 批量 / 全班加分 ---------- */
-  function quickAward(preset) {
+  function quickAward(preset, title) {
     let sel = new Set(preset || []);
     const gs = groupsOf();
     openSheet(
-      '<div class="sheet-h" id="qaTitle">' + (preset && preset.length === P.d.kids.length && P.d.kids.length ? '全班加分' : '批量加减分') + '</div>' +
+      '<div class="sheet-h" id="qaTitle">' + esc(title || (preset && preset.length === P.d.kids.length && P.d.kids.length ? '全班加分' : '批量加减分')) + '</div>' +
       '<div class="tiny" id="qaSub">点学生选中，可多选；底部选分值和理由后一次提交</div>' +
       '<div class="chips" id="qaTools" style="margin-top:10px"><button data-all="1">全选</button><button data-all="0">清空</button>' +
       (gs.length ? gs.map((g) => '<button data-g="' + esc(g) + '">' + esc(g) + '</button>').join('') : '') + '</div>' +
@@ -1917,6 +1902,28 @@
           close(); render();
           toast('已给 ' + n + ' 人 ' + (st.amt > 0 ? '+' : '') + st.amt + ' 分');
         };
+      });
+  }
+
+  /* ---------- 小组加分：选组后进入批量加减分，自动勾选该组全部学生 ---------- */
+  function groupAwardPick() {
+    const gs = groupsOf();
+    if (!gs.length) { toast('还没有分组，先到「名单 → 分组管理」建组'); return rosterSheet(); }
+    openSheet(
+      '<div class="sheet-h">小组加分 · 选组</div>' +
+      '<div class="tiny">选定组后进入加减分面板，已自动勾选该组全部学生</div>' +
+      '<div style="margin-top:12px;display:grid;gap:9px">' + gs.map((g) => {
+        const n = P.d.kids.filter((k) => k.group === g).length;
+        return '<button class="btn ghost" data-g="' + esc(g) + '" style="width:100%;display:flex;justify-content:space-between;align-items:center">🏷️ ' + esc(g) + '<small style="opacity:.65">' + n + ' 人 ›</small></button>';
+      }).join('') + '</div>',
+      (m, close) => {
+        m.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => {
+          const g = b.dataset.g;
+          const ids = P.d.kids.filter((k) => k.group === g).map((k) => k.id);
+          close();
+          if (!ids.length) { toast('「' + g + '」还没有学生'); return; }
+          quickAward(ids, '小组加分 · ' + g);
+        }));
       });
   }
 
@@ -2815,6 +2822,7 @@
           if (!e.secure) concl = '问题在<b>网址</b>：请用 https:// 开头的地址打开（当前是 ' + location.protocol.replace(':', '') + '）。';
           else if (e.inFrame) concl = '问题在<b>页面被嵌套</b>：请点「复制网址」后在浏览器新标签页里直接打开。';
           else if (e.isWx) concl = '问题在<b>微信内置浏览器</b>：它调不起摄像头。点右上角 ··· → 在浏览器打开。';
+          else if (/小米浏览器/.test(e.br)) concl = '问题在<b>小米浏览器</b>：它对网页调摄像头支持不完整，设置里也没有相机权限项。请用 <b>Chrome</b> 打开同一个网址（应用商店可装）。';
           else if (e.webview) concl = '问题在<b>App 内嵌网页</b>：宿主 App 没给网页摄像头授权。请用系统 Chrome 打开这个网址。';
           else concl = '网址、系统权限、打开方式都正常，卡在<b>浏览器这一层</b>：它把「网站使用摄像头」整体关掉了（见下面第 ②③ 步），或当前是<b>无痕/隐私模式</b>。';
           rows += '<div class="qf-diag" style="margin-top:6px">👉 结论：' + concl + '</div>';
@@ -3044,7 +3052,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3206', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3207', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

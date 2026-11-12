@@ -779,3 +779,12 @@ svg{display:block}
     display:flex;flex-direction:column;min-height:0;overflow-y:auto;padding-bottom:2px}
   .sheet:has(#qaGrid) #qaGo{margin-top:auto;flex:0 0 auto}
 }
+
+/* —— 摄像头失败说明：字号加大、可滚动，避免小屏看不全 —— */
+.qs-fail .qf-d{font-size:13.5px;line-height:1.9}
+.qs-fail .qf-d b{color:#4c1d95}
+.qs-wrap,.qr-scan{overscroll-behavior:contain}
+@media (max-height:520px){
+  .qs-fail{padding:14px 14px}
+  .qs-fail .qf-d{font-size:12.5px;line-height:1.8}
+}

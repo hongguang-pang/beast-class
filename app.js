@@ -2599,7 +2599,7 @@
     document.getElementById('classBtn').onclick = () => { location.hash = '#/class'; };
     render();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3170', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3171', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

@@ -524,7 +524,7 @@ svg{display:block}
 
 /* ===== v3.5 二维码迁移 ===== */
 .w-mig{display:block;width:100%;max-width:300px;margin:16px auto 0;font-size:13.5px}
-.qr-scan{position:fixed;inset:0;z-index:120;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:18px}
+.qr-scan{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:18px}
 .qs-box{width:100%;max-width:360px}
 .qs-h{font-size:19px;font-weight:800;text-align:center;margin-bottom:12px}
 .qs-v{position:relative;border-radius:20px;overflow:hidden;background:#1a1626;aspect-ratio:1}
@@ -718,7 +718,7 @@ svg{display:block}
 .qr-canvas{display:block;margin:0 auto;background:#fff;border-radius:14px;
   box-shadow:0 6px 22px rgba(60,30,120,.16);cursor:zoom-in}
 .qr-canvas.big{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
-  z-index:135;width:auto!important;max-width:94vw;max-height:88vh;cursor:zoom-out;
+  z-index:210;width:auto!important;max-width:94vw;max-height:88vh;cursor:zoom-out;
   box-shadow:0 0 0 100vmax rgba(18,10,36,.9),0 8px 30px rgba(0,0,0,.4)}
 .qs-bar{height:6px;border-radius:99px;background:rgba(120,110,180,.18);overflow:hidden;margin:12px 0 2px}
 .qs-bar i{display:block;height:100%;width:0;border-radius:99px;
@@ -727,3 +727,11 @@ svg{display:block}
   background:rgba(20,14,36,.62);color:#fff;font-size:12px;font-weight:600;
   padding:6px 11px;border-radius:99px;backdrop-filter:blur(6px)}
 .qs-torch.on{background:#f5c451;color:#3b2a04}
+
+/* —— 扫码失败提示卡（微信 / 无摄像头） —— */
+.qs-fail{background:#fff;border:1.5px dashed var(--line);border-radius:18px;padding:20px 16px;text-align:center}
+.qf-ico{font-size:34px;line-height:1}
+.qf-t{font-size:16px;font-weight:800;margin-top:8px}
+.qf-d{font-size:13px;color:var(--t2);line-height:1.7;margin-top:6px}
+.qf-row{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.qf-row .btn{flex:1;margin:0}

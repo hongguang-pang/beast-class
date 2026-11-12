@@ -1,15 +1,15 @@
 /* 幻兽家庭 · 离线缓存 Service Worker */
-const VERSION = 'beast-v3.18.0';
+const VERSION = 'beast-v3.18.1';
 const SHELL = [
   './',
   './index.html',
-  './app.css?v=3180',
+  './app.css?v=3181',
   './help.html',
   './lib/lz.min.js',
   './lib/qrg.js',
   './lib/jsqr.js',
-  './app.js?v=3180',
-  './sync.js?v=3180',
+  './app.js?v=3181',
+  './sync.js?v=3181',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'

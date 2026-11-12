@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.20.2 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.20.3 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -2653,9 +2653,10 @@
       if (!done) setTimeout(tick, 140);
     };
 
-    let camTimer = null;
+    let camTimer = null, failShown = false;
     const startCam = () => {
       clearTimeout(camTimer);
+      failShown = false;
       q('#qsFail').style.display = 'none';
       q('#qsVWrap').style.display = '';
       q('#qsBar').style.display = '';
@@ -2671,7 +2672,7 @@
       /* 微信 WebView 里 getUserMedia 有时既不成功也不报错，卡在这句；
          3.5 秒还没画面就直接给提示，别让老师干等 */
       camTimer = setTimeout(() => {
-        if (!stream && !done) {
+        if (!stream && !done && !failShown) {
           try { if (stream) stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
           showFail('摄像头没有响应',
             isWx ? '微信里不能直接调摄像头。<br>点右上角 <b>「···」→「在浏览器打开」</b>，再回到「老师 → 数据备份 → 扫码接收」。'
@@ -2703,6 +2704,8 @@
         tick();
       });
       const camFail = (err) => {
+        clearTimeout(camTimer);
+        failShown = true;
         const nm = (err && err.name) || '';
         if (nm === 'NotAllowedError' || nm === 'SecurityError') {
           /* 点过一次「拒绝」后浏览器会记住，重试也不会再弹窗 —— 给手动开权限的路径 */
@@ -2910,7 +2913,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3202', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3203', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

@@ -1,15 +1,15 @@
-/* 幻兽家庭 · 离线缓存 Service Worker */
-const VERSION = 'beast-v3.18.1';
+/* 伴学宠物 · 离线缓存 Service Worker */
+const VERSION = 'beast-v3.19.0';
 const SHELL = [
   './',
   './index.html',
-  './app.css?v=3181',
+  './app.css?v=3190',
   './help.html',
   './lib/lz.min.js',
   './lib/qrg.js',
   './lib/jsqr.js',
-  './app.js?v=3181',
-  './sync.js?v=3181',
+  './app.js?v=3190',
+  './sync.js?v=3190',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'

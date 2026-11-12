@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.20.5 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.20.6 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -2622,7 +2622,7 @@
       '<div class="btn-row"><button class="btn ghost" id="qsPaste">粘贴导入</button><button class="btn ghost" id="qsStop">取消</button></div>' +
       '<div id="qsBox" style="display:none;margin-top:10px">' +
       '<textarea id="qsTxt" rows="5" placeholder="把二维码下方的文本粘贴进来（可一次粘贴多张）" style="width:100%;padding:11px;border-radius:12px;border:1.5px solid var(--line);font-family:monospace;font-size:12px;line-height:1.6;resize:vertical"></textarea>' +
-      '<div style="margin-top:9px"><button class="btn" id="qsGo">解析并导入</button></div></div>' +
+      '<div style="margin-top:9px"><button class="btn ghost" id="qsClip" style="margin-bottom:8px">📋 从剪贴板粘贴</button><button class="btn" id="qsGo">解析并导入</button></div></div>' +
       '</div>';
     document.body.appendChild(el);
     const q = (s) => el.querySelector(s);
@@ -2672,6 +2672,18 @@
       if (!t) { toast('没有识别到迁移数据'); return; }
       total = t; paint();
       if (!tryFinish(store, total, finish)) toast('还差 ' + (total - store.filter(Boolean).length) + ' 张，请把其余文本也粘贴进来');
+    };
+    const clipBtn = q('#qsClip');
+    if (clipBtn) clipBtn.onclick = async () => {
+      try {
+        const txt = await navigator.clipboard.readText();
+        if (!txt || !txt.trim()) { toast('剪贴板是空的，先复制二维码下方的文本'); return; }
+        const box = q('#qsTxt');
+        box.value = (box.value ? box.value + '\n' : '') + txt.trim();
+        toast('已粘贴，点「解析并导入」');
+      } catch (e) {
+        toast('这个浏览器不让自动读剪贴板，请长按输入框手动粘贴');
+      }
     };
 
     /* 手机 Chrome / 新版 Safari 内置条码引擎（BarcodeDetector），识别率比 jsQR 高；
@@ -2768,18 +2780,51 @@
         clearTimeout(camTimer);
         failShown = true;
         const nm = (err && err.name) || '';
+        /* 环境自检：https / 打开方式 / 浏览器 —— 逐层判断摄像头到底卡在哪一层 */
+        const envInfo = () => {
+          const ua = navigator.userAgent;
+          const secure = window.isSecureContext !== false && location.protocol === 'https:';
+          let inFrame = false;
+          try { inFrame = window.self !== window.top; } catch (e) { inFrame = true; }
+          let br = '未知浏览器';
+          if (/MicroMessenger/i.test(ua)) br = '微信内置浏览器';
+          else if (/AlipayClient/i.test(ua)) br = '支付宝内置浏览器';
+          else if (/DingTalk/i.test(ua)) br = '钉钉内置浏览器';
+          else if (/Weibo/i.test(ua)) br = '微博内置浏览器';
+          else if (/Quark/i.test(ua)) br = '夸克浏览器';
+          else if (/UCBrowser/i.test(ua)) br = 'UC 浏览器';
+          else if (/HuaweiBrowser/i.test(ua)) br = '华为浏览器';
+          else if (/MiuiBrowser/i.test(ua)) br = '小米浏览器';
+          else if (/SamsungBrowser/i.test(ua)) br = '三星浏览器';
+          else if (/EdgA|EdgiOS/i.test(ua)) br = 'Edge';
+          else if (/CriOS/i.test(ua)) br = 'Chrome (iOS)';
+          else if (/Chrome\//i.test(ua)) br = 'Chrome';
+          else if (/Firefox\//i.test(ua)) br = 'Firefox';
+          else if (/Safari\//i.test(ua)) br = 'Safari';
+          const webview = !/MicroMessenger|AlipayClient|DingTalk|Weibo|Quark|UCBrowser|HuaweiBrowser|MiuiBrowser|SamsungBrowser|EdgA|CriOS|Chrome\/|Firefox\/|Safari\//i.test(ua) || /; wv\)/i.test(ua);
+          const ver = (ua.match(/(?:Chrome|CriOS|Firefox|Version)\/(\d+)/) || [])[1] || '';
+          return { secure, inFrame, br: br + (ver ? ' ' + ver : ''), webview, isWx: /MicroMessenger/i.test(ua) };
+        };
+        const envLines = (state) => {
+          const e = envInfo();
+          let rows = '';
+          rows += '<div class="qf-diag">🌐 网址：' + (e.secure ? 'https ✓ 安全连接' : location.protocol.replace(':', '') + ' ✗ 不是 https，浏览器一律禁止调用摄像头') + '</div>';
+          rows += '<div class="qf-diag">📱 浏览器：' + esc(e.br) + (e.inFrame ? ' · 被嵌在别的网页里' : ' · 独立页面打开') + '</div>';
+          rows += '<div class="qf-diag">🔐 网站摄像头权限：' + ({ granted: '已允许 ✓', denied: '已拒绝 ✗', prompt: '还没询问过' }[state] || '查不到（这个浏览器不支持查询）') + '　·　错误码：' + (nm || '未知') + '</div>';
+          let concl;
+          if (!e.secure) concl = '问题在<b>网址</b>：请用 https:// 开头的地址打开（当前是 ' + location.protocol.replace(':', '') + '）。';
+          else if (e.inFrame) concl = '问题在<b>页面被嵌套</b>：请点「复制网址」后在浏览器新标签页里直接打开。';
+          else if (e.isWx) concl = '问题在<b>微信内置浏览器</b>：它调不起摄像头。点右上角 ··· → 在浏览器打开。';
+          else if (e.webview) concl = '问题在<b>App 内嵌网页</b>：宿主 App 没给网页摄像头授权。请用系统 Chrome 打开这个网址。';
+          else concl = '网址、系统权限、打开方式都正常，卡在<b>浏览器这一层</b>：它把「网站使用摄像头」整体关掉了（见下面第 ②③ 步），或当前是<b>无痕/隐私模式</b>。';
+          rows += '<div class="qf-diag" style="margin-top:6px">👉 结论：' + concl + '</div>';
+          return rows;
+        };
         /* 诊断：显示浏览器记录的“本网站”摄像头权限状态，区分系统权限与网站权限 */
         const showDiag = (state) => {
-          const map = { granted: '已允许 ✓', denied: '已拒绝 ✗（问题就在这，按上面步骤改成允许）', prompt: '还没询问过' };
           const el = q('#qsFailD');
           if (!el) return;
-          let extra = '';
-          /* 矛盾组合：网站权限还是“未询问”却直接报 NotAllowedError —— 多半是系统层没给浏览器相机权限 */
-          if (state === 'prompt' && (nm === 'NotAllowedError' || nm === 'SecurityError')) {
-            extra = '<div class="qf-diag" style="margin-top:6px">⚠️ 网站权限还没询问过就直接失败 —— 问题多半在<b>手机系统层</b>：手机设置 → 应用 → 浏览器 → 权限 → 相机 → 允许；也可能被校园管控/安全软件限制了摄像头。</div>';
-          }
-          el.innerHTML += '<div class="qf-diag">🔎 浏览器对本网站的摄像头权限：' + (map[state] || state) +
-            '　·　错误码：' + (nm || '未知') + '</div>' + extra;
+          el.innerHTML += envLines(state);
         };
         try {
           if (navigator.permissions && navigator.permissions.query) {
@@ -2789,14 +2834,13 @@
           } else { setTimeout(() => showDiag(''), 0); }
         } catch (e) { setTimeout(() => showDiag(''), 0); }
         if (nm === 'NotAllowedError' || nm === 'SecurityError') {
-          /* 点过一次「拒绝」后浏览器会记住，重试也不会再弹窗 —— 给手动开权限的路径 */
-          showFail('摄像头权限被拒绝了',
-            '刚才弹权限框时点过「拒绝」，浏览器会记住。<br>' +
-            '<b>恢复方法（Chrome / 多数安卓浏览器）：</b><br>' +
-            '① 点地址栏最左边的 🔒 或 ⓘ 图标<br>' +
-            '② 找到「摄像头 / 相机」→ 改成<b>允许</b><br>' +
-            '③ 回这里点「重试摄像头」<br>' +
-            '找不到就走系统设置：<b>手机设置 → 应用 → 浏览器 → 权限 → 相机 → 允许</b>，然后重开本页。');
+          showFail('摄像头被浏览器拦住了',
+            '手机系统里给浏览器的相机权限已经开着，所以问题不在系统开关，而在<b>浏览器这一层</b>。按顺序试：<br>' +
+            '① 先看下面「👉 结论」：是网址、微信、内嵌网页，还是浏览器本身<br>' +
+            '② 地址栏最左边 🔒 / ⓘ → 「摄像头」→ <b>允许</b><br>' +
+            '③ 浏览器设置 → <b>网站设置 → 摄像头</b> → 不要选「不允许网站使用摄像头」，改「先询问」或「允许」<br>' +
+            '④ 别用<b>无痕 / 隐私模式</b>，关掉省电模式，完全关闭页面再打开<br>' +
+            '⑤ 还不行就换 <b>Chrome</b> 打开同一个网址（多数安卓机这样就好了）');
         } else if (nm === 'NotFoundError') {
           showFail('没找到可用的摄像头',
             '这台设备可能没有摄像头（或都被禁用了）。<br>可以直接在下面<b>粘贴</b>二维码文本导入。');
@@ -2807,6 +2851,12 @@
           showFail('摄像头没打开',
             isWx ? '微信里不能直接调摄像头。<br>点右上角 <b>「···」→「在浏览器打开」</b>，再回到「老师 → 数据备份 → 扫码接收」。'
                  : '也可能手机没给浏览器 App 相机权限：<b>手机设置 → 应用 → 浏览器 → 权限 → 相机 → 允许</b>。<br>也可以直接在下面<b>粘贴</b>二维码文本导入。');
+        }
+        /* 微信 / 嵌框 / 非 https 环境里「重试」基本无效，按钮直接换成「复制网址」 */
+        const e2 = envInfo();
+        if (!e2.secure || e2.isWx || e2.inFrame) {
+          const rb = q('#qsRetry');
+          if (rb) { rb.textContent = '复制网址去浏览器'; rb.onclick = () => q('#qsCopy').click(); }
         }
       };
       openCam({
@@ -2994,7 +3044,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3205', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3206', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

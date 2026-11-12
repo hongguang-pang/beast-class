@@ -465,8 +465,8 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.20.7 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
-      '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
+      '<div class="w-ver">版本 v3.20.8 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
       if (b.dataset.r === 'class') stepClass(el); else stepFamily(el);
@@ -1094,9 +1094,8 @@
       '<div class="tiny">' + (isClass() ? '数据只保存在这台设备上，换设备请用「数据备份」迁移' : '退出家长模式请在底部点「退出」，或等待下次打开自动退出') + '</div>' +
       (isClass() ? '<div class="cls-now" id="ppCls"><span>🏫</span><b>' + esc(P.d.cls.name || '我的班级') + '</b>' +
         '<small>' + P.d.kids.length + ' 人 · 共 ' + P.d.classes.length + ' 个班</small><i>切换 ›</i></div>' : '') +
-      (isClass() ? '<div class="teacher-tools"' + (P.d.classes.length > 1 ? ' style="grid-template-columns:repeat(6,1fr)"' : ' style="grid-template-columns:repeat(5,1fr)"') + '>' +
-        '<button id="ttBatch"><b>⚡</b>批量加分</button>' +
-        '<button id="ttGroup"><b>🏷️</b>小组加分</button>' +
+      (isClass() ? '<div class="teacher-tools"' + (P.d.classes.length > 1 ? ' style="grid-template-columns:repeat(5,1fr)"' : ' style="grid-template-columns:repeat(4,1fr)"') + '>' +
+        '<button id="ttGroup"><b>⚡</b>加减分</button>' +
         '<button id="ttRnd"><b>🎲</b>随机点名</button>' +
         '<button id="ttRos"><b>👥</b>名单</button>' +
         '<button id="ttBrd"><b>🏆</b>光荣榜</button>' +
@@ -1185,14 +1184,13 @@
         m.querySelector('#mgData').onclick = () => { close(); dataSheet(); };
         m.querySelector('#exitAdmin').onclick = () => { P.d.admin = false; P.save(); close(); toast('已退出' + (isClass() ? '老师' : '家长') + '模式'); render(); };
         const tt = (id, fn) => { const b = m.querySelector('#' + id); if (b) b.onclick = fn; };
-        tt('ttBatch', () => { close(); quickAward([]); });
         tt('ttGroup', () => { close(); groupAwardPick(); });
         tt('ttRnd', () => { close(); randomPick(); });
         tt('mgRnd', () => { close(); randomPick(); });
         tt('mgRedeem', () => { close(); redeemBoardSheet(); });
         tt('ttRos', () => { close(); rosterSheet(); });
         tt('ttBrd', () => { close(); location.hash = '#/board'; render(); });
-        tt('mgHelp', () => window.open('help.html', '_blank'));
+        tt('mgHelp', () => { location.href = 'help.html'; });
         tt('mgAmt', () => { close(); amtSetupSheet(); });
         tt('mgCls', () => { close(); classSetupSheet(); });
         tt('mgRoster', () => { close(); rosterSheet(); });
@@ -1759,7 +1757,6 @@
       '<button class="ch-set" id="clsSet">⚙️</button></div>' +
       '<div class="ch-acts"' + (P.d.classes.length > 1 ? ' style="grid-template-columns:repeat(4,1fr)"' : '') + '>' +
       '<button id="qaAll"><span>⚡</span>全班加分</button>' +
-      '<button id="qaBatch"><span>☑️</span>批量加分</button>' +
       '<button id="qaRnd"><span>🎲</span>随机点名</button>' +
       (P.d.classes.length > 1 ? '<button id="qaCmp"><span>📊</span>跨班对比</button>' : '') +
       '</div></div>' +
@@ -1786,7 +1783,6 @@
     document.getElementById('clsSet').onclick = classSetupSheet;
     document.getElementById('clsRoster').onclick = rosterSheet;
     document.getElementById('qaAll').onclick = () => quickAward(P.d.kids.map((k) => k.id));
-    document.getElementById('qaBatch').onclick = () => quickAward([]);
     document.getElementById('qaRnd').onclick = randomPick;
     const qc = document.getElementById('qaCmp');
     if (qc) qc.onclick = () => { location.hash = '#/compare'; render(); };
@@ -1905,22 +1901,24 @@
       });
   }
 
-  /* ---------- 小组加分：选组后进入批量加减分，自动勾选该组全部学生 ---------- */
+  /* ---------- 加减分：选范围（全班 / 各小组）后进入批量加减分 ---------- */
   function groupAwardPick() {
     const gs = groupsOf();
-    if (!gs.length) { toast('还没有分组，先到「名单 → 分组管理」建组'); return rosterSheet(); }
+    const oneBtn = (label, sub, fn) =>
+      '<button class="btn ghost" ' + fn + ' style="width:100%;display:flex;justify-content:space-between;align-items:center">' + label + '<small style="opacity:.65">' + sub + '</small></button>';
     openSheet(
-      '<div class="sheet-h">小组加分 · 选组</div>' +
-      '<div class="tiny">选定组后进入加减分面板，已自动勾选该组全部学生</div>' +
-      '<div style="margin-top:12px;display:grid;gap:9px">' + gs.map((g) => {
-        const n = P.d.kids.filter((k) => k.group === g).length;
-        return '<button class="btn ghost" data-g="' + esc(g) + '" style="width:100%;display:flex;justify-content:space-between;align-items:center">🏷️ ' + esc(g) + '<small style="opacity:.65">' + n + ' 人 ›</small></button>';
-      }).join('') + '</div>',
+      '<div class="sheet-h">加减分 · 选范围</div>' +
+      '<div class="tiny">选全班或某个小组，进入后已自动勾选对应学生，可再手动增减</div>' +
+      '<div style="margin-top:12px;display:grid;gap:9px" id="gpPick">' +
+      oneBtn('👥 全部学生', P.d.kids.length + ' 人 ›', '') +
+      gs.map((g) => oneBtn('🏷️ ' + esc(g), P.d.kids.filter((k) => k.group === g).length + ' 人 ›', '')).join('') +
+      '</div>',
       (m, close) => {
-        m.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => {
-          const g = b.dataset.g;
-          const ids = P.d.kids.filter((k) => k.group === g).map((k) => k.id);
+        m.querySelectorAll('#gpPick button').forEach((b, i) => (b.onclick = () => {
           close();
+          if (i === 0) { quickAward(P.d.kids.map((k) => k.id), '全班加分'); return; }
+          const g = gs[i - 1];
+          const ids = P.d.kids.filter((k) => k.group === g).map((k) => k.id);
           if (!ids.length) { toast('「' + g + '」还没有学生'); return; }
           quickAward(ids, '小组加分 · ' + g);
         }));
@@ -3052,7 +3050,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3207', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3208', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

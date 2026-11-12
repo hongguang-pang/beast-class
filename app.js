@@ -1,4 +1,4 @@
-/* 幻兽家庭 · 积分乐园 */
+/* 伴学宠物 · 班级积分乐园 */
 (function () {
   'use strict';
 
@@ -434,15 +434,15 @@
   function stepRole(el) {
     el.innerHTML =
       '<div class="big"><img src="images/egg.jpg" alt="" style="width:110px;height:110px;border-radius:26px;box-shadow:0 10px 40px rgba(255,215,110,.45)"></div>' +
-      '<h2>幻兽积分乐园</h2>' +
-      '<p>表现好就加分，积分让幻兽升级进化 —— 班级和家庭都能用</p>' +
+      '<h2>伴学宠物</h2>' +
+      '<p>表现好就加分，积分让宠物升级进化 —— 班级和家庭都能用</p>' +
       '<div class="w-role">' +
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
-      '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与幻兽养成</span></button>' +
+      '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.12.0 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.19.0 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
-      '<button class="btn ghost w-mig" id="wMig">📲 从其它设备迁移数据（扫码）</button>';
+      '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
       if (b.dataset.r === 'class') stepClass(el); else stepFamily(el);
     }));
@@ -1557,8 +1557,11 @@
       '<div class="sheet-h">数据备份</div>' +
       '<div class="tiny" style="margin-top:6px">数据默认只存在本机浏览器里。开了「云同步」后，多台设备可共用同一份数据。</div>' +
       '<div class="btn-row" style="margin-top:16px">' +
-      '<button class="btn" id="expBtn">导出</button><button class="btn ghost" id="impBtn">导入</button></div>' +
-      '<div style="margin-top:10px"><button class="btn gold" id="qrBtn">📱 二维码迁移（推荐，无需传文件）</button></div>' +
+      '<button class="btn ghost" id="expBtn">导出 JSON</button><button class="btn ghost" id="impBtn">导入 JSON</button></div>' +
+      '<div class="mig">' +
+      '<button class="btn gold" id="qrOut">📤 发到手机<em>生成二维码，手机扫一下</em></button>' +
+      '<button class="btn" id="qrIn">📥 扫码接收<em>扫另一台设备的二维码</em></button>' +
+      '</div>' +
       '<div style="margin-top:10px"><button class="btn" id="syncBtn" style="background:linear-gradient(135deg,#3b82f6,#6366f1)">☁️ 云同步（多设备互通）</button></div>' +
       '<div style="margin-top:10px"><button class="btn ghost" id="resetBtn" style="color:var(--bad)">清空全部数据</button></div>' +
       '<input type="file" id="impFile" accept=".json" style="display:none">',
@@ -1567,11 +1570,12 @@
           const blob = new Blob([JSON.stringify(P.d)], { type: 'application/json' });
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
-          a.download = 'beast-points-backup-' + todayStr() + '.json';
+          a.download = 'banxue-backup-' + todayStr() + '.json';
           a.click();
           toast('已导出');
         };
-        m.querySelector('#qrBtn').onclick = () => { close(); qrExportSheet(); };
+        m.querySelector('#qrOut').onclick = () => { close(); qrExportSheet(); };
+        m.querySelector('#qrIn').onclick = () => { close(); qrImportSheet(false); };
         const syBtn = m.querySelector('#syncBtn');
         if (syBtn) syBtn.onclick = () => {
           if (window.BEAST_SYNC) window.BEAST_SYNC.open();
@@ -1587,7 +1591,8 @@
             try {
               const d = JSON.parse(rd.result);
               if (!d || !Array.isArray(d.kids)) throw 0;
-              P.d = d; P.save(); close(); render(); toast('导入成功');
+              /* 归一化成多班结构并打时间戳，避免刚导入就被云端旧数据盖回 */
+              P.d = adoptImported(d); P.save(); close(); render(); toast('导入成功');
             } catch (e) { toast('文件格式不对'); }
           };
           rd.readAsText(f);
@@ -2324,22 +2329,69 @@
     return { added, skip };
   }
 
-  /* ---------- 二维码迁移 ---------- */
+  /* ---------- 手机扫码迁移 ----------
+     电脑「发到手机」出二维码 → 手机打开同一网址 → 老师 → 数据备份 → 扫码接收
+     单张 1400 字符，二维码按整数倍模块画在 canvas 上（比缩放图片清晰得多）
+  */
+  const QR_CHUNK = 1400;
+  const QR_MAX_CHUNKS = 20;
+
+  /* 生成后用 jsQR 自检：个别「版本+数据」组合 jsQR 会解不出来（zxing 能解），
+     这时把每张切短一点重新分组，直到每一张都能被自己的接收端解码 */
+  function qrSelfCheck(str) {
+    try {
+      const cv = document.createElement('canvas');
+      drawQr(cv, str, 480);
+      const g = cv.getContext('2d');
+      const r = jsQR(g.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height);
+      return !!(r && r.data === str);
+    } catch (e) { return true; }
+  }
+
   function qrChunks() {
     const zip = LZString.compressToEncodedURIComponent(JSON.stringify(P.d));
-    const total = Math.ceil(zip.length / 2100);
-    const out = [];
-    for (let i = 0; i < total; i++) out.push('PZ1|' + (i + 1) + '|' + total + '|' + zip.slice(i * 2100, (i + 1) * 2100));
-    return out;
+    for (let k = Math.ceil(zip.length / QR_CHUNK) || 1; k <= QR_MAX_CHUNKS + 4; k++) {
+      const l = Math.ceil(zip.length / k);
+      const out = [];
+      for (let i = 0; i < k; i++) {
+        out.push('PZ1|' + (i + 1) + '|' + k + '|' + zip.slice(i * l, (i + 1) * l));
+      }
+      if (out.every(qrSelfCheck)) return out;
+    }
+    /* 全部尝试失败：按最小张数返回，接收端还有 BarcodeDetector 兜底 */
+    const k0 = Math.ceil(zip.length / QR_CHUNK) || 1, l0 = Math.ceil(zip.length / k0), out0 = [];
+    for (let i = 0; i < k0; i++) out0.push('PZ1|' + (i + 1) + '|' + k0 + '|' + zip.slice(i * l0, (i + 1) * l0));
+    return out0;
   }
-  function qrImg(str) {
+
+  /* 按整数倍模块绘制：每个黑块都落在整像素上，摄像头解码更稳 */
+  function drawQr(cv, str, maxCss) {
     const qr = qrcode(0, 'L');
     qr.addData(str, 'Byte');
     qr.make();
-    return qr.createDataURL(6, 4);
+    const n = qr.getModuleCount();
+    const quiet = 4, total = n + quiet * 2;
+    const view = Math.min(window.innerWidth || 360, 560);
+    const css = Math.min(maxCss || 320, Math.floor(view * 0.82));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const scale = Math.max(2, Math.floor((css * dpr) / total));
+    const px = total * scale;
+    cv.width = px; cv.height = px;
+    cv.style.width = Math.min(css, px) + 'px';
+    cv.style.height = 'auto';
+    const g = cv.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, px, px);
+    g.fillStyle = '#101018';
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (qr.isDark(r, c)) g.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+      }
+    }
   }
+
   function collectChunks(text, store) {
-    const re = /PZ1\|(\d+)\|(\d+)\|([A-Za-z0-9+$\-_]+)/g;
+    /* 非贪婪 + 前瞻：多张文本连在一起粘贴时，下一段的 "PZ1|" 不会被上一段吞掉 */
+    const re = /PZ1\|(\d+)\|(\d+)\|([A-Za-z0-9+\-$\_]+?)(?=PZ1\||\s|$)/g;
     let mm, total = 0;
     while ((mm = re.exec(String(text)))) {
       total = +mm[2];
@@ -2357,109 +2409,220 @@
     } catch (e) { toast('数据解析失败，请重试'); }
     return true;
   }
-  function confirmQrImport(d, after) {
-    const n = d.kids.length;
-    const clsName = d.cls && d.cls.name ? d.cls.name : '';
+
+  /* 导入的数据统一转成「多班结构」并给当前班打时间戳：
+     否则本地没有 classes，云同步一拉取就把刚导入的数据盖回去 */
+  function adoptImported(d) {
+    if (!d || typeof d !== 'object') return d;
+    if (!Array.isArray(d.classes)) d.classes = [];
+    if (!d.classes.length && Array.isArray(d.kids) && d.kids.length) {
+      const cid = 'c' + Date.now().toString(36);
+      d.classes.push({
+        id: cid,
+        name: (d.cls && d.cls.name) || (d.cls && d.cls.on ? '我的班级' : '家庭'),
+        kids: d.kids,
+        groups: (d.cls && Array.isArray(d.cls.groups) && d.cls.groups.length) ? d.cls.groups.slice() : GROUPS_DEFAULT.slice(),
+        period: (d.cls && d.cls.period) || 'today',
+        rnd: (d.cls && d.cls.rnd) || { pool: [], round: 0 },
+        since: (d.cls && d.cls.since) || Date.now()
+      });
+      d.clsId = cid;
+    }
+    if (!d.clsId && d.classes.length) d.clsId = d.classes[0].id;
+    const e = d.classes.filter((c) => c.id === d.clsId)[0];
+    if (e) e._ts = Date.now();
+    return d;
+  }
+
+  function confirmQrImport(d) {
+    const n = (d.kids || []).length;
+    const clsName = (d.cls && d.cls.name) || (d.classes && d.classes[0] && d.classes[0].name) || '';
     openSheet(
       '<div class="sheet-h">发现迁移数据</div>' +
       '<div class="card" style="margin-top:10px"><div style="text-align:center;font-size:30px">📦</div>' +
-      '<div style="text-align:center;font-weight:750;font-size:16px;margin-top:4px">' + esc(clsName || '幻兽数据') + '</div>' +
-      '<div class="tiny" style="text-align:center;margin-top:4px">' + n + ' 名' + (d.cls && d.cls.on ? '学生' : '孩子') + ' · 积分与幻兽将原样搬过来</div></div>' +
-      '<div class="warn" style="margin-top:10px">导入会<b>覆盖</b>本机现有数据，确定继续吗？</div>' +
+      '<div style="text-align:center;font-weight:750;font-size:16px;margin-top:4px">' + esc(clsName || '班级数据') + '</div>' +
+      '<div class="tiny" style="text-align:center;margin-top:4px">' + n + ' 名' + (d.cls && d.cls.on ? '学生' : '孩子') + ' · 积分与幻兽原样搬过来</div></div>' +
+      '<div class="warn" style="margin-top:10px">导入会<b>覆盖</b>本机现有数据。系统会先把本机这一份存进「恢复历史版本」，误操作还能找回。</div>' +
       '<div style="margin-top:12px"><button class="btn" id="qiGo">确认导入</button></div>',
       (m, close) => {
         m.querySelector('#qiGo').onclick = () => {
-          P.d = d; P.save(); close(); if (after) after();
-          location.reload();
+          try { if (window.BEAST_SYNC && window.BEAST_SYNC.backup) window.BEAST_SYNC.backup(); } catch (e) {}
+          P.d = adoptImported(d);
+          P.save(); close();
+          toast('已导入，正在刷新…');
+          setTimeout(() => location.reload(), 400);
         };
       });
   }
+
   function qrExportSheet() {
-    let chunks = [], idx = 0;
+    let chunks = [], idx = 0, timer = null;
     openSheet(
-      '<div class="sheet-h">二维码迁移</div>' +
-      '<div class="tiny" style="margin-top:6px">在另一台设备上打开本应用 → 「老师」→ 数据备份 → 扫码导入；新设备可直接在身份选择页点「从其它设备迁移」。多张码请逐张扫描。</div>' +
-      '<div id="qrBox" style="text-align:center;margin-top:14px;min-height:220px"></div>' +
-      '<div id="qrCnt" style="text-align:center;font-weight:750;font-size:14px"></div>' +
+      '<div class="sheet-h">发到手机</div>' +
+      '<div class="tiny" style="margin-top:6px">手机打开<b>同一个网址</b> → 右上角「老师」→ 数据备份 → <b>扫码接收</b>，对准屏幕上的码即可。多张请逐张扫，扫齐自动合并。</div>' +
+      '<div id="qrBox" style="text-align:center;margin-top:14px;min-height:240px"></div>' +
+      '<div id="qrCnt" style="text-align:center;font-weight:750;font-size:14px;margin-top:8px"></div>' +
       '<div class="btn-row" style="margin-top:10px"><button class="btn ghost" id="qrPrev">‹ 上一张</button><button class="btn ghost" id="qrNext">下一张 ›</button></div>' +
-      '<div class="tiny" style="margin-top:8px;color:var(--text-3)">扫不了码？也可以把每张码下方的文本复制后，在另一台设备「粘贴导入」。</div>',
+      '<div style="margin-top:9px"><button class="btn ghost" id="qrAuto">▶ 自动翻页</button></div>' +
+      '<div class="tiny" style="margin-top:8px;color:var(--text-3)">点二维码可放大，便于远距离扫描；电脑上也可用 ← → 键翻页。</div>',
       (m, close) => {
-        try { chunks = qrChunks(); } catch (e) { close(); return toast('生成失败'); }
-        if (chunks.length > 15) { close(); return toast('数据量太大，建议改用「导出」JSON 文件迁移'); }
+        try { chunks = qrChunks(); } catch (e) { return close(); }
+        if (chunks.length > QR_MAX_CHUNKS) {
+          close();
+          return toast('数据太多（' + chunks.length + ' 张码），建议改用「导出 JSON」再拷贝文件');
+        }
+        const box = m.querySelector('#qrBox');
+        const cv = document.createElement('canvas');
+        cv.className = 'qr-canvas';
+        box.appendChild(cv);
         const paint = () => {
-          m.querySelector('#qrBox').innerHTML = '<img alt="" style="width:min(240px,64vw);image-rendering:pixelated" src="' + qrImg(chunks[idx]) + '">';
-          m.querySelector('#qrCnt').textContent = '第 ' + (idx + 1) + ' / ' + chunks.length + ' 张（共 ' + chunks.length + ' 张，全部扫完才生效）';
+          drawQr(cv, chunks[idx], 320);
+          m.querySelector('#qrCnt').textContent = chunks.length > 1
+            ? '第 ' + (idx + 1) + ' / ' + chunks.length + ' 张 · 全部扫完才生效'
+            : '一张就够，扫完自动导入';
         };
+        const go = (d) => { idx = (idx + d + chunks.length) % chunks.length; paint(); };
         paint();
-        m.querySelector('#qrPrev').onclick = () => { idx = (idx + chunks.length - 1) % chunks.length; paint(); };
-        m.querySelector('#qrNext').onclick = () => { idx = (idx + 1) % chunks.length; paint(); };
+        m.querySelector('#qrPrev').onclick = () => go(-1);
+        m.querySelector('#qrNext').onclick = () => go(1);
+        m.querySelector('#qrAuto').onclick = (e) => {
+          const b = e.currentTarget;
+          if (timer) { clearInterval(timer); timer = null; b.textContent = '▶ 自动翻页'; return; }
+          b.textContent = '⏸ 暂停自动翻页';
+          timer = setInterval(() => {
+            if (!document.body.contains(m)) { clearInterval(timer); timer = null; return; }
+            go(1);
+          }, 6000);
+        };
+        cv.onclick = () => cv.classList.toggle('big');
+        const key = (e) => {
+          if (e.key === 'ArrowLeft') go(-1);
+          else if (e.key === 'ArrowRight') go(1);
+        };
+        document.addEventListener('keydown', key);
+        m.addEventListener('click', (e) => { if (e.target === m) document.removeEventListener('keydown', key); });
       });
   }
+
   function qrImportSheet(fromWelcome) {
-    let stream = null, store = [], total = 0, done = false;
+    let stream = null, store = [], total = 0, done = false, lastHit = '', torchOn = false;
     const el = document.createElement('div');
     el.className = 'qr-scan';
     el.innerHTML =
-      '<div class="qs-box"><div class="qs-h">扫码导入</div>' +
-      '<div class="qs-v"><video id="qsV" playsinline muted></video><div class="qs-frame"></div><div class="qs-load" id="qsLoad">正在打开摄像头…</div></div>' +
-      '<div class="qs-tip" id="qsTip">对准另一台设备上的二维码，逐张扫描<span id="qsP"></span></div>' +
+      '<div class="qs-box">' +
+      '<div class="qs-h">扫码接收</div>' +
+      '<div class="qs-v">' +
+      '<video id="qsV" playsinline muted autoplay></video>' +
+      '<div class="qs-frame"></div>' +
+      '<div class="qs-load" id="qsLoad">正在打开摄像头…</div>' +
+      '<button class="qs-torch" id="qsTorch" style="display:none">💡 补光</button>' +
+      '</div>' +
+      '<div class="qs-bar"><i id="qsBar"></i></div>' +
+      '<div class="qs-tip" id="qsTip">把手机对准另一台设备上的二维码<span id="qsP">等待识别…</span></div>' +
       '<div class="btn-row"><button class="btn ghost" id="qsPaste">粘贴导入</button><button class="btn ghost" id="qsStop">取消</button></div>' +
       '<div id="qsBox" style="display:none;margin-top:10px">' +
-      '<textarea id="qsTxt" rows="5" placeholder="粘贴从二维码识别出的文本（可一次粘贴多张）" style="width:100%;padding:11px;border-radius:12px;border:1.5px solid var(--line);font-family:monospace;font-size:12px;line-height:1.6;resize:vertical"></textarea>' +
-      '<div style="margin-top:9px"><button class="btn" id="qsGo">解析并导入</button></div></div></div>';
+      '<textarea id="qsTxt" rows="5" placeholder="把二维码下方的文本粘贴进来（可一次粘贴多张）" style="width:100%;padding:11px;border-radius:12px;border:1.5px solid var(--line);font-family:monospace;font-size:12px;line-height:1.6;resize:vertical"></textarea>' +
+      '<div style="margin-top:9px"><button class="btn" id="qsGo">解析并导入</button></div></div>' +
+      '</div>';
     document.body.appendChild(el);
-    const stop = () => { if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } };
-    const finish = (d) => {
-      done = true; stop();
-      el.remove();
-      confirmQrImport(d, null);
+    const q = (s) => el.querySelector(s);
+    const stop = () => {
+      done = true;
+      if (stream) { stream.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} }); stream = null; }
     };
-    el.querySelector('#qsStop').onclick = () => { stop(); el.remove(); if (fromWelcome && !P.d) welcome(); };
-    el.querySelector('#qsPaste').onclick = () => {
-      const b = el.querySelector('#qsBox');
+    const paint = () => {
+      const got = store.filter(Boolean).length;
+      q('#qsP').textContent = total ? ('已收到 ' + got + ' / ' + total + ' 张') : '等待识别…';
+      q('#qsBar').style.width = (total ? Math.round(got / total * 100) : 0) + '%';
+    };
+    const finish = (d) => {
+      stop(); el.remove();
+      confirmQrImport(d);
+    };
+    q('#qsStop').onclick = () => { stop(); el.remove(); if (fromWelcome) welcome(); };
+    q('#qsPaste').onclick = () => {
+      const b = q('#qsBox');
       b.style.display = b.style.display === 'none' ? 'block' : 'none';
     };
-    el.querySelector('#qsGo').onclick = () => {
-      const t = collectChunks(el.querySelector('#qsTxt').value, store);
+    q('#qsGo').onclick = () => {
+      const t = collectChunks(q('#qsTxt').value, store);
       if (!t) { toast('没有识别到迁移数据'); return; }
-      total = t;
+      total = t; paint();
       if (!tryFinish(store, total, finish)) toast('还差 ' + (total - store.filter(Boolean).length) + ' 张，请把其余文本也粘贴进来');
     };
+
+    /* 手机 Chrome / 新版 Safari 内置条码引擎（BarcodeDetector），识别率比 jsQR 高；
+       不支持时自动回退 jsQR */
+    let detector = null;
+    try {
+      if ('BarcodeDetector' in window) detector = new BarcodeDetector({ formats: ['qr_code'] });
+    } catch (e) { detector = null; }
+
     const tick = () => {
       if (done || !stream) return;
-      const v = el.querySelector('#qsV');
-      if (v.readyState === v.HAVE_ENOUGH_DATA) {
+      const v = q('#qsV');
+      if (v && v.readyState >= 2 && v.videoWidth) {
+        if (detector) {
+          detector.detect(v).then((codes) => {
+            if (done || !stream) return;
+            for (const c of codes) {
+              if (c.rawValue && c.rawValue !== lastHit) { handle(c.rawValue); break; }
+            }
+          }).catch(() => {}).finally(() => { if (!done) setTimeout(tick, 140); });
+          return;
+        }
         const c = document.createElement('canvas');
         c.width = v.videoWidth; c.height = v.videoHeight;
         const g = c.getContext('2d');
         g.drawImage(v, 0, 0);
-        const code = jsQR(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height);
-        if (code && code.data) {
-          const n = collectChunks(code.data, store);
-          if (n) {
-            total = n;
-            el.querySelector('#qsP').textContent = '（已收到 ' + Object.keys(store).length + ' / ' + total + ' 张）';
-            if (tryFinish(store, total, finish)) return;
-          }
-        }
+        let code = null;
+        try { code = jsQR(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height); } catch (e) {}
+        if (code && code.data && code.data !== lastHit) handle(code.data);
       }
-      setTimeout(tick, 200);
+      if (!done) setTimeout(tick, 140);
     };
+
+    const handle = (data) => {
+      const n = collectChunks(data, store);
+      if (!n) return;
+      lastHit = data;
+      total = n; paint();
+      if (navigator.vibrate) { try { navigator.vibrate(35); } catch (e) {} }
+      tryFinish(store, total, finish);
+    };
+
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then((st) => {
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      }).then((st) => {
         stream = st;
-        const v = el.querySelector('#qsV');
+        const v = q('#qsV');
         v.srcObject = st;
-        v.play();
-        el.querySelector('#qsLoad').style.display = 'none';
+        const p = v.play();
+        if (p && p.catch) p.catch(() => {});
+        q('#qsLoad').style.display = 'none';
+        /* 安卓 Chrome 一般支持手电筒，苹果 Safari 不支持，自动隐藏 */
+        try {
+          const tk = st.getVideoTracks()[0];
+          const cap = tk && tk.getCapabilities ? tk.getCapabilities() : {};
+          if (cap && cap.torch) {
+            const btn = q('#qsTorch');
+            btn.style.display = 'block';
+            btn.onclick = () => {
+              torchOn = !torchOn;
+              btn.classList.toggle('on', torchOn);
+              try { tk.applyConstraints({ advanced: [{ torch: torchOn }] }); } catch (e) {}
+            };
+          }
+        } catch (e) {}
         tick();
       }).catch(() => {
-        el.querySelector('#qsLoad').textContent = '无法打开摄像头，请用「粘贴导入」';
+        q('#qsLoad').textContent = '摄像头打不开，请点「粘贴导入」';
       });
     } else {
-      el.querySelector('#qsLoad').textContent = '此浏览器不支持摄像头，请用「粘贴导入」';
+      q('#qsLoad').textContent = '此浏览器不支持摄像头，请点「粘贴导入」';
     }
-    el.addEventListener('transitionend', () => {}, true);
   }
   /* ---------- 成长卡 ---------- */
   function growthCard(k) {
@@ -2517,7 +2680,7 @@
 
       g.textAlign = 'center';
       g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '500 22px -apple-system,sans-serif';
-      g.fillText((P.d.cls.name || '幻兽班级') + ' · ' + new Date().toLocaleDateString('zh-CN'), W / 2, 1010);
+      g.fillText((P.d.cls.name || '伴学宠物') + ' · ' + new Date().toLocaleDateString('zh-CN'), W / 2, 1010);
       g.fillStyle = 'rgba(255,255,255,.75)'; g.font = '600 24px -apple-system,sans-serif';
       g.fillText('今天也要和幻兽一起变强 ✨', W / 2, 1044);
 
@@ -2582,7 +2745,7 @@
     if (h === 'compare') tab = 'class';
     if (h === 'lucky') tab = 'shop';
     renderTabs(tab);
-    document.getElementById('tbTitle').textContent = isClass() ? (P.d.cls.name || '幻兽班级') : '幻兽家庭';
+    document.getElementById('tbTitle').textContent = isClass() ? (P.d.cls.name || '伴学宠物') : '伴学宠物 · 家庭';
     bindKidsRow();
   }
 
@@ -2599,7 +2762,7 @@
     document.getElementById('classBtn').onclick = () => { location.hash = '#/class'; };
     render();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3181', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3190', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

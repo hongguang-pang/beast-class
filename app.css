@@ -735,3 +735,19 @@ svg{display:block}
 .qf-d{font-size:13px;color:var(--t2);line-height:1.7;margin-top:6px}
 .qf-row{display:flex;gap:8px;justify-content:center;margin-top:14px}
 .qf-row .btn{flex:1;margin:0}
+
+/* —— 旧链接提示条（v3.20） —— */
+#legacyTip{position:fixed;left:10px;right:10px;bottom:12px;z-index:320;
+  background:linear-gradient(135deg,#4c2fa8,#7c3aed 60%,#a855f7);color:#fff;
+  border-radius:16px;padding:13px 15px 14px;box-shadow:0 10px 30px rgba(60,30,120,.35);
+  transform:translateY(130%);transition:transform .28s cubic-bezier(.2,.9,.3,1);
+  max-width:440px;margin:0 auto}
+#legacyTip.on{transform:translateY(0)}
+#legacyTip .lg-t{font-size:14.5px;font-weight:800;letter-spacing:.2px}
+#legacyTip .lg-d{font-size:12.5px;opacity:.9;line-height:1.6;margin-top:3px}
+#legacyTip .lg-row{display:flex;gap:8px;margin-top:11px}
+#legacyTip .lg-go{flex:1;border:0;border-radius:10px;padding:9px 10px;font-family:inherit;
+  font-size:13.5px;font-weight:800;color:#4c2fa8;background:#fff;cursor:pointer}
+#legacyTip .lg-x{flex:0 0 auto;border:1px solid rgba(255,255,255,.45);border-radius:10px;
+  padding:9px 13px;font-family:inherit;font-size:13px;font-weight:600;color:#fff;
+  background:transparent;cursor:pointer}

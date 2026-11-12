@@ -1,4 +1,4 @@
-/* 幻兽班级 · 云同步模块（GitHub 私有仓库当数据库，0 成本）
+/* 伴学宠物 · 云同步模块（GitHub 私有仓库当数据库，0 成本）
    设计：
    - 数据存在私有仓库的一个 JSON 文件里，班级按 id 合并，各带 _ts 时间戳
    - 本机保存时自动打时间戳并防抖推送（20 秒）
@@ -606,6 +606,7 @@
     test: function () { return pull().then(function (r) { return r ? 'ok' : 'empty'; }); },
     open: openUI,
     enabled: cfgOn,
+    backup: snapshot,
     history: listHistory,
     restore: restoreHistory
   };

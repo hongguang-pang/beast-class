@@ -122,15 +122,23 @@
   const petImg = (k) => imgFor(k.skin || k.pet.type, stageIdxOf(k.pet.lv));
   const petEmoji = (k) => stageOf(k.pet.lv).emoji || petMeta(k.pet.type).emoji;
 
+  /* v3.19 默认任务：课堂加减分清单（负数为扣分项，老师可逐个改分值/自定义） */
   const DEFAULT_TASKS = [
-    { id: 't1', name: '完成作业', pts: 2, icon: '📚', ds: '当天作业全部完成' },
-    { id: 't2', name: '阅读 30 分钟', pts: 2, icon: '📖', ds: '课外阅读' },
-    { id: 't3', name: '口算全对', pts: 3, icon: '🧮', ds: '练习全对' },
-    { id: 't4', name: '做家务', pts: 3, icon: '🧹', ds: '扫地/洗碗/整理房间' },
-    { id: 't5', name: '运动半小时', pts: 3, icon: '⚽', ds: '跳绳/跑步/打球' },
-    { id: 't6', name: '早睡早起', pts: 2, icon: '🌅', ds: '按时作息' },
-    { id: 't7', name: '练字一页', pts: 2, icon: '✍️', ds: '书写认真' }
+    { id: 'n1', name: '作业优秀', pts: 2, icon: '📕', ds: '书写认真、正确率高' },
+    { id: 'n2', name: '交作业', pts: 1, icon: '📥', ds: '按时交齐' },
+    { id: 'n3', name: '会背课文', pts: 2, icon: '🗣️', ds: '当堂背诵通过' },
+    { id: 'n4', name: '考试良好', pts: 2, icon: '📗', ds: '85 分以上' },
+    { id: 'n5', name: '考试优秀', pts: 4, icon: '🌟', ds: '95 分以上' },
+    { id: 'n6', name: '满分', pts: 6, icon: '💯', ds: '100 分' },
+    { id: 'n7', name: '考试进步', pts: 2, icon: '📈', ds: '比上次有提高' },
+    { id: 'n8', name: '不交作业', pts: -2, icon: '📝', ds: '当天没交' },
+    { id: 'n9', name: '不打卡', pts: -1, icon: '📅', ds: '忘记打卡' },
+    { id: 'n10', name: '上课说话', pts: -3, icon: '🤫', ds: '影响课堂秩序' }
   ];
+  /* 快捷加减分按钮：+1 +2 +4 +6 / -1 -2 -3 */
+  const AMT_DEF = { pos: [1, 2, 4, 6], neg: [1, 2, 3], recent: [] };
+  /* 老版本自带的 7 个默认任务名，升级时换成上面这套课堂清单 */
+  const LEGACY_TASK_NAMES = ['完成作业', '阅读 30 分钟', '口算全对', '做家务', '运动半小时', '早睡早起', '练字一页'];
   const DEFAULT_REWARDS = [
     { id: 'r1', name: '看动画 20 分钟', cost: 10, icon: '📺', desc: '当天有效', on: true },
     { id: 'r2', name: '一份小零食', cost: 8, icon: '🍪', desc: '', on: true },
@@ -164,6 +172,24 @@
             this.d.rewards = this.d.rewards.concat(JSON.parse(JSON.stringify(DEFAULT_REWARDS.filter((r) => r.kind === 'exp'))));
           }
           this.d.expGiftSeeded = true;
+        }
+        /* v3.19：默认任务换成课堂加减分清单，老用户升级一次（改过名的旧任务保留） */
+        if (!this.d.tasksV19) {
+          if (!Array.isArray(this.d.tasks)) this.d.tasks = [];
+          const kept = this.d.tasks.filter((t) => !LEGACY_TASK_NAMES.includes(t.name));
+          const has = {};
+          kept.forEach((t) => { has[t.name] = 1; });
+          const add = DEFAULT_TASKS.filter((t) => !has[t.name]).map((t) => JSON.parse(JSON.stringify(t)));
+          this.d.tasks = add.concat(kept);
+          this.d.tasksV19 = true;
+        }
+        /* 快捷分值默认 +1/+2/+4/+6 与 -1/-2/-3；老师自己改过就保留自己的 */
+        if (!this.d.amtsV19) {
+          const a = this.d.amts;
+          const untouched = !a || !Array.isArray(a.pos) ||
+            (a.pos.join(',') === '1,2,3,5,10' && (a.neg || []).join(',') === '1,2');
+          if (untouched) this.d.amts = { pos: AMT_DEF.pos.slice(), neg: AMT_DEF.neg.slice(), recent: [] };
+          this.d.amtsV19 = true;
         }
         if (!Array.isArray(this.d.classes)) this.d.classes = [];
         if (this.d.clsId === undefined) this.d.clsId = null;
@@ -218,7 +244,7 @@
         doneToday: {},   // 'kidId|taskId|2026-11-10': true
         redeemHis: [],   // 已兑换记录（老师查看用）
         admin: false,
-        amts: { pos: [1, 2, 3, 5, 10], neg: [1, 2], recent: [] },
+        amts: { pos: AMT_DEF.pos.slice(), neg: AMT_DEF.neg.slice(), recent: [] },
         cls: freshCls(),
         classes: [],
         clsId: null,
@@ -318,7 +344,6 @@
   }
 
   /* ================= 快捷分值（可自定义） ================= */
-  const AMT_DEF = { pos: [1, 2, 3, 5, 10], neg: [1, 2], recent: [] };
   function amts() {
     if (!P.d.amts || typeof P.d.amts !== 'object') P.d.amts = { pos: AMT_DEF.pos.slice(), neg: AMT_DEF.neg.slice(), recent: [] };
     const a = P.d.amts;
@@ -440,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.19.0 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.19.1 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -1287,7 +1312,7 @@
     { name: '考试良好', pts: 2, icon: '📗' },
     { name: '考试优秀', pts: 4, icon: '🌟' },
     { name: '满分', pts: 6, icon: '💯' },
-    { name: '考试进步', pts: 1, icon: '📈' },
+    { name: '考试进步', pts: 2, icon: '📈' },
     { name: '不交作业', pts: -2, icon: '📝' },
     { name: '不打卡', pts: -1, icon: '📅' },
     { name: '上课说话', pts: -3, icon: '🤫' }
@@ -2762,7 +2787,7 @@
     document.getElementById('classBtn').onclick = () => { location.hash = '#/class'; };
     render();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3190', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3191', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

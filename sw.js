@@ -1,5 +1,5 @@
 /* 幻兽家庭 · 离线缓存 Service Worker */
-const VERSION = 'beast-v3.17.0';
+const VERSION = 'beast-v3.17.1';
 const SHELL = [
   './',
   './index.html',

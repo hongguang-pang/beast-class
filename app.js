@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.19.2 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.20.0 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -2840,6 +2840,35 @@
     bindKidsRow();
   }
 
+  /* ================= 旧网址提示（v3.20） ================= */
+  function legacyNotice() {
+    const NEW_URL = 'https://hongguang-pang.github.io/beast-class/';
+    const hitParam = /[?&]sharecode=/i.test(location.search);
+    const hitRef = /workbuddy\.host/i.test(document.referrer || '');
+    if (!hitParam && !hitRef) return;
+    if (localStorage.getItem('beast.legacyTip') === 'off') return;
+
+    const bar = document.createElement('div');
+    bar.id = 'legacyTip';
+    bar.innerHTML =
+      '<div class="lg-t">📌 你用的是旧链接</div>' +
+      '<div class="lg-d">新地址已固定，旧参数可以丢掉。换成新地址后数据照常同步。</div>' +
+      '<div class="lg-row"><button class="lg-go" id="lgGo">改用新地址</button>' +
+      '<button class="lg-x" id="lgX">以后再说</button></div>';
+    document.body.appendChild(bar);
+    requestAnimationFrame(() => bar.classList.add('on'));
+
+    bar.querySelector('#lgGo').onclick = () => {
+      try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+      location.href = NEW_URL;
+    };
+    bar.querySelector('#lgX').onclick = () => {
+      localStorage.setItem('beast.legacyTip', 'off');
+      bar.classList.remove('on');
+      setTimeout(() => bar.remove(), 260);
+    };
+  }
+
   /* ================= 启动 ================= */
   function boot() {
     P.load();
@@ -2852,8 +2881,9 @@
     };
     document.getElementById('classBtn').onclick = () => { location.hash = '#/class'; };
     render();
+    legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3192', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3200', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

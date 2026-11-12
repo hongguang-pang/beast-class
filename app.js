@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  /* ================= 幻兽定义 ================= */
+  /* ================= 宠物定义 ================= */
   const PETS = {
     fire:   { name: '小火狐', emoji: '🦊', glow: 'rgba(255,120,60,.5)' },
     water:  { name: '泡泡龟', emoji: '🐢', glow: 'rgba(80,170,255,.5)' },
@@ -11,7 +11,7 @@
     light:  { name: '星光鹿', emoji: '🦌', glow: 'rgba(255,240,180,.5)' }
   };
 
-  /* ---- 50 种幻兽池：5 经典（有成长立绘）+ 45 班级专属（动态绘制，班内不重复分配）---- */
+  /* ---- 50 种宠物池：5 经典（有成长立绘）+ 45 班级专属（动态绘制，班内不重复分配）---- */
   const EXTRA_PETS = [
     ['云朵羊','🐑',210],['焰尾狮','🦁',25],['冰霜熊','🐻',190],['影风狼','🐺',260],['蹦蹦兔','🐰',320],
     ['呆呆猪','🐷',340],['阔耳蛙','🐸',130],['灵动猴','🐵',30],['憨憨象','🐘',220],['甜甜猫','🐱',45],
@@ -31,11 +31,11 @@
   ));
   const petMeta = (id) => {
     for (const c of CREATURES) if (c.id === id) return c;
-    return { id, name: '神秘幻兽', emoji: '🥚', hue: 260, classic: false, glow: 'hsla(260,85%,62%,.55)' };
+    return { id, name: '神秘宠物', emoji: '🥚', hue: 260, classic: false, glow: 'hsla(260,85%,62%,.55)' };
   };
   const creatureCache = {};
   /* 老电脑可能没有彩色 emoji 字体（canvas 上画出来是空白），
-     提前检测：emoji 画不出彩色像素时，改画名字首字，保证每只幻兽都有形象 */
+     提前检测：emoji 画不出彩色像素时，改画名字首字，保证每只宠物都有形象 */
   const _emojiOK = {};
   function emojiOK(ch) {
     if (_emojiOK[ch] !== undefined) return _emojiOK[ch];
@@ -87,7 +87,7 @@
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(c.emoji, S / 2, S / 2 + 8);
     } else {
-      /* 兜底：用名字首字 + 白色描边，不同幻兽仍有区分（底色 hue 本就不同） */
+      /* 兜底：用名字首字 + 白色描边，不同宠物仍有区分（底色 hue 本就不同） */
       g.font = 'bold ' + (96 + si * 10) + 'px sans-serif';
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.lineWidth = 6; g.strokeStyle = 'rgba(255,255,255,.85)';
@@ -99,7 +99,7 @@
     creatureCache[key] = url;
     return url;
   }
-  /* 班内不重复抽取：优先未被占用的幻兽，50 种全用完才允许重复 */
+  /* 班内不重复抽取：优先未被占用的宠物，50 种全用完才允许重复 */
   function pickType() {
     const used = {};
     (P.d && P.d.kids ? P.d.kids : []).forEach((k) => { if (k.pet && k.pet.type) used[k.pet.type] = true; });
@@ -108,7 +108,7 @@
     return src[Math.floor(Math.random() * src.length)].id;
   }
   const STAGES = [
-    { min: 1, name: '幻兽蛋', suffix: 'egg', cls: 'egg' },
+    { min: 1, name: '宠物蛋', suffix: 'egg', cls: 'egg' },
     { min: 3, name: '幼年期', suffix: 'baby', cls: '' },
     { min: 6, name: '成长期', suffix: 'growth', cls: '' },
     { min: 9, name: '成年期', suffix: 'adult', cls: '' },
@@ -117,7 +117,7 @@
   const MILESTONES = [5, 10, 15, 20];   // 这些等级解锁神秘伙伴
   const expNeed = (lv) => 20 + (lv - 1) * 12;
   const stageIdxOf = (lv) => { let i = 0; STAGES.forEach((s, j) => { if (lv >= s.min) i = j; }); return i; };
-  /* 全部 50 只幻兽都有图片立绘（经典五系为原立绘，c 系为 AI 立绘 + 四阶段合成图） */
+  /* 全部 50 只宠物都有图片立绘（经典五系为原立绘，c 系为 AI 立绘 + 四阶段合成图） */
   const imgFor = (el, si) => si === 0 ? 'images/egg.jpg' : 'images/' + el + '-' + STAGES[si].suffix + '.jpg';
   const petImg = (k) => imgFor(k.skin || k.pet.type, stageIdxOf(k.pet.lv));
   const petEmoji = (k) => stageOf(k.pet.lv).emoji || petMeta(k.pet.type).emoji;
@@ -142,8 +142,8 @@
   const DEFAULT_REWARDS = [
     { id: 'r1', name: '看动画 20 分钟', cost: 10, icon: '📺', desc: '当天有效', on: true },
     { id: 'r2', name: '一份小零食', cost: 8, icon: '🍪', desc: '', on: true },
-    { id: 'r6', name: '经验药水', cost: 16, icon: '🧪', kind: 'exp', exp: 30, desc: '幻兽 +30 经验', on: true },
-    { id: 'r7', name: '成长果实', cost: 30, icon: '🍎', kind: 'exp', exp: 60, desc: '幻兽 +60 经验', on: true },
+    { id: 'r6', name: '经验药水', cost: 16, icon: '🧪', kind: 'exp', exp: 30, desc: '宠物 +30 经验', on: true },
+    { id: 'r7', name: '成长果实', cost: 30, icon: '🍎', kind: 'exp', exp: 60, desc: '宠物 +60 经验', on: true },
     { id: 'r3', name: '周末多玩 30 分钟', cost: 15, icon: '🎮', desc: '', on: true },
     { id: 'r4', name: '小礼物', cost: 30, icon: '🎁', desc: '老师准备的小奖品', on: true },
     { id: 'r5', name: '愿望卡（一个心愿）', cost: 50, icon: '⭐', desc: '', on: true }
@@ -198,10 +198,10 @@
           if (!k.companions) k.companions = [];
           if (!k.milestones) k.milestones = [];
           if (!k.daily) k.daily = {};
-          /* 旧数据 / 迁移中丢了幻兽的学生：自动补一只，避免头像空白 */
+          /* 旧数据 / 迁移中丢了宠物的学生：自动补一只，避免头像空白 */
           if (!k.pet || !k.pet.type) {
             const t = pickType();
-            k.pet = { name: petMeta(t).name, type: t, exp: 0, lv: (k.pet && k.pet.lv) || 3 };
+            k.pet = { name: petMeta(t).name, type: t, exp: 0, lv: (k.pet && k.pet.lv) || 1 };
           }
           if (k.skin === undefined) k.skin = null;
           if (k.group === undefined) k.group = '';
@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.20.4 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.20.5 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html" target="_blank" rel="noopener">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -503,9 +503,9 @@
     let type = 'fire';
     el.innerHTML =
       '<h2 style="margin-top:0">开始养成</h2>' +
-      '<p>孩子做任务赚积分，幻兽跟着升级进化；积分还能在商店兑换奖励。</p>' +
+      '<p>孩子做任务赚积分，宠物跟着升级进化；积分还能在商店兑换奖励。</p>' +
       '<div class="field"><label>孩子的名字 / 称呼</label><input id="wName" placeholder="比如：小明、姐姐、哥哥" maxlength="8"></div>' +
-      '<div style="margin-top:16px;font-size:13px;font-weight:650;opacity:.9">选一只初始幻兽蛋</div>' +
+      '<div style="margin-top:16px;font-size:13px;font-weight:650;opacity:.9">选一只初始宠物蛋</div>' +
       '<div class="pet-picks">' + Object.entries(PETS).map(([k, p]) =>
         '<button data-t="' + k + '" class="' + (k === 'fire' ? 'on' : '') + '">' + p.emoji + '</button>').join('') + '</div>' +
       '<button class="btn" id="wGo">开始养成 🎉</button>' +
@@ -520,7 +520,7 @@
       const k = { id: uid(), name, points: 0, daily: {}, pet: { name: PETS[type].name, type, exp: 0, lv: 1 }, dex: { egg: true }, companions: [], milestones: [], skin: null };
       P.d.kids.push(k);
       P.d.cur = k.id;
-      P.d.log.unshift({ ts: Date.now(), kid: k.id, kidName: name, em: '🥚', text: name + ' 的幻兽之旅开始了', d: 0 });
+      P.d.log.unshift({ ts: Date.now(), kid: k.id, kidName: name, em: '🥚', text: name + ' 的宠物之旅开始了', d: 0 });
       P.save();
       el.remove();
       render();
@@ -528,7 +528,7 @@
     };
   }
 
-  /* ================= 页面：幻兽（首页） ================= */
+  /* ================= 页面：宠物（首页） ================= */
   function viewHome() {
     const k = kid();
     if (!k) return;
@@ -640,7 +640,7 @@
   function addKidSheet() {
     const gs = groupsOf();
     openSheet(
-      '<div class="sheet-h">添加' + (isClass() ? '学生' : '孩子') + '</div><div class="tiny">每' + (isClass() ? '名学生' : '个孩子') + '有独立的积分、幻兽和记录</div>' +
+      '<div class="sheet-h">添加' + (isClass() ? '学生' : '孩子') + '</div><div class="tiny">每' + (isClass() ? '名学生' : '个孩子') + '有独立的积分、宠物和记录</div>' +
       '<div class="field"><label>名字 / 称呼</label><input id="nkName" maxlength="8" placeholder="比如：妹妹"></div>' +
       (isClass() && gs.length ? '<div class="field"><label>小组（可选）</label><select id="nkGroup"><option value="">不分组</option>' +
         gs.map((g) => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('') + '</select></div>' : '') +
@@ -873,7 +873,7 @@
     })).concat([{ label: '谢谢参与', icon: '😅', hue: 218 }]);
 
     const left = '<div class="lucky-hero">' +
-      '<div class="lh-l"><b>幸运大转盘</b><small>' + (price ? '抽一次 ' + price + ' 积分 · 抽实物或幻兽经验' : '奖池还没上架礼品') + '</small></div>' +
+      '<div class="lh-l"><b>幸运大转盘</b><small>' + (price ? '抽一次 ' + price + ' 积分 · 抽实物或宠物经验' : '奖池还没上架礼品') + '</small></div>' +
       '<div class="lh-r"><b id="lkPts">' + k.points + '</b><small>我的积分</small></div></div>' +
       (!pool.length
         ? '<div class="card empty" style="padding:26px 16px">老师还没上架礼品，暂时不能抽奖<br><span class="tiny">到「商店 → 管理礼品」加几个奖品就能开抽</span></div>'
@@ -894,7 +894,7 @@
         '</div>' +
         '<div class="tiny">奖池平均定价 ' + lotAvg(pool).toFixed(1) + ' 分，抽一次 ' + price + ' 分，长期返还约 ' + Math.round(lotReturn() * 100) +
         '%' + (P.d.lotPriceOv > 0 ? '（票价由老师设定）' : '') +
-        '。抽中实物礼品会进「待确认」找老师领取；<b>抽中经验道具直接加给幻兽</b>，无需确认。' +
+        '。抽中实物礼品会进「待确认」找老师领取；<b>抽中经验道具直接加给宠物</b>，无需确认。' +
         (allCnt > pool.length ? '<br>商店共 ' + allCnt + ' 件礼品，转盘只放前 ' + pool.length + ' 件，可在「管理礼品」里调整顺序。' : '') +
         '</div>'
       : '';
@@ -935,7 +935,7 @@
     const isExp = !!(r && r.kind === 'exp');
     let expGain = 0, lvBefore = k.pet.lv;
     if (r && isExp) {
-      /* 经验道具：抽到即生效，直接喂给幻兽，不进待确认 */
+      /* 经验道具：抽到即生效，直接喂给宠物，不进待确认 */
       expGain = r.exp || r.cost;
       addLog(k, r.icon || '🧪', '抽奖获得「' + r.name + '」· +' + expGain + ' 经验', 0, 'lottery');
       addExp(k, expGain);
@@ -1014,10 +1014,10 @@
       '<div class="dx-sub">' + sub + '</div></div>';
 
     let html = '<div class="page">' + kidsRow() +
-      '<div class="section-h"><h2>幻兽图鉴</h2><span class="sub">' + got + '/' + total + ' · ' + pct + '%</span></div>' +
+      '<div class="section-h"><h2>宠物图鉴</h2><span class="sub">' + got + '/' + total + ' · ' + pct + '%</span></div>' +
       '<div class="exp-bar dark" style="border-radius:99px"><i style="width:' + pct + '%"></i></div>' +
       '<div class="dex-grid" style="margin-top:12px">' +
-      card('egg', 'images/egg.jpg', '神秘幻兽蛋', '旅程起点', !!k.dex.egg) +
+      card('egg', 'images/egg.jpg', '神秘宠物蛋', '旅程起点', !!k.dex.egg) +
       els.map((el) => STAGES.slice(1).map((s) => {
         const key = el + '-' + s.suffix;
         const un = !!k.dex[key];
@@ -1026,7 +1026,7 @@
         return card(key, 'images/' + key + '.jpg', PETS[el].name, s.name + (companion ? ' · 伙伴' : ''), un, extra);
       }).join('')).join('') +
       '</div>' +
-      '<div class="tiny" style="margin:4px 2px">解锁条件：幻兽进化填充本系形态；达到 Lv.5/10/15/20 会降临神秘伙伴，点伙伴卡片可让牠出战。</div>' +
+      '<div class="tiny" style="margin:4px 2px">解锁条件：宠物进化填充本系形态；达到 Lv.5/10/15/20 会降临神秘伙伴，点伙伴卡片可让牠出战。</div>' +
       '</div>';
     $view.innerHTML = html;
     bindKidsRow();
@@ -1429,7 +1429,7 @@
         m.querySelectorAll('[data-delk]').forEach((b) => (b.onclick = () => {
           if (P.d.kids.length <= 1) return toast('至少保留一个孩子');
           const k = P.d.kids.find((x) => x.id === b.dataset.delk);
-          openSheet('<div class="sheet-h">删除 ' + esc(k.name) + '？</div><div class="tiny" style="margin-top:6px">该孩子的积分、幻兽和记录都会一并删除，不可恢复。</div>' +
+          openSheet('<div class="sheet-h">删除 ' + esc(k.name) + '？</div><div class="tiny" style="margin-top:6px">该孩子的积分、宠物和记录都会一并删除，不可恢复。</div>' +
             '<div class="btn-row" style="margin-top:16px"><button class="btn ghost" id="dlNo">取消</button><button class="btn" id="dlYes" style="background:var(--bad)">删除</button></div>',
             (mm, cc) => {
               mm.querySelector('#dlNo').onclick = cc;
@@ -1466,7 +1466,7 @@
   function giftManageSheet() {
     openSheet(
       '<div class="sheet-h">礼品管理</div>' +
-      '<div class="tiny">学生用积分兑换，兑换申请会进老师面板的「待确认」；<b>上架的礼品同时就是抽奖奖池</b>，抽奖票价按这些礼品的定价自动计算。经验道具不用确认，抽到/兑换后立刻加给幻兽。</div>' +
+      '<div class="tiny">学生用积分兑换，兑换申请会进老师面板的「待确认」；<b>上架的礼品同时就是抽奖奖池</b>，抽奖票价按这些礼品的定价自动计算。经验道具不用确认，抽到/兑换后立刻加给宠物。</div>' +
       '<div id="gmList" style="margin-top:12px">' + giftRows() + '</div>' +
       '<div class="section-h" style="margin-top:16px"><h2>抽奖票价</h2></div>' +
       '<div class="field"><label>抽一次花多少积分</label><input id="gmPrice" type="number" min="0" inputmode="numeric" value="' + (P.d.lotPriceOv || 0) + '">' +
@@ -1515,13 +1515,13 @@
     let kind = editing && editing.kind === 'exp' ? 'exp' : 'gift';
     openSheet(
       '<div class="sheet-h">' + (editing ? '编辑奖品' : '添加奖品') + '</div>' +
-      '<div class="tiny">实物礼品兑换后由老师发放；经验道具在抽到/兑换后<b>立刻加给幻兽</b>，不用确认</div>' +
+      '<div class="tiny">实物礼品兑换后由老师发放；经验道具在抽到/兑换后<b>立刻加给宠物</b>，不用确认</div>' +
       '<div class="seg" id="gKind" style="grid-template-columns:repeat(2,1fr)">' +
       '<button data-k="gift">🎁 实物礼品</button><button data-k="exp">🧪 经验道具</button></div>' +
       '<div class="field"><label>选个图标</label><div class="icon-grid" id="gIcons">' +
       GIFT_ICONS.map((e) => '<button data-e="' + e + '"' + (e === icon ? ' class="on"' : '') + '>' + e + '</button>').join('') + '</div></div>' +
       '<div class="field"><label id="gNameLb">礼品名称</label><input id="gName" maxlength="16" placeholder="比如：换座位一次" value="' + (editing ? esc(editing.name) : '') + '"></div>' +
-      '<div class="field" id="gExpWrap" style="display:none"><label>增加经验</label><input id="gExp" type="number" min="1" inputmode="numeric" value="' + (editing && editing.exp ? editing.exp : 30) + '"><div class="tiny" style="margin-top:6px">抽到或兑换后，幻兽直接获得这个数量的经验</div></div>' +
+      '<div class="field" id="gExpWrap" style="display:none"><label>增加经验</label><input id="gExp" type="number" min="1" inputmode="numeric" value="' + (editing && editing.exp ? editing.exp : 30) + '"><div class="tiny" style="margin-top:6px">抽到或兑换后，宠物直接获得这个数量的经验</div></div>' +
       '<div class="field"><label id="gCostLb">所需积分</label><input id="gCost" type="number" min="1" inputmode="numeric" value="' + (editing ? editing.cost : '10') + '">' +
       '<div class="tiny" id="gCostTip" style="margin-top:6px">这个积分既是兑换价，也是抽奖标价：越贵中奖概率越低，同时参与抽奖票价计算</div></div>' +
       '<div class="field"><label>说明（可选，学生能看到）</label><input id="gDesc" maxlength="24" placeholder="比如：每周限 1 次" value="' + (editing ? esc(editing.desc || '') : '') + '"></div>' +
@@ -1623,7 +1623,7 @@
           rd.readAsText(f);
         };
         m.querySelector('#resetBtn').onclick = () => {
-          openSheet('<div class="sheet-h">清空全部数据？</div><div class="tiny" style="margin-top:6px">积分、幻兽、记录将全部删除，且不可恢复。</div>' +
+          openSheet('<div class="sheet-h">清空全部数据？</div><div class="tiny" style="margin-top:6px">积分、宠物、记录将全部删除，且不可恢复。</div>' +
             '<div class="btn-row" style="margin-top:16px"><button class="btn ghost" id="rsNo">取消</button><button class="btn" id="rsYes" style="background:var(--bad)">全部清空</button></div>',
             (mm, cc) => {
               mm.querySelector('#rsNo').onclick = cc;
@@ -1664,7 +1664,7 @@
     const type = pickType();
     return {
       id: uid(), name, group: group || '', points: 0, daily: {},
-      pet: { name: petMeta(type).name, type, exp: 0, lv: lv || 3 },
+      pet: { name: petMeta(type).name, type, exp: 0, lv: lv || 1 },
       dex: { egg: true }, companions: [], milestones: [], skin: null
     };
   }
@@ -1730,7 +1730,7 @@
       (P.d.classes.length > 1 ? '<div style="margin-top:12px"><button class="btn ghost" id="cmpGo">📊 跨班对比总览</button></div>' : '') +
       '<div style="margin-top:12px">' + rows + '</div>' +
       '<div style="margin-top:14px"><button class="btn" id="ncGo">＋ 新建班级</button></div>' +
-      '<div class="tiny" style="margin-top:10px">班级之间学生名单、积分、幻兽各自独立；任务和奖励规则是全年级通用的。</div>',
+      '<div class="tiny" style="margin-top:10px">班级之间学生名单、积分、宠物各自独立；任务和奖励规则是全年级通用的。</div>',
       (m, close) => {
         m.querySelectorAll('.cls-row').forEach((r) => (r.onclick = () => {
           const id = r.dataset.c;
@@ -1828,7 +1828,7 @@
         '<button data-w="' + esc(w) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(w) + '</button>').join('') + '</div>' +
       '<div class="field"><input id="shCustom" maxlength="20" placeholder="或自己写个理由（可选）"></div>' +
       '<div style="margin-top:12px"><button class="btn" id="shGo">确认加分</button></div>' +
-      '<div class="btn-row" style="margin-top:9px"><button class="btn ghost sm" id="shOpen" style="flex:1">看幻兽主页</button>' +
+      '<div class="btn-row" style="margin-top:9px"><button class="btn ghost sm" id="shOpen" style="flex:1">看宠物主页</button>' +
       '<button class="btn ghost sm" id="shCard" style="flex:1">生成成长卡</button></div>',
       (m, close) => {
         const st = { amt: amts().pos[0] || 1 };
@@ -2158,7 +2158,7 @@
         '<span class="bd-nm">' + esc(x.k.name) + '<i>' + esc(x.cls.name) + '</i></span>' +
         '<span class="bd-v">' + x.v + '</span></div>').join('') + '</div>'
         : '<div class="card empty">' + label + '还没有人得分</div>') +
-      '<div class="tiny" style="text-align:center;margin-top:4px">点班级卡片可以切换过去；点 TOP10 里的学生可以查看他的幻兽</div>' +
+      '<div class="tiny" style="text-align:center;margin-top:4px">点班级卡片可以切换过去；点 TOP10 里的学生可以查看他的宠物</div>' +
       '</div>';
 
     document.querySelectorAll('#cmpSeg button').forEach((b) => (b.onclick = () => { cmpPeriod = b.dataset.p; render(); }));
@@ -2230,7 +2230,7 @@
       '<div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="csRoster">导入 / 管理名单</button></div>' +
       '<div class="section-h" style="margin-top:18px"><h2>学期重置</h2></div>' +
       '<div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="csResetPts">只清空积分</button><button class="btn ghost" id="csResetAll">全新开始</button></div>' +
-      '<div class="tiny" style="margin-top:8px">「只清空积分」保留幻兽等级和图鉴；「全新开始」所有幻兽回到幻兽蛋。</div>' +
+      '<div class="tiny" style="margin-top:8px">「只清空积分」保留宠物等级和图鉴；「全新开始」所有宠物回到宠物蛋。</div>' +
       '<div class="section-h" style="margin-top:18px"><h2>模式</h2></div>' +
       '<div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="csExit">关闭班级模式（回到家庭版）</button></div>',
       (m, close) => {
@@ -2247,7 +2247,7 @@
           const cur = P.d.classes.find((c) => c.id === P.d.clsId);
           if (!cur) return;
           if (P.d.classes.length <= 1) return toast('至少要保留一个班');
-          if (!confirm('删除「' + cur.name + '」？该班 ' + (cur.kids || []).length + ' 名学生的积分和幻兽都会删除，不可恢复。')) return;
+          if (!confirm('删除「' + cur.name + '」？该班 ' + (cur.kids || []).length + ' 名学生的积分和宠物都会删除，不可恢复。')) return;
           const nm = cur.name;
           deleteClass(cur.id);
           close(); toast('已删除「' + nm + '」');
@@ -2261,7 +2261,7 @@
   }
   function resetSheet(all) {
     openSheet('<div class="sheet-h">' + (all ? '全新开始？' : '清空积分？') + '</div>' +
-      '<div class="tiny" style="margin-top:6px">' + (all ? '全部学生的积分、幻兽等级、图鉴、记录都会清空。' : '积分和记录清零，幻兽等级与图鉴保留。') + '名单不会删除。</div>' +
+      '<div class="tiny" style="margin-top:6px">' + (all ? '全部学生的积分、宠物等级、图鉴、记录都会清空。' : '积分和记录清零，宠物等级与图鉴保留。') + '名单不会删除。</div>' +
       '<div class="btn-row" style="margin-top:16px"><button class="btn ghost" id="rsN">取消</button><button class="btn" id="rsY" style="background:var(--bad)">确定</button></div>',
       (m, c) => {
         m.querySelector('#rsN').onclick = c;
@@ -2287,6 +2287,7 @@
       '<div class="sheet-h">名单管理</div>' +
       '<div class="tiny">当前 ' + P.d.kids.length + ' 人</div>' +
       '<div class="btn-row" style="margin-top:10px"><button class="btn" id="rsImport">批量粘贴导入</button><button class="btn ghost" id="rsOne">＋ 添加一人</button></div>' +
+      '<div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="rsGroup" style="flex:1">🏷️ 分组管理</button></div>' +
       '<div style="margin-top:14px;max-height:46vh;overflow:auto" id="rsList">' + rosterRows() + '</div>',
       (m, close) => {
         const repaint = () => { m.querySelector('#rsList').innerHTML = rosterRows(); bindRows(); render(); };
@@ -2294,7 +2295,7 @@
           m.querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => {
             const k = P.d.kids.find((x) => x.id === b.dataset.del);
             if (!k) return;
-            if (!confirm('删除 ' + k.name + ' 的积分和幻兽记录？')) return;
+            if (!confirm('删除 ' + k.name + ' 的积分和宠物记录？')) return;
             P.d.kids = P.d.kids.filter((x) => x.id !== k.id);
             P.d.log = P.d.log.filter((l) => l.kid !== k.id);
             if (P.d.cur === k.id) P.d.cur = (P.d.kids[0] || {}).id;
@@ -2309,6 +2310,66 @@
         bindRows();
         m.querySelector('#rsImport').onclick = () => { close(); importSheet(); };
         m.querySelector('#rsOne').onclick = () => { close(); addKidSheet(); };
+        m.querySelector('#rsGroup').onclick = () => { close(); groupSheet(); };
+      });
+  }
+  /* 分组管理：新建 / 重命名 / 删除分组，并给每个学生指定分组 */
+  function groupSheet() {
+    const groupsArr = () => (Array.isArray(P.d.cls.groups) && P.d.cls.groups.length) ? P.d.cls.groups : GROUPS_DEFAULT.slice();
+    const gCount = (g) => P.d.kids.filter((k) => k.group === g).length;
+    const paint = (m) => {
+      const gs = groupsArr();
+      m.querySelector('#gpList').innerHTML = gs.map((g) =>
+        '<div class="pend-item"><div class="body"><div class="pn">🏷️ ' + esc(g) +
+        '<span class="tiny" style="margin-left:8px">' + gCount(g) + ' 人</span></div></div>' +
+        '<div class="ops"><button class="ok" data-gren="' + esc(g) + '">✏️</button><button class="no" data-gdel="' + esc(g) + '">🗑</button></div></div>').join('') || '<div class="empty">还没有分组</div>';
+      m.querySelector('#gpAssign').innerHTML = P.d.kids.map((k) => {
+        const opts = ['<option value="">未分组</option>'].concat(gs.map((g) => '<option' + (k.group === g ? ' selected' : '') + ' value="' + esc(g) + '">' + esc(g) + '</option>'));
+        return '<div class="pend-item"><div class="body"><div class="pn">' + esc(k.name) + '</div></div>' +
+          '<div class="ops"><select data-kid="' + k.id + '" style="padding:6px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font-size:13px">' + opts.join('') + '</select></div></div>';
+      }).join('') || '<div class="empty">还没有学生</div>';
+      m.querySelectorAll('[data-gren]').forEach((b) => (b.onclick = () => {
+        const old = b.dataset.gren;
+        const v = prompt('分组改成什么名字？', old);
+        if (!v || !v.trim() || v.trim() === old) return;
+        const nm = v.trim();
+        if (groupsArr().includes(nm)) return toast('已有同名分组');
+        P.d.cls.groups = groupsArr().map((g) => (g === old ? nm : g));
+        P.d.kids.forEach((k) => { if (k.group === old) k.group = nm; });
+        P.save(); paint(m); render();
+      }));
+      m.querySelectorAll('[data-gdel]').forEach((b) => (b.onclick = () => {
+        const g = b.dataset.gdel;
+        if (!confirm('删除分组「' + g + '」？组内 ' + gCount(g) + ' 名学生会变成「未分组」（名单和积分不受影响）。')) return;
+        P.d.cls.groups = groupsArr().filter((x) => x !== g);
+        P.d.kids.forEach((k) => { if (k.group === g) k.group = ''; });
+        P.save(); paint(m); render();
+      }));
+      m.querySelectorAll('[data-kid]').forEach((sel) => (sel.onchange = () => {
+        const k = P.d.kids.find((x) => x.id === sel.dataset.kid);
+        if (!k) return;
+        k.group = sel.value; P.save(); render();
+        const lb = m.querySelector('#gpGroups');
+        if (lb) lb.textContent = groupsArr().map((g) => g + ' ' + gCount(g) + '人').join(' · ') || '暂无分组';
+      }));
+    };
+    openSheet(
+      '<div class="sheet-h">分组管理</div>' +
+      '<div class="tiny" id="gpGroups" style="margin-top:4px"></div>' +
+      '<div class="btn-row" style="margin-top:10px"><button class="btn ghost" id="gpAdd" style="flex:1">＋ 新建分组</button></div>' +
+      '<div id="gpList" style="margin-top:10px"></div>' +
+      '<div class="section-h" style="margin-top:14px"><h2 style="font-size:14px">给学生分组</h2></div>' +
+      '<div style="max-height:38vh;overflow:auto" id="gpAssign"></div>',
+      (m, close) => {
+        paint(m);
+        m.querySelector('#gpAdd').onclick = () => {
+          const v = prompt('新分组名称（如：第五组）');
+          if (!v || !v.trim()) return;
+          const nm = v.trim();
+          if (groupsArr().includes(nm)) return toast('已有同名分组');
+          P.d.cls.groups = groupsArr().concat([nm]);
+          P.save(); paint(m); render(); toast('已添加「' + nm + '」');
+        };
       });
   }
   function rosterRows() {
@@ -2466,7 +2527,7 @@
       '<div class="sheet-h">发现迁移数据</div>' +
       '<div class="card" style="margin-top:10px"><div style="text-align:center;font-size:30px">📦</div>' +
       '<div style="text-align:center;font-weight:750;font-size:16px;margin-top:4px">' + esc(clsName || '班级数据') + '</div>' +
-      '<div class="tiny" style="text-align:center;margin-top:4px">' + n + ' 名' + (d.cls && d.cls.on ? '学生' : '孩子') + ' · 积分与幻兽原样搬过来</div></div>' +
+      '<div class="tiny" style="text-align:center;margin-top:4px">' + n + ' 名' + (d.cls && d.cls.on ? '学生' : '孩子') + ' · 积分与宠物原样搬过来</div></div>' +
       '<div class="warn" style="margin-top:10px">导入会<b>覆盖</b>本机现有数据。系统会先把本机这一份存进「恢复历史版本」，误操作还能找回。</div>' +
       '<div style="margin-top:12px"><button class="btn" id="qiGo">确认导入</button></div>',
       (m, close) => {
@@ -2711,8 +2772,14 @@
         const showDiag = (state) => {
           const map = { granted: '已允许 ✓', denied: '已拒绝 ✗（问题就在这，按上面步骤改成允许）', prompt: '还没询问过' };
           const el = q('#qsFailD');
-          if (el) el.innerHTML += '<div class="qf-diag">🔎 浏览器对本网站的摄像头权限：' + (map[state] || state) +
-            '　·　错误码：' + (nm || '未知') + '</div>';
+          if (!el) return;
+          let extra = '';
+          /* 矛盾组合：网站权限还是“未询问”却直接报 NotAllowedError —— 多半是系统层没给浏览器相机权限 */
+          if (state === 'prompt' && (nm === 'NotAllowedError' || nm === 'SecurityError')) {
+            extra = '<div class="qf-diag" style="margin-top:6px">⚠️ 网站权限还没询问过就直接失败 —— 问题多半在<b>手机系统层</b>：手机设置 → 应用 → 浏览器 → 权限 → 相机 → 允许；也可能被校园管控/安全软件限制了摄像头。</div>';
+          }
+          el.innerHTML += '<div class="qf-diag">🔎 浏览器对本网站的摄像头权限：' + (map[state] || state) +
+            '　·　错误码：' + (nm || '未知') + '</div>' + extra;
         };
         try {
           if (navigator.permissions && navigator.permissions.query) {
@@ -2817,7 +2884,7 @@
       g.fillStyle = 'rgba(255,255,255,.55)'; g.font = '500 22px -apple-system,sans-serif';
       g.fillText((P.d.cls.name || '伴学宠物') + ' · ' + new Date().toLocaleDateString('zh-CN'), W / 2, 1010);
       g.fillStyle = 'rgba(255,255,255,.75)'; g.font = '600 24px -apple-system,sans-serif';
-      g.fillText('今天也要和幻兽一起变强 ✨', W / 2, 1044);
+      g.fillText('今天也要和宠物一起变强 ✨', W / 2, 1044);
 
       const a = document.createElement('a');
       a.download = k.name + '-成长卡.png';
@@ -2845,7 +2912,7 @@
     cls: '<rect x="3" y="4" width="7" height="7" rx="2"/><rect x="14" y="4" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
     board: '<path d="M7 21h10"/><path d="M12 17v4"/><path d="M6 4h12v4a6 6 0 0 1-12 0z"/><path d="M6 6H3v2a3 3 0 0 0 3 3"/><path d="M18 6h3v2a3 3 0 0 1-3 3"/>'
   };
-  const TABS_FAMILY = [['home', '幻兽', 'home'], ['dex', '图鉴', 'dex'], ['tasks', '任务', 'tasks'], ['shop', '商店', 'shop'], ['log', '记录', 'log']];
+  const TABS_FAMILY = [['home', '宠物', 'home'], ['dex', '图鉴', 'dex'], ['tasks', '任务', 'tasks'], ['shop', '商店', 'shop'], ['log', '记录', 'log']];
   const TABS_CLASS = [['home', '我的', 'home'], ['class', '全班', 'cls'], ['board', '光荣榜', 'board'], ['shop', '商店', 'shop'], ['log', '记录', 'log']];
 
   function renderTabs(active) {
@@ -2927,7 +2994,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3204', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3205', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

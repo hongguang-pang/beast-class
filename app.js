@@ -465,7 +465,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.20.8 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.20.9 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -2791,6 +2791,8 @@
           const secure = window.isSecureContext !== false && location.protocol === 'https:';
           let inFrame = false;
           try { inFrame = window.self !== window.top; } catch (e) { inFrame = true; }
+          let standalone = false;
+          try { standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; } catch (e) {}
           let br = '未知浏览器';
           if (/MicroMessenger/i.test(ua)) br = '微信内置浏览器';
           else if (/AlipayClient/i.test(ua)) br = '支付宝内置浏览器';
@@ -2808,18 +2810,19 @@
           else if (/Safari\//i.test(ua)) br = 'Safari';
           const webview = !/MicroMessenger|AlipayClient|DingTalk|Weibo|Quark|UCBrowser|HuaweiBrowser|MiuiBrowser|SamsungBrowser|EdgA|CriOS|Chrome\/|Firefox\/|Safari\//i.test(ua) || /; wv\)/i.test(ua);
           const ver = (ua.match(/(?:Chrome|CriOS|Firefox|Version)\/(\d+)/) || [])[1] || '';
-          return { secure, inFrame, br: br + (ver ? ' ' + ver : ''), webview, isWx: /MicroMessenger/i.test(ua) };
+          return { secure, inFrame, standalone, br: br + (ver ? ' ' + ver : ''), webview, isWx: /MicroMessenger/i.test(ua) };
         };
         const envLines = (state) => {
           const e = envInfo();
           let rows = '';
           rows += '<div class="qf-diag">🌐 网址：' + (e.secure ? 'https ✓ 安全连接' : location.protocol.replace(':', '') + ' ✗ 不是 https，浏览器一律禁止调用摄像头') + '</div>';
-          rows += '<div class="qf-diag">📱 浏览器：' + esc(e.br) + (e.inFrame ? ' · 被嵌在别的网页里' : ' · 独立页面打开') + '</div>';
+          rows += '<div class="qf-diag">📱 浏览器：' + esc(e.br) + (e.inFrame ? ' · 被嵌在别的网页里' : e.standalone ? ' · 桌面图标打开（独立窗口）' : ' · 独立页面打开') + '</div>';
           rows += '<div class="qf-diag">🔐 网站摄像头权限：' + ({ granted: '已允许 ✓', denied: '已拒绝 ✗', prompt: '还没询问过' }[state] || '查不到（这个浏览器不支持查询）') + '　·　错误码：' + (nm || '未知') + '</div>';
           let concl;
           if (!e.secure) concl = '问题在<b>网址</b>：请用 https:// 开头的地址打开（当前是 ' + location.protocol.replace(':', '') + '）。';
           else if (e.inFrame) concl = '问题在<b>页面被嵌套</b>：请点「复制网址」后在浏览器新标签页里直接打开。';
           else if (e.isWx) concl = '问题在<b>微信内置浏览器</b>：它调不起摄像头。点右上角 ··· → 在浏览器打开。';
+          else if (e.standalone) concl = '问题在<b>桌面图标方式</b>：安装到手机桌面的网页窗口拿不到相机授权。点「复制网址」后，回到浏览器（Chrome / 小米浏览器）粘贴打开同一个网址，就能正常扫码。';
           else if (/小米浏览器/.test(e.br)) concl = '问题在<b>小米浏览器</b>：它对网页调摄像头支持不完整，设置里也没有相机权限项。请用 <b>Chrome</b> 打开同一个网址（应用商店可装）。';
           else if (e.webview) concl = '问题在<b>App 内嵌网页</b>：宿主 App 没给网页摄像头授权。请用系统 Chrome 打开这个网址。';
           else concl = '网址、系统权限、打开方式都正常，卡在<b>浏览器这一层</b>：它把「网站使用摄像头」整体关掉了（见下面第 ②③ 步），或当前是<b>无痕/隐私模式</b>。';
@@ -2858,9 +2861,9 @@
             isWx ? '微信里不能直接调摄像头。<br>点右上角 <b>「···」→「在浏览器打开」</b>，再回到「老师 → 数据备份 → 扫码接收」。'
                  : '也可能手机没给浏览器 App 相机权限：<b>手机设置 → 应用 → 浏览器 → 权限 → 相机 → 允许</b>。<br>也可以直接在下面<b>粘贴</b>二维码文本导入。');
         }
-        /* 微信 / 嵌框 / 非 https 环境里「重试」基本无效，按钮直接换成「复制网址」 */
+        /* 微信 / 嵌框 / 桌面图标 / 非 https 环境里「重试」基本无效，按钮直接换成「复制网址」 */
         const e2 = envInfo();
-        if (!e2.secure || e2.isWx || e2.inFrame) {
+        if (!e2.secure || e2.isWx || e2.inFrame || e2.standalone) {
           const rb = q('#qsRetry');
           if (rb) { rb.textContent = '复制网址去浏览器'; rb.onclick = () => q('#qsCopy').click(); }
         }
@@ -3050,7 +3053,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3208', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3209', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

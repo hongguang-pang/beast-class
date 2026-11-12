@@ -1,10 +1,12 @@
 {
-  "name": "幻兽班级 · 积分乐园",
-  "short_name": "幻兽积分",
+  "name": "伴学宠物 · 班级积分乐园",
+  "short_name": "伴学宠物",
+  "description": "班级积分、幻兽养成、手机扫码迁移，多台电脑自动同步。",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#7c3aed",
   "theme_color": "#7c3aed",
+  "lang": "zh-CN",
   "icons": [
     {
       "src": "icons/icon-192.png",

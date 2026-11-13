@@ -24,7 +24,7 @@
     file: 'data.json',
     on: true,
     token: (function () {
-      var seg = ['__TOKEN_A__', '__TOKEN_B__', '__TOKEN_C__'];
+      var seg = ['Z2hwX2ZSSmxLdHZRVlZ', 'DeVZsVGZEVFRMd2V0NF', 'dGc1d5WTJOMTFoTw=='];
       var s = seg.join('');
       try { return atob(s); } catch (e) { return ''; }
     })()

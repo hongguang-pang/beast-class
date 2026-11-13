@@ -230,7 +230,7 @@
           }
           if (k.skin === undefined) k.skin = null;
           if (k.group === undefined) k.group = '';
-          /* v3.21.3 修正：Lv.1~2 是全班共用的「宠物蛋」形象，看起来都一样；
+          /* v3.21.5 修正：Lv.1~2 是全班共用的「宠物蛋」形象，看起来都一样；
              零进度的宠物直接提到幼年期（Lv.3），每人恢复各自的形象，已有进度不受影响 */
           if (k.pet.lv < 3 && !k.pet.exp) k.pet.lv = 3;
           if (!k.dex) k.dex = {};
@@ -499,7 +499,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.21.3 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.21.5 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -1633,6 +1633,8 @@
             try {
               const d = JSON.parse(rd.result);
               if (!d || !Array.isArray(d.kids)) throw 0;
+              /* 导入覆盖前先留一份底（与扫码导入同等待遇），误操作可去「云同步 → 恢复历史版本」找回 */
+              try { if (window.BEAST_SYNC && window.BEAST_SYNC.backup) window.BEAST_SYNC.backup(); } catch (e) {}
               /* 归一化成多班结构并打时间戳，避免刚导入就被云端旧数据盖回 */
               P.d = adoptImported(d); P.save(); close(); render(); toast('导入成功');
             } catch (e) { toast('文件格式不对'); }
@@ -2450,7 +2452,7 @@
       '<div class="sheet-h">导入名单</div>' +
       '<div class="tiny" style="margin-top:6px">一行一个学生。想分组就写成「小明 第一组」，用空格或逗号隔开。</div>' +
       '<div class="field"><textarea id="imTx" rows="9" placeholder="张小明&#10;李小红 第一组&#10;王小刚,第二组" style="width:100%;padding:12px;border-radius:13px;border:1.5px solid var(--line);font-family:inherit;font-size:14px;line-height:1.7;resize:vertical"></textarea></div>' +
-      '<label class="ck-line"><input type="checkbox" id="imRep"> 覆盖原名单（不勾选则追加，重名自动跳过）</label>' +
+      '<label class="ck-line"><input type="checkbox" id="imRep"> 覆盖原名单（⚠️ 勾选后名单重建，<b>积分全部清零</b>；要连积分一起迁移请用「数据备份 → 导入 JSON」）</label>' +
       '<div style="margin-top:12px"><button class="btn" id="imGo">导入</button></div>',
       (m, close) => {
         m.querySelector('#imGo').onclick = () => {
@@ -3115,7 +3117,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3213', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3215', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

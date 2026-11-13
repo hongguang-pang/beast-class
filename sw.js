@@ -1,16 +1,16 @@
 /* 伴学宠物 · 离线缓存 Service Worker */
-const VERSION = 'beast-v3.21.4';
+const VERSION = 'beast-v3.21.5';
 const SHELL = [
   './',
   './index.html',
-  './app.css?v=3214',
+  './app.css?v=3215',
   './help.html',
   './migrate.html',
   './lib/lz.min.js',
   './lib/qrg.js',
   './lib/jsqr.js',
-  './app.js?v=3214',
-  './sync.js?v=3214',
+  './app.js?v=3215',
+  './sync.js?v=3215',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'

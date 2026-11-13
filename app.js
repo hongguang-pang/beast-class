@@ -200,11 +200,15 @@
           if (!k.daily) k.daily = {};
           /* 旧数据 / 迁移中丢了宠物的学生：自动补一只，避免头像空白 */
           if (!k.pet || !k.pet.type) {
-            const t = pickType();
-            k.pet = { name: petMeta(t).name, type: t, exp: 0, lv: (k.pet && k.pet.lv) || 1 };
+            const t = (k.pet && k.pet.type) || pickType();
+            k.pet = { name: petMeta(t).name, type: t, exp: 0, lv: (k.pet && k.pet.lv) || 3 };
           }
           if (k.skin === undefined) k.skin = null;
           if (k.group === undefined) k.group = '';
+          /* v3.21.2 修正：Lv.1~2 是全班共用的「宠物蛋」形象，看起来都一样；
+             零进度的宠物直接提到幼年期（Lv.3），每人恢复各自的形象，已有进度不受影响 */
+          if (k.pet.lv < 3 && !k.pet.exp) k.pet.lv = 3;
+          if (!k.dex) k.dex = {};
           if (!k.dex.egg) k.dex.egg = true;
           STAGES.forEach((s) => { if (k.pet.lv >= s.min && s.suffix !== 'egg') k.dex[k.pet.type + '-' + s.suffix] = true; });
         });
@@ -465,7 +469,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.21.0 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.21.2 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -1647,7 +1651,7 @@
     const type = pickType();
     return {
       id: uid(), name, group: group || '', points: 0, daily: {},
-      pet: { name: petMeta(type).name, type, exp: 0, lv: lv || 1 },
+      pet: { name: petMeta(type).name, type, exp: 0, lv: lv || 3 },
       dex: { egg: true }, companions: [], milestones: [], skin: null
     };
   }
@@ -3053,7 +3057,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3210', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3212', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

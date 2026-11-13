@@ -152,6 +152,31 @@
   /* ================= 存储 ================= */
   const KEY = 'beast.v1';
   const GROUPS_DEFAULT = ['第一组', '第二组', '第三组', '第四组'];
+  /* 班内宠物去重：同一班出现重复宠物形象时，自动给重复的学生换一只没人用的。
+     只换形象（type/name/skin），积分、等级、经验、记录都不动。
+     用于修复导入旧数据、早期版本导致的“全班宠物都一样”。 */
+  function dedupePets(kids) {
+    if (!Array.isArray(kids) || kids.length < 2) return 0;
+    const used = {};
+    let fixed = 0;
+    kids.forEach((k) => {
+      if (!k || !k.pet || !k.pet.type) return;
+      if (!used[k.pet.type]) { used[k.pet.type] = 1; return; }
+      const free = CREATURES.filter((c) => !used[c.id]);
+      const pool = free.length ? free : CREATURES;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      used[pick.id] = 1;
+      const lv = k.pet.lv || 3;
+      k.pet.type = pick.id;
+      k.pet.name = pick.name;
+      k.skin = null;
+      k.dex = { egg: true };
+      STAGES.forEach((s) => { if (lv >= s.min && s.suffix !== 'egg') k.dex[pick.id + '-' + s.suffix] = true; });
+      fixed++;
+    });
+    return fixed;
+  }
+
   const P = {
     d: null,
     load() {
@@ -205,13 +230,18 @@
           }
           if (k.skin === undefined) k.skin = null;
           if (k.group === undefined) k.group = '';
-          /* v3.21.2 修正：Lv.1~2 是全班共用的「宠物蛋」形象，看起来都一样；
+          /* v3.21.3 修正：Lv.1~2 是全班共用的「宠物蛋」形象，看起来都一样；
              零进度的宠物直接提到幼年期（Lv.3），每人恢复各自的形象，已有进度不受影响 */
           if (k.pet.lv < 3 && !k.pet.exp) k.pet.lv = 3;
           if (!k.dex) k.dex = {};
           if (!k.dex.egg) k.dex.egg = true;
           STAGES.forEach((s) => { if (k.pet.lv >= s.min && s.suffix !== 'egg') k.dex[k.pet.type + '-' + s.suffix] = true; });
         });
+        /* 无感修复：班内宠物重复（导入后最常见）自动重新分配，老师什么都不用点 */
+        try {
+          dedupePets(this.d.kids);
+          (this.d.classes || []).forEach((c) => { if (c && Array.isArray(c.kids) && c.kids !== this.d.kids) dedupePets(c.kids); });
+        } catch (e) {}
         // 迁移：单班数据 → 多班结构
         if (!this.d.classes.length && this.d.kids.length) {
           const cid = 'c' + Date.now().toString(36);
@@ -469,7 +499,7 @@
       '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.21.2 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.21.3 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -2296,7 +2326,7 @@
       '<div class="sheet-h">名单管理</div>' +
       '<div class="tiny">当前 ' + P.d.kids.length + ' 人</div>' +
       '<div class="btn-row" style="margin-top:10px"><button class="btn" id="rsImport">批量粘贴导入</button><button class="btn ghost" id="rsOne">＋ 添加一人</button></div>' +
-      '<div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="rsGroup" style="flex:1">🏷️ 分组管理</button></div>' +
+      '<div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="rsGroup" style="flex:1">🏷️ 分组管理</button><button class="btn ghost" id="rsPets" style="flex:1">🎲 重新分配宠物</button></div>' +
       '<div style="margin-top:14px;max-height:46vh;overflow:auto" id="rsList">' + rosterRows() + '</div>',
       (m, close) => {
         const repaint = () => { m.querySelector('#rsList').innerHTML = rosterRows(); bindRows(); render(); };
@@ -2320,6 +2350,7 @@
         m.querySelector('#rsImport').onclick = () => { close(); importSheet(); };
         m.querySelector('#rsOne').onclick = () => { close(); addKidSheet(); };
         m.querySelector('#rsGroup').onclick = () => { close(); groupSheet(); };
+        m.querySelector('#rsPets').onclick = () => { close(); reassignPetsSheet(); };
       });
   }
   /* 分组管理：新建 / 重命名 / 删除分组，并给每个学生指定分组 */
@@ -2386,6 +2417,33 @@
     return P.d.kids.map((k, i) => '<div class="pend-item"><div class="body"><div class="pn">' + (i + 1) + '. ' + esc(k.name) +
       '<span class="tiny" style="margin-left:8px">' + (k.group ? esc(k.group) : '未分组') + ' · ' + k.points + ' 分 · Lv.' + k.pet.lv + '</span></div></div>' +
       '<div class="ops"><button class="ok" data-ren="' + k.id + '">✏️</button><button class="no" data-del="' + k.id + '">🗑</button></div></div>').join('');
+  }
+  /* 手动全班重抽：一次性打乱 50 只池，按顺序分给全班，班内绝不重复 */
+  function reassignPetsSheet() {
+    const n = P.d.kids.length;
+    if (!n) { toast('还没有学生'); return; }
+    openSheet(
+      '<div class="sheet-h">重新分配宠物</div>' +
+      '<div class="tiny">给全班 ' + n + ' 名学生重新随机分配形象，<b>班内不重复</b>；积分、等级、记录都不变。</div>' +
+      '<div class="warn" style="margin-top:10px">图鉴会按新宠物重建，之前解锁的旧宠物图鉴会清掉。</div>' +
+      '<div style="margin-top:12px"><button class="btn" id="rpGo">开始重新分配</button></div>',
+      (m, close) => {
+        m.querySelector('#rpGo').onclick = () => {
+          const pool = CREATURES.slice();
+          for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+          P.d.kids.forEach((k, i) => {
+            const pick = pool[i % pool.length];
+            const lv = (k.pet && k.pet.lv) || 3;
+            const exp = (k.pet && k.pet.exp) || 0;
+            k.pet = { name: pick.name, type: pick.id, exp, lv };
+            k.skin = null;
+            k.dex = { egg: true };
+            STAGES.forEach((s) => { if (lv >= s.min && s.suffix !== 'egg') k.dex[pick.id + '-' + s.suffix] = true; });
+          });
+          P.save(); close(); render();
+          toast('已重新分配 ' + n + ' 人的宠物');
+        };
+      });
   }
   function importSheet() {
     openSheet(
@@ -3057,7 +3115,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3212', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3213', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

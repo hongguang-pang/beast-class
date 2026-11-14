@@ -314,7 +314,7 @@ svg{display:block}
 .stu{position:relative;background:var(--surface);border-radius:16px;padding:11px 6px 9px;text-align:center;
   box-shadow:var(--shadow);border:2px solid transparent;cursor:pointer;transition:.15s;overflow:hidden}
 .stu:active{transform:scale(.96)}
-.stu .av{width:56px;height:56px;margin:0 auto 6px;border-radius:50%;overflow:hidden;background:var(--brand-soft);
+.stu .av{width:64px;height:64px;margin:0 auto 6px;border-radius:14px;overflow:hidden;background:var(--brand-soft);box-shadow:0 2px 10px var(--glow,transparent), inset 0 0 10px var(--glow,transparent);
   border:2px solid var(--line)}
 .stu-grid.sm .av{width:44px;height:44px;margin-bottom:4px}
 .stu .av img{width:100%;height:100%;object-fit:cover;display:block}
@@ -655,7 +655,7 @@ svg{display:block}
   /* —— 全班页：学生墙自动多列 —— */
   .cls-page .stu-grid{grid-template-columns:repeat(auto-fill,minmax(122px,1fr))}
   .cls-page .stu-grid.sm{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
-  .cls-page .stu .av{width:64px;height:64px}
+  .cls-page .stu .av{width:72px;height:72px}
   .cls-page .ch-acts{max-width:560px}
 
   /* —— 光荣榜：左领奖台+小组PK，右榜单 —— */

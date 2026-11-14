@@ -3,36 +3,143 @@
   'use strict';
 
   /* ================= 宠物定义 ================= */
+  /* v3.22: 100 只全新 AI 宠物（四形态动图, images/gif/），主色自动提取 */
   const PETS = {
-    fire:   { name: '小火狐', emoji: '🦊', glow: 'rgba(255,120,60,.5)' },
-    water:  { name: '泡泡龟', emoji: '🐢', glow: 'rgba(80,170,255,.5)' },
-    grass:  { name: '芽芽龙', emoji: '🐲', glow: 'rgba(110,230,140,.5)' },
-    thunder:{ name: '电电鼠', emoji: '🐹', glow: 'rgba(255,220,70,.55)' },
-    light:  { name: '星光鹿', emoji: '🦌', glow: 'rgba(255,240,180,.5)' }
+    P001: { name: '焰爪犬', emoji: '🔥', hue: 18, glow: 'rgba(255,174,140,.55)' },
+    P002: { name: '火尾猫', emoji: '🔥', hue: 14, glow: 'rgba(255,167,140,.55)' },
+    P003: { name: '熔岩龙', emoji: '🔥', hue: 22, glow: 'rgba(255,182,140,.55)' },
+    P004: { name: '炎羽隼', emoji: '🔥', hue: 12, glow: 'rgba(255,163,140,.55)' },
+    P005: { name: '焰蝶', emoji: '🔥', hue: 16, glow: 'rgba(255,170,140,.55)' },
+    P006: { name: '温泉鲤', emoji: '🔥', hue: 11, glow: 'rgba(255,161,140,.55)' },
+    P007: { name: '火团子', emoji: '🔥', hue: 19, glow: 'rgba(255,176,140,.55)' },
+    P008: { name: '焰炉骑士', emoji: '🔥', hue: 23, glow: 'rgba(255,184,140,.55)' },
+    P009: { name: '锅炉机', emoji: '🔥', hue: 25, glow: 'rgba(255,187,140,.55)' },
+    P010: { name: '焰背熊', emoji: '🔥', hue: 9, glow: 'rgba(255,158,140,.55)' },
+    P011: { name: '潮汐猫', emoji: '💧', hue: 196, glow: 'rgba(140,224,255,.55)' },
+    P012: { name: '珊瑚龙', emoji: '🔥', hue: 13, glow: 'rgba(255,165,140,.55)' },
+    P013: { name: '浪羽鸥', emoji: '💧', hue: 182, glow: 'rgba(140,251,255,.55)' },
+    P014: { name: '螺壳虫', emoji: '💧', hue: 181, glow: 'rgba(140,253,255,.55)' },
+    P015: { name: '波波鲸', emoji: '💧', hue: 206, glow: 'rgba(140,205,255,.55)' },
+    P016: { name: '水泡团', emoji: '💧', hue: 184, glow: 'rgba(140,247,255,.55)' },
+    P017: { name: '潜水骑士', emoji: '⚡', hue: 49, glow: 'rgba(255,233,140,.55)' },
+    P018: { name: '声呐机', emoji: '💧', hue: 167, glow: 'rgba(140,255,231,.55)' },
+    P019: { name: '海龟霸', emoji: '⚡', hue: 33, glow: 'rgba(255,203,140,.55)' },
+    P020: { name: '浪尾犬', emoji: '⚡', hue: 34, glow: 'rgba(255,206,140,.55)' },
+    P021: { name: '羽叶雀', emoji: '⚡', hue: 68, glow: 'rgba(240,255,140,.55)' },
+    P022: { name: '叶甲虫', emoji: '⚡', hue: 66, glow: 'rgba(243,255,140,.55)' },
+    P023: { name: '荷塘蛙', emoji: '💧', hue: 172, glow: 'rgba(140,255,239,.55)' },
+    P024: { name: '苔球团', emoji: '🌿', hue: 75, glow: 'rgba(227,255,140,.55)' },
+    P025: { name: '树灵童子', emoji: '🔥', hue: 23, glow: 'rgba(255,185,140,.55)' },
+    P026: { name: '木纹机', emoji: '🔥', hue: 28, glow: 'rgba(255,193,140,.55)' },
+    P027: { name: '森角鹿', emoji: '🔥', hue: 25, glow: 'rgba(255,187,140,.55)' },
+    P028: { name: '藤尾犬', emoji: '⚡', hue: 35, glow: 'rgba(255,208,140,.55)' },
+    P029: { name: '花斑猫', emoji: '🔥', hue: 11, glow: 'rgba(255,162,140,.55)' },
+    P030: { name: '巨木龙', emoji: '🔥', hue: 25, glow: 'rgba(255,187,140,.55)' },
+    P031: { name: '电光蛾', emoji: '⚡', hue: 47, glow: 'rgba(255,230,140,.55)' },
+    P032: { name: '雷鳗', emoji: '💧', hue: 205, glow: 'rgba(140,208,255,.55)' },
+    P033: { name: '静电球', emoji: '⚡', hue: 47, glow: 'rgba(255,230,140,.55)' },
+    P034: { name: '引雷术士', emoji: '💧', hue: 263, glow: 'rgba(184,140,255,.55)' },
+    P035: { name: '特斯拉机', emoji: '⚡', hue: 43, glow: 'rgba(255,222,140,.55)' },
+    P036: { name: '雷纹犀', emoji: '⚡', hue: 38, glow: 'rgba(255,212,140,.55)' },
+    P037: { name: '闪电犬', emoji: '⚡', hue: 42, glow: 'rgba(255,221,140,.55)' },
+    P038: { name: '噼啪猫', emoji: '⚡', hue: 43, glow: 'rgba(255,222,140,.55)' },
+    P039: { name: '霆龙', emoji: '💧', hue: 178, glow: 'rgba(140,255,252,.55)' },
+    P040: { name: '雷羽鹫', emoji: '⚡', hue: 50, glow: 'rgba(255,236,140,.55)' },
+    P041: { name: '冰鳍鱼', emoji: '💧', hue: 203, glow: 'rgba(140,210,255,.55)' },
+    P042: { name: '雪球团', emoji: '💧', hue: 189, glow: 'rgba(140,237,255,.55)' },
+    P043: { name: '雪原猎人', emoji: '💧', hue: 203, glow: 'rgba(140,210,255,.55)' },
+    P044: { name: '冷凝机', emoji: '💧', hue: 189, glow: 'rgba(140,238,255,.55)' },
+    P045: { name: '冰甲熊', emoji: '💧', hue: 204, glow: 'rgba(140,209,255,.55)' },
+    P046: { name: '霜尾犬', emoji: '💧', hue: 202, glow: 'rgba(140,213,255,.55)' },
+    P047: { name: '雪斑猫', emoji: '💧', hue: 202, glow: 'rgba(140,213,255,.55)' },
+    P048: { name: '冰晶龙', emoji: '💧', hue: 200, glow: 'rgba(140,217,255,.55)' },
+    P049: { name: '霜羽鸮', emoji: '🔥', hue: 29, glow: 'rgba(255,196,140,.55)' },
+    P050: { name: '冰甲虫', emoji: '💧', hue: 190, glow: 'rgba(140,235,255,.55)' },
+    P051: { name: '云朵团', emoji: '🔥', hue: 11, glow: 'rgba(255,162,140,.55)' },
+    P052: { name: '御风少年', emoji: '⚡', hue: 57, glow: 'rgba(255,249,140,.55)' },
+    P053: { name: '螺旋桨机', emoji: '💧', hue: 178, glow: 'rgba(140,255,251,.55)' },
+    P054: { name: '云羊', emoji: '💧', hue: 172, glow: 'rgba(140,255,239,.55)' },
+    P055: { name: '疾风犬', emoji: '💧', hue: 184, glow: 'rgba(140,248,255,.55)' },
+    P056: { name: '轻足猫', emoji: '🔥', hue: 7, glow: 'rgba(255,154,140,.55)' },
+    P057: { name: '翔龙', emoji: '💧', hue: 175, glow: 'rgba(140,255,246,.55)' },
+    P058: { name: '云羽鹰', emoji: '⚡', hue: 44, glow: 'rgba(255,225,140,.55)' },
+    P059: { name: '风蜻蜓', emoji: '💧', hue: 170, glow: 'rgba(140,255,235,.55)' },
+    P060: { name: '风筝鱼', emoji: '💧', hue: 180, glow: 'rgba(140,255,255,.55)' },
+    P061: { name: '石匠学徒', emoji: '🔥', hue: 26, glow: 'rgba(255,190,140,.55)' },
+    P062: { name: '钻头机', emoji: '🔥', hue: 25, glow: 'rgba(255,188,140,.55)' },
+    P063: { name: '岩背象', emoji: '🔥', hue: 27, glow: 'rgba(255,192,140,.55)' },
+    P064: { name: '岩犬', emoji: '🔥', hue: 15, glow: 'rgba(255,169,140,.55)' },
+    P065: { name: '砾石猫', emoji: '⚡', hue: 39, glow: 'rgba(255,214,140,.55)' },
+    P066: { name: '晶簇龙', emoji: '🌙', hue: 273, glow: 'rgba(203,140,255,.55)' },
+    P067: { name: '沙羽鹰', emoji: '🔥', hue: 28, glow: 'rgba(255,193,140,.55)' },
+    P068: { name: '甲壳虫', emoji: '🔥', hue: 25, glow: 'rgba(255,188,140,.55)' },
+    P069: { name: '泥沼龟', emoji: '⚡', hue: 50, glow: 'rgba(255,235,140,.55)' },
+    P070: { name: '沙团子', emoji: '🔥', hue: 26, glow: 'rgba(255,189,140,.55)' },
+    P071: { name: '卫星机', emoji: '💧', hue: 218, glow: 'rgba(140,182,255,.55)' },
+    P072: { name: '星角兽', emoji: '💧', hue: 212, glow: 'rgba(140,194,255,.55)' },
+    P073: { name: '流星犬', emoji: '💧', hue: 184, glow: 'rgba(140,247,255,.55)' },
+    P074: { name: '月牙猫', emoji: '⚡', hue: 41, glow: 'rgba(255,219,140,.55)' },
+    P075: { name: '银河龙', emoji: '💧', hue: 264, glow: 'rgba(186,140,255,.55)' },
+    P076: { name: '星鸦', emoji: '💧', hue: 225, glow: 'rgba(140,169,255,.55)' },
+    P077: { name: '星尘蝶', emoji: '🌙', hue: 274, glow: 'rgba(206,140,255,.55)' },
+    P078: { name: '深空鲸', emoji: '💧', hue: 228, glow: 'rgba(140,163,255,.55)' },
+    P079: { name: '星核团', emoji: '💧', hue: 207, glow: 'rgba(140,204,255,.55)' },
+    P080: { name: '观星者', emoji: '💧', hue: 225, glow: 'rgba(140,169,255,.55)' },
+    P081: { name: '钢甲熊', emoji: '⚡', hue: 32, glow: 'rgba(255,201,140,.55)' },
+    P082: { name: '齿轮犬', emoji: '🔥', hue: 25, glow: 'rgba(255,187,140,.55)' },
+    P083: { name: '伺服猫', emoji: '💧', hue: 172, glow: 'rgba(140,255,239,.55)' },
+    P084: { name: '液压龙', emoji: '🔥', hue: 26, glow: 'rgba(255,189,140,.55)' },
+    P085: { name: '无人机隼', emoji: '🌿', hue: 90, glow: 'rgba(198,255,140,.55)' },
+    P086: { name: '纳米蛛', emoji: '🌙', hue: 274, glow: 'rgba(205,140,255,.55)' },
+    P087: { name: '潜航鲸机', emoji: '💧', hue: 207, glow: 'rgba(140,204,255,.55)' },
+    P088: { name: '电池团', emoji: '🌿', hue: 87, glow: 'rgba(204,255,140,.55)' },
+    P089: { name: '机甲学员', emoji: '🔥', hue: 19, glow: 'rgba(255,176,140,.55)' },
+    P090: { name: '装甲核心', emoji: '🔥', hue: 26, glow: 'rgba(255,190,140,.55)' },
+    P091: { name: '鼓点犬', emoji: '🔥', hue: 15, glow: 'rgba(255,169,140,.55)' },
+    P092: { name: '提琴猫', emoji: '🔥', hue: 351, glow: 'rgba(255,140,157,.55)' },
+    P093: { name: '铜管龙', emoji: '⚡', hue: 36, glow: 'rgba(255,209,140,.55)' },
+    P094: { name: '口哨雀', emoji: '⚡', hue: 56, glow: 'rgba(255,247,140,.55)' },
+    P095: { name: '节拍蜂', emoji: '⚡', hue: 33, glow: 'rgba(255,204,140,.55)' },
+    P096: { name: '回音鱼', emoji: '💧', hue: 176, glow: 'rgba(140,255,247,.55)' },
+    P097: { name: '音符团', emoji: '🔥', hue: 333, glow: 'rgba(255,140,191,.55)' },
+    P098: { name: '指挥家', emoji: '🔥', hue: 27, glow: 'rgba(255,191,140,.55)' },
+    P099: { name: '混音机', emoji: '🌙', hue: 275, glow: 'rgba(208,140,255,.55)' },
+    P100: { name: '低音犀', emoji: '🔥', hue: 20, glow: 'rgba(255,179,140,.55)' }
   };
 
-  /* ---- 50 种宠物池：5 经典（有成长立绘）+ 45 班级专属（动态绘制，班内不重复分配）---- */
-  const EXTRA_PETS = [
-    ['云朵羊','🐑',210],['焰尾狮','🦁',25],['冰霜熊','🐻',190],['影风狼','🐺',260],['蹦蹦兔','🐰',320],
-    ['呆呆猪','🐷',340],['阔耳蛙','🐸',130],['灵动猴','🐵',30],['憨憨象','🐘',220],['甜甜猫','🐱',45],
-    ['咕咕鸡','🐤',50],['淘淘鸭','🦆',55],['蓝鲸灵','🐳',205],['海豚音','🐬',195],['章鱼侠','🐙',280],
-    ['河豚炮','🐡',15],['虾兵卫','🦐',10],['螃蟹将','🦀',8],['蜜蜂侠','🐝',48],['彩蝶仙','🦋',300],
-    ['瓢虫盾','🐞',0],['甲壳骑士','🪲',270],['蜗牛慢递','🐌',110],['鹰眼卫','🦅',35],['鸮学士','🦉',28],
-    ['企鹅绅士','🐧',200],['火烈鸟','🦩',350],['孔雀屏','🦚',170],['隐身龙','🦎',95],['硬汉鳄','🐊',100],
-    ['冲锋犀','🦏',235],['泡泡河马','🦛',250],['闪电斑马','🦓',40],['瞭望鹿鹿','🦒',65],['拳击袋鼠','🦘',18],
-    ['慢悠树懒','🦥',150],['探员浣熊','🦝',20],['针甲刺猬','🦔',60],['沙漠驼','🐪',42],['夜影蝠','🦇',265],
-    ['锦鲤运','🐟',5],['珊瑚鱼灵','🐠',165],['墨影鱿','🦑',290],['雪原猛犸','🦣',230],['三角龙卫','🦕',120]
-  ];
-  const CLASSIC_HUE = { fire: 20, water: 205, grass: 125, thunder: 52, light: 65 };
   const CREATURES = Object.keys(PETS).map((id) =>
-    ({ id, name: PETS[id].name, emoji: PETS[id].emoji, hue: CLASSIC_HUE[id], classic: true, glow: PETS[id].glow })
-  ).concat(EXTRA_PETS.map((x, i) =>
-    ({ id: 'c' + (i + 1), name: x[0], emoji: x[1], hue: x[2], classic: false, glow: 'hsla(' + x[2] + ',85%,62%,.55)' })
-  ));
+    ({ id, name: PETS[id].name, emoji: PETS[id].emoji, hue: PETS[id].hue, classic: true, glow: PETS[id].glow })
+  );
+
   const petMeta = (id) => {
     for (const c of CREATURES) if (c.id === id) return c;
     return { id, name: '神秘宠物', emoji: '🥚', hue: 260, classic: false, glow: 'hsla(260,85%,62%,.55)' };
   };
+  /* v3.22 迁移: 旧宠物 ID -> 新 100 只体系（形象+名字全换新, 积分/等级/记录保留） */
+  const PET_MIGRATE = { fire: 'P001', water: 'P002', grass: 'P003', thunder: 'P004', light: 'P005', c1: 'P006', c2: 'P007', c3: 'P008', c4: 'P009', c5: 'P010', c6: 'P011', c7: 'P012', c8: 'P013', c9: 'P014', c10: 'P015', c11: 'P016', c12: 'P017', c13: 'P018', c14: 'P019', c15: 'P020', c16: 'P021', c17: 'P022', c18: 'P023', c19: 'P024', c20: 'P025', c21: 'P026', c22: 'P027', c23: 'P028', c24: 'P029', c25: 'P030', c26: 'P031', c27: 'P032', c28: 'P033', c29: 'P034', c30: 'P035', c31: 'P036', c32: 'P037', c33: 'P038', c34: 'P039', c35: 'P040', c36: 'P041', c37: 'P042', c38: 'P043', c39: 'P044', c40: 'P045', c41: 'P046', c42: 'P047', c43: 'P048', c44: 'P049', c45: 'P050' };
+  const migratePetType = (t) => PET_MIGRATE[t] || t;
+  function migratePetsData(d) {
+    if (!d || d.petsV22) return;
+    const conv = (k) => {
+      if (!k || !k.pet) return;
+      k.pet.type = migratePetType(k.pet.type);
+      if (k.pet.name !== undefined) k.pet.name = petMeta(k.pet.type).name;
+      if (k.skin) k.skin = migratePetType(k.skin);
+      if (Array.isArray(k.companions)) k.companions.forEach((c) => { c.type = migratePetType(c.type); });
+      if (k.dex) {
+        const nd = {};
+        Object.keys(k.dex).forEach((key) => {
+          const i = key.indexOf('-');
+          if (i > 0) { const t = migratePetType(key.slice(0, i)); nd[t + key.slice(i)] = true; }
+          else nd[key] = k.dex[key];
+        });
+        k.dex = nd;
+      }
+    };
+    (Array.isArray(d.kids) ? d.kids : []).forEach(conv);
+    (Array.isArray(d.classes) ? d.classes : []).forEach((c) => { if (c && Array.isArray(c.kids)) c.kids.forEach(conv); });
+    d.petsV22 = true;
+  }
   const creatureCache = {};
   /* 老电脑可能没有彩色 emoji 字体（canvas 上画出来是空白），
      提前检测：emoji 画不出彩色像素时，改画名字首字，保证每只宠物都有形象 */
@@ -118,7 +225,7 @@
   const expNeed = (lv) => 20 + (lv - 1) * 12;
   const stageIdxOf = (lv) => { let i = 0; STAGES.forEach((s, j) => { if (lv >= s.min) i = j; }); return i; };
   /* 全部 50 只宠物都有图片立绘（经典五系为原立绘，c 系为 AI 立绘 + 四阶段合成图） */
-  const imgFor = (el, si) => si === 0 ? 'images/egg.jpg' : 'images/' + el + '-' + STAGES[si].suffix + '.jpg';
+  const imgFor = (el, si) => si === 0 ? 'images/egg.jpg' : 'images/gif/' + el + '-' + STAGES[si].suffix + '.gif';
   const petImg = (k) => imgFor(k.skin || k.pet.type, stageIdxOf(k.pet.lv));
   const petEmoji = (k) => stageOf(k.pet.lv).emoji || petMeta(k.pet.type).emoji;
 
@@ -218,6 +325,7 @@
         }
         if (!Array.isArray(this.d.classes)) this.d.classes = [];
         if (this.d.clsId === undefined) this.d.clsId = null;
+        migratePetsData(this.d);
         this.d.kids.forEach((k) => {
           if (!k.dex) k.dex = {};
           if (!k.companions) k.companions = [];
@@ -1804,7 +1912,7 @@
       '<div class="stu-grid" id="stuGrid">' +
       (list.length ? list.map((k) => {
         const r = rankMap[k.id];
-        return '<div class="stu' + (r <= 3 ? ' top' + r : '') + '" data-k="' + k.id + '">' +
+        return '<div class="stu' + (r <= 3 ? ' top' + r : '') + '" data-k="' + k.id + '" style="--glow:' + petMeta(k.skin || k.pet.type).glow + '">' +
           '<div class="av"><img src="' + petImg(k) + '" alt="" loading="lazy"></div>' +
           '<div class="nm">' + esc(k.name) + '</div>' +
           '<div class="pt">' + k.points + '</div>' +

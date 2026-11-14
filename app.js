@@ -659,14 +659,15 @@
   }
 
   function stepFamily(el) {
-    let type = 'fire';
+    const FIRST_PET = Object.keys(PETS)[0];
+    let type = FIRST_PET;
     el.innerHTML =
       '<h2 style="margin-top:0">开始养成</h2>' +
       '<p>孩子做任务赚积分，宠物跟着升级进化；积分还能在商店兑换奖励。</p>' +
       '<div class="field"><label>孩子的名字 / 称呼</label><input id="wName" placeholder="比如：小明、姐姐、哥哥" maxlength="8"></div>' +
       '<div style="margin-top:16px;font-size:13px;font-weight:650;opacity:.9">选一只初始宠物蛋</div>' +
       '<div class="pet-picks">' + Object.entries(PETS).map(([k, p]) =>
-        '<button data-t="' + k + '" class="' + (k === 'fire' ? 'on' : '') + '">' + p.emoji + '</button>').join('') + '</div>' +
+        '<button data-t="' + k + '" class="' + (k === FIRST_PET ? 'on' : '') + '">' + p.emoji + '</button>').join('') + '</div>' +
       '<button class="btn" id="wGo">开始养成 🎉</button>' +
       '<button class="w-back" id="wcBack">‹ 返回</button>';
     el.querySelector('#wcBack').onclick = () => stepRole(el);
@@ -676,7 +677,7 @@
     }));
     el.querySelector('#wGo').onclick = () => {
       const name = el.querySelector('#wName').value.trim() || '宝贝';
-      const k = { id: uid(), name, points: 0, daily: {}, pet: { name: PETS[type].name, type, exp: 0, lv: 1 }, dex: { egg: true }, companions: [], milestones: [], skin: null };
+      const k = { id: uid(), name, points: 0, daily: {}, pet: { name: PETS[type].name, type, exp: 0, lv: 1 }, dex: { egg: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null };
       P.d.mode = 'family';
       P.d.kids.push(k);
       P.d.cur = k.id;

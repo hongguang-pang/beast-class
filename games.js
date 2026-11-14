@@ -1,5 +1,5 @@
 /* ============================================================
-   伴学宠物 v3.23 · 答题游戏包
+   伴学宠物 v3.25 · 答题游戏包
    游戏一：🎯 每日打卡答题（每天随机 5 种题型，参考闯关原型）
    游戏二：🗺️ 知识冒险闯关（家庭模式：易到难地图 + 复习营地
            + 单元 Boss + 年级最终 Boss + 收集 + 错题校验）
@@ -219,6 +219,257 @@
   };
   const GRADES = Object.keys(DB);
 
+  /* ================= v3.25 学科混排 =================
+     主课：语文/数学/英语（权重高）  副课：科学/生活常识（权重低）
+     关卡难度 lv0-4 与节点进度挂钩，题目按 lv 出 */
+  const SUBJ = {
+    en:   { icon: '🔤', name: '英语', c: '#4da3ff', bosses: ['单词巨龙', '句型法师'] },
+    cn:   { icon: '🀄', name: '语文', c: '#ff8a65', bosses: ['拼音妖王', '成语守门人'] },
+    math: { icon: '➗', name: '数学', c: '#7ecb5f', bosses: ['计算魔王', '算式巨兽'] },
+    sci:  { icon: '🔬', name: '科学', c: '#9b7bff', bosses: ['自然谜题兽', '实验怪博士'] },
+    eth:  { icon: '🌱', name: '常识', c: '#4db6ac', bosses: ['习惯小卫士', '品德考官'] }
+  };
+  /* 主课侧重：语数英各 26%，副课合计 22% */
+  const SUBJ_W = { en: 26, cn: 26, math: 26, sci: 11, eth: 11 };
+  function weightedSubj() {
+    let v = Math.random() * 100, acc = 0;
+    for (const s in SUBJ_W) { acc += SUBJ_W[s]; if (v < acc) return s; }
+    return 'en';
+  }
+  /* 英语题型难度阶梯：lv 越高解锁越难题型 */
+  const EN_TYPS = ['pic', 'e2c', 'c2e', 'fill', 'odd', 'sit', 'gra'];
+  function enTypesFor(lv, g) {
+    const t = EN_TYPS.slice(0, Math.min(EN_TYPS.length, 3 + lv));
+    if (g === 'g1' && lv <= 1) t.unshift('letter');
+    return t;
+  }
+
+  /* ---------- 语文题库 [题干, 正确, 错1, 错2, lv] ---------- */
+  const SUBJ_QB = {
+    cn: {
+      g1: [
+        ['"大"的反义词是：', '小', '高', '长', 0],
+        ['"上"的反义词是：', '下', '左', '里', 0],
+        ['"日"加一笔可以变成：', '目', '木', '水', 1],
+        ['"mā ma"对应的词语是：', '妈妈', '马马', '麻麻', 1],
+        ['选量词：一___小鸟', '只', '条', '头', 2],
+        ['"东"的反义词是：', '西', '南', '北', 2],
+        ['《静夜思》的作者是：', '李白', '杜甫', '白居易', 3],
+        ['"床前明月光"的下一句是：', '疑是地上霜', '低头思故乡', '举头望明月', 3],
+        ['"春眠不觉晓"的下一句是：', '处处闻啼鸟', '花落知多少', '夜来风雨声', 4],
+        ['"山"共有几画？', '3 画', '2 画', '4 画', 4]
+      ],
+      g2: [
+        ['选量词：一___小狗', '只', '座', '把', 0],
+        ['"里"的反义词是：', '外', '上', '东', 0],
+        ['《咏鹅》的作者是：', '骆宾王', '李白', '孟浩然', 1],
+        ['"生日"的"生"可以组词：', '生活', '生肖', '升起', 1],
+        ['"欲穷千里目"的下一句是：', '更上一层楼', '黄河入海流', '白日依山尽', 2],
+        ['"春天"的"春"可以组词：', '春风', '日春', '春开', 2],
+        ['"狐假虎威"中"假"的意思是：', '借', '不真', '假扮', 3],
+        ['"高大"的反义词是：', '矮小', '巨大', '长短', 3],
+        ['"遥知不是雪，为有暗香来"写的是：', '梅花', '雪花', '梨花', 4],
+        ['"种瓜得瓜"的下一句是：', '种豆得豆', '种树得树', '自食其果', 4]
+      ],
+      g3: [
+        ['"称"在"称重"中读：', 'chēng', 'chèng', 'chěng', 0],
+        ['"分明"的近义词是：', '清楚', '模糊', '黑暗', 1],
+        ['"霜叶红于二月花"出自：', '《山行》', '《夜书所见》', '《望天门山》', 2],
+        ['"天门中断楚江开"的"楚江"指：', '长江', '黄河', '淮河', 2],
+        ['"画蛇添足"比喻：', '多此一举', '画技高超', '锦上添花', 3],
+        ['《夜书所见》的作者是：', '叶绍翁', '苏轼', '杜牧', 3],
+        ['"二人同心，___"', '其利断金', '其利断银', '万事如意', 4],
+        ['"灯不拨不亮，___"', '理不辩不明', '火不吹不灭', '话不说不明', 4]
+      ],
+      g4: [
+        ['"雄伟"的近义词是：', '宏伟', '渺小', '普通', 0],
+        ['《题西林壁》的作者苏轼是___代人：', '宋', '唐', '明', 0],
+        ['"横看成岭侧成峰"的下一句是：', '远近高低各不同', '不识庐山真面目', '只缘身在此山中', 1],
+        ['"锣鼓喧天"的"喧"意思是：', '声音大', '吵闹打架', '飞起来', 1],
+        ['下面是比喻句的是：', '弯弯的月亮像一条小船', '月亮升起来了', '月亮真亮啊', 2],
+        ['"博学多通"中"通"的意思是：', '通晓', '通过', '通行', 2],
+        ['"精卫填海"里精卫是：', '一只神鸟', '一块石头', '一位渔夫', 3],
+        ['"嫦娥应悔偷灵药"的作者是：', '李商隐', '李白', '王维', 3],
+        ['"但使龙城飞将在"中"飞将"指：', '李广', '关羽', '岳飞', 4],
+        ['"暮色"的"暮"意思是：', '傍晚', '早晨', '深夜', 4]
+      ],
+      g5: [
+        ['"吩咐"的近义词是：', '嘱咐', '训斥', '唠叨', 0],
+        ['《白鹭》的作者是：', '郭沫若', '老舍', '巴金', 0],
+        ['"太阳揭开了面纱"是___句：', '拟人', '比喻', '夸张', 1],
+        ['《示儿》的作者陆游是___代诗人：', '宋', '唐', '清', 1],
+        ['"王师北定中原日"的下一句是：', '家祭无忘告乃翁', '但悲不见九州同', '遍插茱萸少一人', 2],
+        ['"津津有味"中"津津"形容：', '兴趣浓厚', '汗水直流', '口水流出', 2],
+        ['"及时雨"是《水浒传》里___的绰号：', '宋江', '武松', '林冲', 3],
+        ['《少年中国说》的作者是：', '梁启超', '鲁迅', '朱自清', 3],
+        ['"问君能有几多愁"的下一句是：', '恰似一江春水向东流', '只是朱颜改', '故国不堪回首月明中', 4],
+        ['《假如给我三天光明》的作者是：', '海伦·凯勒', '安徒生', '格林兄弟', 4]
+      ],
+      g6: [
+        ['《草原》的作者是：', '老舍', '巴金', '冰心', 0],
+        ['"截然不同"的"截"在这里表示：', '界限分明', '切断', '阻拦', 0],
+        ['"千里莺啼绿映红"出自：', '《江南春》', '《春日》', '《泊船瓜洲》', 1],
+        ['"操千曲而后晓声"的下一句是：', '观千剑而后识器', '读万卷而后知理', '行万里而后明道', 1],
+        ['"昔我往矣，杨柳依依"的下一句是：', '今我来思，雨雪霏霏', '路漫漫其修远', '风萧萧兮易水寒', 2],
+        ['"五行"不包括下面哪个：', '风', '水', '火', 2],
+        ['"弈秋，通国之___弈者也"填：', '善', '好', '会', 3],
+        ['《两小儿辩日》中两小儿在争论：', '太阳什么时候离人近', '太阳有多大', '太阳是什么颜色', 3],
+        ['"少壮不努力"的下一句是：', '老大徒伤悲', '岁月不待人', '悔恨泪满襟', 4],
+        ['"苟利国家生死以"的作者是：', '林则徐', '文天祥', '陆游', 4]
+      ]
+    },
+    /* ---------- 副课题库 [题干, 正确, 错1, 错2, kind, lv] ---------- */
+    sub: {
+      g1: [
+        ['太阳从哪边升起？', '东边', '西边', '南边', 'sci', 0],
+        ['植物生长需要：', '阳光和水', '只有土', '只有风', 'sci', 0],
+        ['一年有几个季节？', '4 个', '2 个', '6 个', 'sci', 1],
+        ['冰融化后会变成：', '水', '气', '石头', 'sci', 2],
+        ['上课想发言应该：', '先举手', '直接喊', '站起来就走', 'eth', 0],
+        ['红灯亮了应该：', '停下等待', '赶紧跑过去', '绕着走', 'eth', 1]
+      ],
+      g2: [
+        ['月亮自己会发光吗？', '不会，反射太阳光', '会，月亮是灯', '有时会', 'sci', 0],
+        ['彩虹一般有几种颜色？', '7 种', '5 种', '10 种', 'sci', 1],
+        ['小鱼用什么呼吸？', '鳃', '鼻子', '肺', 'sci', 2],
+        ['同学摔倒了你应该：', '扶起他', '笑话他', '装没看见', 'eth', 0],
+        ['过马路要走：', '斑马线', '随便走', '车缝里钻', 'eth', 1],
+        ['垃圾分类中，果皮属于：', '厨余垃圾', '可回收物', '有害垃圾', 'eth', 2]
+      ],
+      g3: [
+        ['人体最大的器官是：', '皮肤', '心脏', '大脑', 'sci', 1],
+        ['标准大气压下水的沸点是：', '100℃', '50℃', '200℃', 'sci', 1],
+        ['声音在___中传播最快：', '固体', '液体', '气体', 'sci', 2],
+        ['升国旗时应该：', '肃立敬礼', '继续玩耍', '大声聊天', 'eth', 1],
+        ['遇到火灾应拨打电话：', '119', '110', '120', 'eth', 2],
+        ['地球绕太阳转一圈是：', '一年', '一天', '一月', 'sci', 3]
+      ],
+      g4: [
+        ['植物的光合作用吸收：', '二氧化碳', '氧气', '氮气', 'sci', 1],
+        ['力的大小的单位是：', '牛顿', '米', '千克', 'sci', 2],
+        ['食物中主要提供能量的是：', '糖类', '维生素', '纤维', 'sci', 3],
+        ['乘公交车应该：', '排队先下后上', '抢着上车', '从后门挤', 'eth', 1],
+        ['网上陌生人索要照片应：', '拒绝并告诉家长', '发给他', '聊着玩', 'eth', 2],
+        ['维生素C 含量最多的是：', '新鲜蔬菜水果', '饼干', '可乐', 'sci', 3]
+      ],
+      g5: [
+        ['地球自转产生：', '昼夜交替', '四季变化', '月相变化', 'sci', 1],
+        ['声音不能在___中传播：', '真空', '水', '空气', 'sci', 2],
+        ['种子萌发必需条件不包括：', '阳光', '水分', '空气', 'sci', 3],
+        ['"诚信"是指：', '说话算数', '什么都答应', '不说真话', 'eth', 1],
+        ['看见同学被欺负应该：', '告诉老师家长', '围观起哄', '帮忙欺负', 'eth', 3],
+        ['人体需要的能量主要来自：', '食物', '晒太阳', '睡觉', 'sci', 3]
+      ],
+      g6: [
+        ['地球绕太阳公转产生：', '四季变化', '昼夜交替', '潮汐', 'sci', 2],
+        ['太阳系中最大的行星是：', '木星', '地球', '土星', 'sci', 2],
+        ['光在真空中的速度约：', '30 万公里/秒', '3 万公里/秒', '300 公里/秒', 'sci', 3],
+        ['"己所不欲，勿施于人"意思是：', '自己不想要的别强加给人', '自己想要就抢', '别人给就要', 'eth', 2],
+        ['下面属于公民基本义务的是：', '依法纳税', '每天锻炼', '必须游泳', 'eth', 3],
+        ['生物体的基本单位是：', '细胞', '器官', '组织', 'sci', 4]
+      ]
+    }
+  };
+
+  /* ---------- 数学出题器：按年级 × 难度档 lv0-4 ---------- */
+  function numWrongs(r, step) {
+    step = step || 1;
+    const ok = (x) => { const v = Math.round(x * 1000) / 1000; return v >= 0 && v !== Math.round(r * 1000) / 1000; };
+    const cs = [r + step, r - step, r + step * 2, r - step * 2, r + step * 5, r - step * 5].filter(ok);
+    const out = [];
+    for (const x of cs) { if (out.length >= 2) break; if (out.indexOf(x) < 0) out.push(x); }
+    while (out.length < 2) out.push(Math.round((r + step * (3 + out.length)) * 1000) / 1000);
+    return out;
+  }
+  const fmtN = (x) => String(Math.round(x * 100) / 100);
+  /* 预置题（分数等无法数值生成的）：[题干, 正确, [错1, 错2]] */
+  function presetQ(g, lv, u, table) {
+    const s = pick(table);
+    const opts = shuffle([s[1]].concat(s[2]));
+    return { q: s[0], opts, a: opts.indexOf(s[1]), type: 'math', u };
+  }
+  function mathQ(g, lv, u) {
+    const R = (a, b) => a + rnd(b - a + 1);
+    let q, r, step = 1, pre = null;
+    if (g === 'g1') {
+      if (lv === 0) { const a = R(1, 9), b = R(1, 10 - a); q = a + ' + ' + b + ' = ?'; r = a + b; }
+      else if (lv === 1) { const a = R(2, 15), b = R(1, Math.min(9, 20 - a)); q = a + ' + ' + b + ' = ?'; r = a + b; }
+      else if (lv === 2) { const a = R(5, 20), b = R(1, a - 1); q = a + ' − ' + b + ' = ?'; r = a - b; }
+      else if (lv === 3) { const a = R(2, 12), b = R(1, 8), c = R(1, Math.min(5, a + b - 1)); q = a + ' + ' + b + ' − ' + c + ' = ?'; r = a + b - c; }
+      else { const a = R(1, 8) * 10, b = R(1, 8) * 10; q = a + ' + ' + b + ' = ?'; r = a + b; }
+    } else if (g === 'g2') {
+      if (lv === 0) { const a = R(10, 80), b = R(1, 99 - a); q = a + ' + ' + b + ' = ?'; r = a + b; }
+      else if (lv === 1) { const a = R(1, 5), b = R(1, 9); q = a + ' × ' + b + ' = ?'; r = a * b; }
+      else if (lv === 2) { const a = R(2, 9), b = R(2, 9); q = a + ' × ' + b + ' = ?'; r = a * b; }
+      else if (lv === 3) { const b = R(2, 9), qq = R(2, 9); q = (b * qq) + ' ÷ ' + b + ' = ?'; r = qq; }
+      else { const a = R(2, 9), b = R(2, 9), c = R(1, 20); q = a + ' × ' + b + ' + ' + c + ' = ?'; r = a * b + c; }
+    } else if (g === 'g3') {
+      if (lv === 0) { const a = R(100, 800), b = R(10, 99); q = a + ' + ' + b + ' = ?'; r = a + b; }
+      else if (lv === 1) { const a = R(12, 49), b = R(2, 9); q = a + ' × ' + b + ' = ?'; r = a * b; }
+      else if (lv === 2) { const b = R(2, 9), qq = R(12, 49); q = (b * qq) + ' ÷ ' + b + ' = ?'; r = qq; }
+      else if (lv === 3) { const a = R(2, 9), b = R(2, 9), c = R(2, 9); q = '(' + a + ' + ' + b + ') × ' + c + ' = ?'; r = (a + b) * c; }
+      else { const a = R(1, 8), b = R(1, 10 - a); q = a + '/10 + ' + b + '/10 = ?（填分子）'; r = a + b; }
+    } else if (g === 'g4') {
+      if (lv === 0) { const a = R(1000, 5000), b = R(100, 999); q = a + ' + ' + b + ' = ?'; r = a + b; }
+      else if (lv === 1) { const a = R(12, 29), b = R(11, 19); q = a + ' × ' + b + ' = ?'; r = a * b; }
+      else if (lv === 2) { const b = R(11, 29), qq = R(5, 20); q = (b * qq) + ' ÷ ' + b + ' = ?'; r = qq; }
+      else if (lv === 3) { const a = R(2, 9), b = R(2, 9), c = R(2, 9), d = R(2, 9); q = a + ' × ' + b + ' + ' + c + ' × ' + d + ' = ?'; r = a * b + c * d; }
+      else { const a = R(2, 9); q = a + ' × 25 × 4 = ?（用简便算法）'; r = a * 100; }
+    } else if (g === 'g5') {
+      if (lv === 0) { const a = R(1, 20) + R(1, 9) / 10, b = R(1, 20) + R(1, 9) / 10; q = fmtN(a) + ' + ' + fmtN(b) + ' = ?'; r = Math.round((a + b) * 10) / 10; step = 0.1; }
+      else if (lv === 1) { const a = R(5, 30) / 10, b = R(2, 5); q = fmtN(a) + ' × ' + b + ' = ?'; r = Math.round(a * b * 10) / 10; step = 0.1; }
+      else if (lv === 2) { return presetQ(g, lv, u, [['3.6 ÷ 0.9 = ?', '4', ['0.4', '40']], ['4.8 ÷ 1.2 = ?', '4', ['0.4', '3.6']], ['6.3 ÷ 0.9 = ?', '7', ['0.7', '63']], ['5.6 ÷ 0.8 = ?', '7', ['0.7', '4.8']], ['7.2 ÷ 0.8 = ?', '9', ['0.9', '8']]]); }
+      else if (lv === 3) { const v = rnd(2); if (v === 0) { const b = R(2, 9), x = R(2, 20); q = 'x + ' + b + ' = ' + (x + b) + '，x = ?'; r = x; } else { const b = R(2, 9), x = R(2, 9); q = 'x × ' + b + ' = ' + (x * b) + '，x = ?'; r = x; } }
+      else { return presetQ(g, lv, u, [['1/2 + 1/4 = ?', '3/4', ['2/6', '1/6']], ['1/2 + 1/3 = ?', '5/6', ['2/5', '1/5']], ['1/3 + 1/6 = ?', '1/2', ['1/3', '2/9']], ['1/4 + 1/8 = ?', '3/8', ['1/6', '2/8']], ['2/5 + 1/5 = ?', '3/5', ['3/10', '2/5']]]); }
+    } else {
+      if (lv === 0) { return presetQ(g, lv, u, [['1/2 × 1/2 = ?', '1/4', ['1/2', '2/4']], ['1/3 × 1/2 = ?', '1/6', ['1/5', '2/3']], ['2/3 × 1/2 = ?', '1/3', ['2/6', '2/3']], ['1/4 × 1/2 = ?', '1/8', ['1/4', '2/8']], ['3/4 × 2/3 = ?', '1/2', ['5/6', '3/2']]]); }
+      else if (lv === 1) { return presetQ(g, lv, u, [['1/2 ÷ 1/4 = ?', '2', ['1/8', '8']], ['1/3 ÷ 1/6 = ?', '2', ['1/9', '3']], ['3/4 ÷ 1/4 = ?', '3', ['1/3', '4']], ['1/2 ÷ 1/8 = ?', '4', ['1/10', '16']], ['5/6 ÷ 1/6 = ?', '5', ['1/6', '6']]]); }
+      else if (lv === 2) { const a = R(1, 9) * 10, b = R(2, 9) * 10; q = b + ' 的 ' + a + '% = ?'; r = b * a / 100; }
+      else if (lv === 3) { const a = R(2, 6), b = R(2, 6), c = a * R(2, 5); q = a + ' : ' + b + ' = ' + c + ' : ?'; r = b * c / a; }
+      else { const p = R(2, 9) * 50; q = '原价 ' + p + ' 元的商品打八折，现价多少元？'; r = p * 0.8; step = 5; }
+    }
+    const ws = numWrongs(r, step);
+    const opts = shuffle([fmtN(r)].concat(ws.map(fmtN)));
+    return { q, opts, a: opts.indexOf(fmtN(r)), type: 'math', u };
+  }
+
+  /* ---------- 按学科出一题 ---------- */
+  function bankQ(arr, lv, u, type) {
+    let pool = arr.filter((x) => Math.abs(x[4] - lv) <= 1);
+    if (!pool.length) pool = arr;
+    const s = pick(pool);
+    const opts = shuffle([s[1], s[2], s[3]]);
+    return { q: s[0], opts, a: opts.indexOf(s[1]), type, u };
+  }
+  function genSubjectQ(subj, g, lv, u) {
+    if (subj === 'math') return mathQ(g, lv, u);
+    if (subj === 'cn') return bankQ(SUBJ_QB.cn[g], lv, u, 'cn');
+    if (subj === 'sci' || subj === 'eth') {
+      const all = SUBJ_QB.sub[g].filter((x) => x[4] === subj);
+      const byLv = all.filter((x) => Math.abs(x[5] - lv) <= 1);
+      const s = pick(byLv.length ? byLv : all);
+      const opts = shuffle([s[1], s[2], s[3]]);
+      return { q: s[0], opts, a: opts.indexOf(s[1]), type: subj, u };
+    }
+    return genQ(pick(enTypesFor(lv, g)), g, u);
+  }
+  /* 一组混学科题：makers[i] 生成第 i 题，自动去重；去重失败换随机学科兜底 */
+  function genMix(count, makers, fallback) {
+    const out = [], seen = {};
+    for (let i = 0; i < count; i++) {
+      let q = null;
+      for (let guard = 0; guard < 12; guard++) {
+        const c = (guard < 9 ? makers[i % makers.length] : (fallback || makers[0]))();
+        const key = c.q + '|' + c.opts[c.a];
+        if (!seen[key]) { q = c; break; }
+      }
+      if (!q) q = makers[0]();
+      seen[q.q + '|' + q.opts[q.a]] = 1;
+      out.push(q);
+    }
+    return out;
+  }
+
   /* 怪物与 Boss */
   const ENEMIES = ['👾 数据粘怪', '🦇 吵吵蝙蝠', '🐙 墨墨章鱼', '🐺 嚎叫小狼', '🦂 沙沙毒蝎'];
   const BOSSES = ['🍄 蘑菇国王', '🦖 玩具霸王龙', '⛈️ 风暴魔王', '🌋 熔岩巨兽', '🧊 冰霜女皇'];
@@ -315,28 +566,32 @@
     while (out.length < n) out.push(genQ(type, g, u));
     return out;
   }
-  /* 地图节点出题：战斗/复习按节点类型 */
+  /* 地图节点出题：学科混排 + 难度随节点 lv
+     battle/review：本节点学科 + 加权随机混科（保证一关多科）
+     boss：本节点学科为主（3/5），其余混科
+     final：语数英全覆盖 + 混科，lv4 最高难度 */
   function genNodeQs(node, g) {
-    const G = DB[g];
-    if (node.t === 'review') {
-      const pool = [];
-      for (let i = 0; i < node.u; i++) pool.push(i);
-      const types = Object.keys(QTYPES).filter((t) => t !== 'letter' || g === 'g1');
-      const out = [];
-      for (let i = 0; i < 3; i++) out.push(genQ(pick(types), g, pick(pool)));
-      return out;
+    const lv = node.lv == null ? 2 : node.lv;
+    const subj = node.subj || 'en';
+    const WS = () => genSubjectQ(weightedSubj(), g, lv, node.u);
+    if (node.t === 'boss') {
+      const b = () => genSubjectQ(subj, g, lv, node.u);
+      return genMix(5, [b, b, b, WS, WS], WS);
     }
-    if (node.t === 'boss') return genSet(pick(Object.keys(QTYPES).filter((t) => t !== 'letter' || g === 'g1')), g, node.u, 5);
     if (node.t === 'final') {
-      const types = Object.keys(QTYPES).filter((t) => t !== 'letter' || g === 'g1');
-      const out = [];
-      for (let i = 0; i < 8; i++) out.push(genQ(pick(types), g, i % G.units.length));
-      return out;
+      return genMix(8, [
+        () => genSubjectQ('en', g, 4, node.u),
+        () => genSubjectQ('cn', g, 4, node.u),
+        () => genSubjectQ('math', g, 4, node.u),
+        WS, WS
+      ], WS);
     }
-    return genSet(pick(Object.keys(QTYPES).filter((t) => t !== 'letter' || g === 'g1')), g, node.u, 3);
+    return genMix(node.t === 'battle' && lv >= 3 ? 4 : 3, [() => genSubjectQ(subj, g, lv, node.u), WS, WS]);
   }
 
   /* ================= 地图生成 ================= */
+  /* 学科轮换：保证相邻关卡不同科，主课出场多于副课 */
+  const SUBJ_ROT = ['en', 'math', 'cn', 'sci', 'math', 'en', 'cn', 'eth'];
   function buildMap(g) {
     const G = DB[g], nodes = [];
     G.units.forEach((un, i) => {
@@ -347,7 +602,26 @@
       if (i < G.units.length - 1) nodes.push({ t: 'treasure', u: i });
     });
     nodes.push({ t: 'final', u: G.units.length - 1 });
-    return nodes.map((n, i) => Object.assign(n, { i, done: false, stars: 0 }));
+    const total = nodes.length;
+    return nodes.map((n, i) => {
+      n.i = i; n.done = false; n.stars = 0;
+      if (n.t === 'battle' || n.t === 'review' || n.t === 'boss') {
+        n.subj = SUBJ_ROT[i % SUBJ_ROT.length];
+        n.lv = Math.min(4, Math.floor(i / total * 5));
+      }
+      if (n.t === 'final') n.lv = 4;
+      return n;
+    });
+  }
+  /* 旧存档节点缺 subj/lv 字段时补默认值（运行时兜底，宝箱不需要） */
+  function ensureMapFields(q) {
+    if (!Array.isArray(q.nodes)) return;
+    q.nodes.forEach((n) => {
+      const need = n.t === 'battle' || n.t === 'review' || n.t === 'boss' || n.t === 'final';
+      if (!need) return;
+      if (n.subj == null && n.t !== 'final') n.subj = SUBJ_ROT[n.i % SUBJ_ROT.length];
+      if (n.lv == null) n.lv = n.t === 'final' ? 4 : n.i != null ? Math.min(4, Math.floor(n.i / q.nodes.length * 5)) : 2;
+    });
   }
   function questState(k) {
     const g = gradeOf(k);
@@ -357,7 +631,13 @@
     return k.quest;
   }
   const curIdx = (q) => { for (let i = 0; i < q.nodes.length; i++) if (!q.nodes[i].done) return i; return -1; };
-  const wrongOpen = (k) => k.wrongBook.filter((w) => !w.ok);
+  const wrongOpen = (k) => (k.wrongBook || []).filter((w) => !w.ok);
+  /* 老数据/新用户兜底：补齐游戏所需字段 */
+  function ensureKid(k) {
+    if (!Array.isArray(k.wrongBook)) k.wrongBook = [];
+    if (!k.frags) k.frags = {};
+    if (!Array.isArray(k.aid)) k.aid = [];
+  }
 
   /* ================= v3.24 稀有度 / 掉落 / 助战 ================= */
   const RAR = {
@@ -547,6 +827,7 @@
   }
   function viewDaily() {
     const k = kid(); if (!k) return;
+    ensureKid(k);
     const d = dailyState(k);
     const doneN = d.tasks.filter((t) => t.done).length;
     const g = gradeOf(k);
@@ -705,7 +986,9 @@
   /* ================= 游戏二：知识冒险闯关 ================= */
   function viewQuest() {
     const k = kid(); if (!k) return;
+    ensureKid(k);
     const q = questState(k);
+    ensureMapFields(q);
     const g = gradeOf(k);
     const ci = curIdx(q);
     const finalLocked = wrongOpen(k).length > 0;
@@ -713,7 +996,7 @@
       '<div class="quest-hero">' +
       '<img class="qh-pet" src="' + petImg(k) + '" alt="">' +
       '<div class="qh-t"><b>' + gradeName(g) + ' · 知识冒险</b><small>' +
-      (q.trophy ? '🏆 已通关！可以重刷拿满星' : '进度 ' + q.nodes.filter((n) => n.done).length + '/' + q.nodes.length) + '</small></div>' +
+      (q.trophy ? '🏆 已通关！可以重刷拿满星' : '进度 ' + q.nodes.filter((n) => n.done).length + '/' + q.nodes.length) + ' · 语数英为主 · 科学常识为辅</small></div>' +
       '<div class="qh-btns"><button id="qColl">🧸 收集</button><button id="qWrong">📕 错题本' + (wrongOpen(k).length ? ' <b class="wr-n">' + wrongOpen(k).length + '</b>' : '') + '</button><button id="qGrade">🎓</button></div></div>' +
       '<div class="qmap">' +
       q.nodes.map((n, i) => {
@@ -721,15 +1004,19 @@
         const locked = i > ci || (n.t === 'final' && finalLocked);
         const cur = i === ci && !(n.t === 'final' && finalLocked);
         const G = DB[g];
-        const title = n.t === 'final' ? FINAL : n.t === 'boss' ? BOSSES[n.u] : n.t === 'treasure' ? '神秘宝箱' :
+        const S = (n.t === 'battle' || n.t === 'boss') && n.subj ? SUBJ[n.subj] : null;
+        const title = n.t === 'final' ? FINAL : n.t === 'boss' ? (S ? S.icon + ' ' + S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[n.u]) : n.t === 'treasure' ? '神秘宝箱' :
           n.t === 'review' ? '复习营地 · ' + G.units[n.u - 1].t : G.units[n.u].t + ' · ' + (n.t === 'battle' ? '战斗' : '');
         let sub = meta.name;
+        if (n.lv != null && (n.t === 'battle' || n.t === 'review' || n.t === 'boss')) sub += ' · 难度 ' + '●'.repeat(n.lv + 1) + '○'.repeat(4 - n.lv);
         if (n.t === 'final' && finalLocked && i === ci + 1) sub = '🔒 先去错题本订正错题';
         else if (n.t === 'final' && i === ci + 1) sub = '🎓 挑战年级最强';
         return '<div class="qnode ' + n.t + ' ' + (n.done ? 'done' : '') + (cur ? ' cur' : '') + (locked ? ' lock' : '') + '" data-i="' + i + '">' +
           '<div class="qn-line"></div>' +
-          '<div class="qn-ic">' + (n.done ? (n.t === 'treasure' ? '📦' : '✅') : locked ? '🔒' : meta.icon) + '</div>' +
-          '<div class="qn-b"><b>' + esc(title) + '</b>' +
+          '<div class="qn-ic">' + (n.done ? (n.t === 'treasure' ? '📦' : '✅') : locked ? '🔒' : n.t === 'boss' && S ? S.icon : meta.icon) + '</div>' +
+          '<div class="qn-b">' +
+          (S ? '<i class="qn-tag" style="background:' + S.c + '">' + S.icon + S.name + '</i>' : '') +
+          '<b>' + esc(title) + '</b>' +
           '<small>' + (n.done ? '⭐'.repeat(n.stars) + '☆'.repeat(3 - n.stars) + ' · 已通关' : esc(sub)) + '</small></div>' +
           (cur ? '<span class="qn-go">GO</span>' : '') + '</div>';
       }).join('') +
@@ -762,12 +1049,17 @@
 
   function tapNode(k, q, n, refresh) {
     const g = gradeOf(k);
+    ensureMapFields(q);
     if (n.t === 'treasure') return openTreasure(k, q, n, refresh);
+    const lv = n.lv == null ? 2 : n.lv;
     const qs = genNodeQs(n, g);
-    const enemy = n.t === 'battle' ? (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: 3 }; })(ENEMIES[n.u % ENEMIES.length])
-      : n.t === 'review' ? { em: '🛡️', name: '复习木桩', hp: 3 }
-      : n.t === 'boss' ? (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: 5 }; })(BOSSES[n.u])
-      : { em: '👑', name: '知识魔王', hp: 8 };
+    /* 敌人血量 = 题目数（答对扣血，保证可击败）；难度体现在题目 lv 与题量上 */
+    const bossS = n.subj ? SUBJ[n.subj] : null;
+    const enemy = n.t === 'battle' ? (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(ENEMIES[n.u % ENEMIES.length])
+      : n.t === 'review' ? { em: '🛡️', name: '复习木桩', hp: qs.length }
+      : n.t === 'boss' ? (bossS ? { em: bossS.icon, name: bossS.name + '·' + bossS.bosses[n.u % bossS.bosses.length], hp: qs.length }
+        : (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(BOSSES[n.u]))
+      : { em: '👑', name: '知识魔王', hp: qs.length };
     quizRun({
       qs, enemy,
       aid: aidList(k),
@@ -781,20 +1073,21 @@
           k.wrongBook.push({ q: w, g, u: n.u, ok: false, t: Date.now() });
         });
         let dropMsg = '';
+        const bonus = n.lv || 0; /* 难度加成：关卡越靠后奖励越高 */
         if (n.t === 'battle') {
           const ft = dropFrag(k);
-          reward(k, 2, 12, '冒险战斗获胜 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '⚔️');
+          reward(k, 2 + bonus, 12 + bonus * 3, '冒险战斗获胜 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '⚔️');
           dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
         }
         if (n.t === 'review') {
           const ft = dropFrag(k, ['N', 'R']);
-          reward(k, 1, 6, '完成复习营地 · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🛡️');
+          reward(k, 1 + bonus, 6 + bonus * 2, '完成复习营地 · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🛡️');
           dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
         }
         if (n.t === 'boss') {
           if (!q.badges.includes(n.u)) q.badges.push(n.u);
           const card = dropPetOf(k, q, rollRarity(['R', 'SR', 'SSR']));
-          reward(k, 5, 25, '击败单元 Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '👑');
+          reward(k, 5 + bonus, 25 + bonus * 5, '击败' + (bossS ? bossS.name : '单元') + ' Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '👑');
           dropMsg = card;
         }
         if (n.t === 'final') {
@@ -809,7 +1102,7 @@
           victoryFX(isFinal ? '🏆 通关啦！' : '👑 Boss 击败！',
             isFinal ? gradeName(g) + '全部知识掌握！' : '获得「' + DB[g].units[n.u].em + '」单元徽章',
             () => petDropFX(dropMsg, k, refresh));
-        } else toast('战斗胜利 +' + (n.t === 'review' ? 1 : 2) + ' 积分' + (dropMsg ? ' · ' + dropMsg : ''));
+        } else toast('战斗胜利 +' + (n.t === 'review' ? 1 + bonus : 2 + bonus) + ' 积分' + (dropMsg ? ' · ' + dropMsg : ''));
       }
     });
   }
@@ -871,7 +1164,7 @@
       '<div class="tiny">答错会自动收进来 · 答对一次即完成订正' + (list.length ? '' : '（已全部订正 🎉）') + '</div>' +
       '<div class="wr-list">' +
       (list.length ? list.slice(0, 20).map((w, i) =>
-        '<button class="wr-it" data-i="' + i + '"><span class="wr-em">' + (QTYPES[w.q.type] ? QTYPES[w.q.type].icon : '❓') + '</span>' +
+        '<button class="wr-it" data-i="' + i + '"><span class="wr-em">' + (QTYPES[w.q.type] ? QTYPES[w.q.type].icon : SUBJ[w.q.type] ? SUBJ[w.q.type].icon : '❓') + '</span>' +
         '<div class="wr-t">' + esc(w.q.q) + '<small>' + esc(w.q.opts[w.q.a]) + '</small></div><span class="wr-go">订正</span></button>').join('')
         : '<div class="card empty" style="margin-top:10px">' + (k.wrongBook.length ? '太棒了，' + doneN + ' 道错题全部订正完成！' : '还没有错题，继续保持！') + '</div>') +
       '</div>',

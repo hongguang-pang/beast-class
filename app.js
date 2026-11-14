@@ -338,6 +338,11 @@
           }
           if (k.skin === undefined) k.skin = null;
           if (k.group === undefined) k.group = '';
+          /* v3.23 游戏数据：年级 / 每日打卡 / 冒险闯关 / 错题本 */
+          if (!k.grade) k.grade = 'g3';
+          if (!k.dailyGame) k.dailyGame = {};
+          if (!k.quest || typeof k.quest !== 'object') k.quest = {};
+          if (!Array.isArray(k.wrongBook)) k.wrongBook = [];
           /* v3.21.5 修正：Lv.1~2 是全班共用的「宠物蛋」形象，看起来都一样；
              零进度的宠物直接提到幼年期（Lv.3），每人恢复各自的形象，已有进度不受影响 */
           if (k.pet.lv < 3 && !k.pet.exp) k.pet.lv = 3;
@@ -695,8 +700,12 @@
       '<div><b>' + third + '</b><span>' + thirdLbl + '</span></div></div>' +
       '</div>' +
       (isClass() ? '<div class="quick-links">' +
-        '<a href="#/dex">📖 我的图鉴</a><a href="#/tasks">✅ 今日任务</a><a href="#/board">🏆 光荣榜</a><a href="#/lucky">🎡 幸运抽奖</a></div>'
-        : '<button class="cls-cta" id="homeClsCta"><span>🏫</span><div><b>我是老师？开启班级模式</b><small>全班加减分 · 光荣榜 · 随机点名</small></div><i>›</i></button>') +
+        '<a href="#/daily">🎯 每日答题</a><a href="#/quest">🗺️ 冒险闯关</a><a href="#/dex">📖 我的图鉴</a><a href="#/tasks">✅ 今日任务</a><a href="#/board">🏆 光荣榜</a><a href="#/lucky">🎡 幸运抽奖</a></div>'
+        : '<div class="games-grid">' +
+          '<a class="game-card gc-daily" href="#/daily"><span class="gc-em">🎯</span><div><b>每日打卡答题</b><small>每天 5 种题型 · 连续打卡</small></div><i class="gc-go">GO</i></a>' +
+          '<a class="game-card gc-quest" href="#/quest"><span class="gc-em">🗺️</span><div><b>知识冒险闯关</b><small>打 Boss · 收集 · 错题本</small></div><i class="gc-go">GO</i></a>' +
+          '</div>' +
+        '<button class="cls-cta" id="homeClsCta"><span>🏫</span><div><b>我是老师？开启班级模式</b><small>全班加减分 · 光荣榜 · 随机点名</small></div><i>›</i></button>') +
       '<div class="section-h"><h2>最近动态</h2><a class="more" href="#/log">全部记录</a></div>' +
       '<div id="recentLogs">' + recentLogsHTML(k) + '</div>' +
       '</div>';
@@ -3210,6 +3219,11 @@
       setTimeout(() => bar.remove(), 260);
     };
   }
+
+  /* v3.23 游戏桥接：games.js 通过它注册路由并复用核心逻辑 */
+  window.BP = { P, esc, toast, openSheet, $view, render, addExp, grantPoints, addLog,
+    kid, todayStr, isClass, petImg, petMeta, imgFor, stageIdxOf, stageOf, expNeed, evoFX, PETS, displayName };
+  window.BPHook = { routes, ROUTES_ALL };
 
   /* ================= 启动 ================= */
   function boot() {

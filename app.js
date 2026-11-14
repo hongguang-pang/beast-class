@@ -104,7 +104,18 @@
     P097: { name: '音符团', emoji: '🔥', hue: 333, glow: 'rgba(255,140,191,.55)' },
     P098: { name: '指挥家', emoji: '🔥', hue: 27, glow: 'rgba(255,191,140,.55)' },
     P099: { name: '混音机', emoji: '🌙', hue: 275, glow: 'rgba(208,140,255,.55)' },
-    P100: { name: '低音犀', emoji: '🔥', hue: 20, glow: 'rgba(255,179,140,.55)' }
+    P100: { name: '低音犀', emoji: '🔥', hue: 20, glow: 'rgba(255,179,140,.55)' },
+    /* v3.24: 10 只原创流行风传说宠物（SSR 掉落池，形象原创避免版权问题） */
+    S101: { name: '光之巨人·耀', emoji: '🦸', hue: 8, glow: 'rgba(255,150,150,.6)' },
+    S102: { name: '奶萌龙·团团', emoji: '🐲', hue: 48, glow: 'rgba(255,225,140,.6)' },
+    S103: { name: '钢甲暴龙·雷克斯', emoji: '🤖', hue: 210, glow: 'rgba(140,190,255,.6)' },
+    S104: { name: '蜜罐憨熊·壮壮', emoji: '🐻', hue: 28, glow: 'rgba(255,190,140,.6)' },
+    S105: { name: '云跑跑羊·咩咩', emoji: '🐑', hue: 95, glow: 'rgba(200,255,160,.6)' },
+    S106: { name: '搜救先锋·阿勇', emoji: '🐕', hue: 205, glow: 'rgba(150,210,255,.6)' },
+    S107: { name: '奇妙探险猫·妙妙', emoji: '🐱', hue: 330, glow: 'rgba(255,150,210,.6)' },
+    S108: { name: '闪电飞侠·速递', emoji: '🚀', hue: 5, glow: 'rgba(255,160,140,.6)' },
+    S109: { name: '泡泡粉猪·琪琪', emoji: '🐷', hue: 340, glow: 'rgba(255,160,190,.6)' },
+    S110: { name: '雪绒精灵·冰冰', emoji: '❄️', hue: 190, glow: 'rgba(150,235,255,.6)' }
   };
 
   const CREATURES = Object.keys(PETS).map((id) =>
@@ -638,6 +649,7 @@
       const r = createClass(name, txt);
       if (!P.d.kids.length) { P.d.kids = [newStu('小明', '')]; P.d.cur = P.d.kids[0].id; P.save(); }
       P.d.admin = true;
+      P.d.mode = 'class';
       P.save();
       el.remove();
       location.hash = '#/class';
@@ -665,6 +677,7 @@
     el.querySelector('#wGo').onclick = () => {
       const name = el.querySelector('#wName').value.trim() || '宝贝';
       const k = { id: uid(), name, points: 0, daily: {}, pet: { name: PETS[type].name, type, exp: 0, lv: 1 }, dex: { egg: true }, companions: [], milestones: [], skin: null };
+      P.d.mode = 'family';
       P.d.kids.push(k);
       P.d.cur = k.id;
       P.d.log.unshift({ ts: Date.now(), kid: k.id, kidName: name, em: '🥚', text: name + ' 的宠物之旅开始了', d: 0 });
@@ -705,13 +718,26 @@
           '<a class="game-card gc-daily" href="#/daily"><span class="gc-em">🎯</span><div><b>每日打卡答题</b><small>每天 5 种题型 · 连续打卡</small></div><i class="gc-go">GO</i></a>' +
           '<a class="game-card gc-quest" href="#/quest"><span class="gc-em">🗺️</span><div><b>知识冒险闯关</b><small>打 Boss · 收集 · 错题本</small></div><i class="gc-go">GO</i></a>' +
           '</div>' +
-        '<button class="cls-cta" id="homeClsCta"><span>🏫</span><div><b>我是老师？开启班级模式</b><small>全班加减分 · 光荣榜 · 随机点名</small></div><i>›</i></button>') +
+        '<div class="inter-row">' +
+          '<button class="inter-btn" data-a="pat">🫶 摸摸头</button>' +
+          '<button class="inter-btn" data-a="feed">🍖 喂食</button>' +
+          '<button class="inter-btn" data-a="play">🎾 玩耍</button>' +
+        '</div>' +
+        '<div class="tiny" id="interHint" style="text-align:center;margin-top:6px">和宠物互动 · 每天第一次有经验奖励</div>') +
       '<div class="section-h"><h2>最近动态</h2><a class="more" href="#/log">全部记录</a></div>' +
       '<div id="recentLogs">' + recentLogsHTML(k) + '</div>' +
       '</div>';
 
     const cta = document.getElementById('homeClsCta');
     if (cta) cta.onclick = () => newClassSheet();
+    document.querySelectorAll('.inter-btn').forEach((b) => (b.onclick = () => {
+      if (window.BPGames) window.BPGames.petInteract(k, b.dataset.a);
+    }));
+    /* 助战栏位提示 */
+    const aidN = (k.aid || []).filter(Boolean).length;
+    const slots = k.pet.lv >= 12 ? 3 : k.pet.lv >= 9 ? 2 : k.pet.lv >= 6 ? 1 : 0;
+    const hint = document.getElementById('interHint');
+    if (hint && slots > 0) hint.innerHTML = '🤝 助战 ' + aidN + '/' + slots + '（Lv.6/9/12 逐个解锁 · 在冒险的收集页设置） · 每天第一次互动有经验';
     document.getElementById('petTap').onclick = () => {
       const p = document.querySelector('.pet');
       p.style.transform = 'scale(1.15)';
@@ -1776,7 +1802,7 @@
   }
 
   /* ================= 班级模式 ================= */
-  const isClass = () => !!(P.d && P.d.cls && P.d.cls.on);
+  const isClass = () => !(sessionStorage.getItem('bpForceFamily') === '1') && !!(P.d && P.d.cls && P.d.cls.on);
   const ROLE = () => (isClass() ? '老师' : '家长');
   const weekStart = () => { const d = new Date(); const w = (d.getDay() + 6) % 7; d.setDate(d.getDate() - w); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const dayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };

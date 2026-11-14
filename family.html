@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>伴学宠物 · 家庭版</title>
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#ffe9c4,#ffd6e8);font-family:system-ui,sans-serif;color:#5b3a00}
+.tip{text-align:center;padding:30px}
+.tip b{font-size:20px;display:block;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="tip"><b>🏠 家庭版入口</b>正在进入宠物乐园…</div>
+<script>
+/* 家庭版独立入口：本次会话强制家庭模式（不出现教师/班级功能），与教师入口互不相关 */
+sessionStorage.setItem('bpForceFamily', '1');
+location.replace('index.html#/home');
+</script>
+</body>
+</html>

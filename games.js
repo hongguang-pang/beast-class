@@ -359,12 +359,59 @@
   const curIdx = (q) => { for (let i = 0; i < q.nodes.length; i++) if (!q.nodes[i].done) return i; return -1; };
   const wrongOpen = (k) => k.wrongBook.filter((w) => !w.ok);
 
+  /* ================= v3.24 稀有度 / 掉落 / 助战 ================= */
+  const RAR = {
+    N:   { name: '普通', c: '#8fa0b3', w: 52 },
+    R:   { name: '稀有', c: '#4da3ff', w: 28 },
+    SR:  { name: '史诗', c: '#b46bff', w: 15 },
+    SSR: { name: '传说', c: '#ffb300', w: 5 }
+  };
+  const rarOf = (t) => {
+    const n = parseInt(String(t).replace(/\D/g, ''), 10) || 0;
+    if (String(t)[0] === 'S' && n >= 101) return 'SSR';
+    if (n >= 81) return 'SR';
+    if (n >= 41) return 'R';
+    return 'N';
+  };
+  function rollRarity(pool) {
+    const ps = pool.map((r) => ({ r, w: RAR[r].w }));
+    const tot = ps.reduce((s, x) => s + x.w, 0);
+    let v = Math.random() * tot;
+    for (const x of ps) { v -= x.w; if (v <= 0) return x.r; }
+    return ps[0].r;
+  }
+  const petsOfRar = (r) => Object.keys(BP.PETS).filter((t) => rarOf(t) === r);
+  /* 随机掉一只指定稀有度的宠物（优先未收集的） */
+  function dropPetOf(k, q, rar) {
+    if (!Array.isArray(q.cards)) q.cards = [];
+    const owned = new Set(q.cards);
+    let cands = petsOfRar(rar).filter((t) => !owned.has(t));
+    if (!cands.length) cands = Object.keys(BP.PETS).filter((t) => !owned.has(t));
+    if (!cands.length) cands = Object.keys(BP.PETS);
+    const card = pick(cands);
+    q.cards.push(card);
+    return card;
+  }
+  /* 掉 1 枚碎片：普通关卡以 N/R 为主，boss 碎片含 SR */
+  function dropFrag(k, pool) {
+    k.frags = k.frags || {};
+    const r = rollRarity(pool || ['N', 'R', 'SR']);
+    const t = pick(petsOfRar(r));
+    k.frags[t] = (k.frags[t] || 0) + 1;
+    return t;
+  }
+  const fragAll = (k) => Object.values(k.frags || {}).reduce((s, x) => s + x, 0);
+  /* 助战：Lv6/9/12 解锁 1/2/3 个栏位，从收集的宠物卡里选 */
+  const aidSlots = (k) => (k.pet.lv >= 12 ? 3 : k.pet.lv >= 9 ? 2 : k.pet.lv >= 6 ? 1 : 0);
+  function aidList(k) { return (k.aid || []).filter(Boolean).slice(0, 3).map((t) => 'images/gif/' + t + '-growth.gif'); }
+  function ensureAid(k) { if (!Array.isArray(k.aid)) k.aid = []; }
+
   /* ================= 答题引擎（全屏覆盖层） =================
      cfg: {qs, enemy:{em,name,hp}, mode:'battle'|'single'|'drill',
            onEnd(result {win, stars, right, total, wrongQs}) } */
   function quizRun(cfg) {
     const k = kid();
-    let idx = 0, petHp = 3, eHp = cfg.enemy ? cfg.enemy.hp : 0;
+    let idx = 0, petHp = 3 + (cfg.aid ? cfg.aid.length : 0), eHp = cfg.enemy ? cfg.enemy.hp : 0;
     const wrongQs = [];
     const el = document.createElement('div');
     el.className = 'qz-mask';
@@ -377,6 +424,10 @@
         '<div class="qz-prog">' + cfg.qs.map((_, i) => '<i class="' + (i < idx ? 'ok' : i === idx ? 'now' : '') + '"></i>').join('') + '</div>' +
         '<div class="qz-hp">' + (cfg.enemy ? '❤️'.repeat(Math.max(0, petHp)) : '') + '</div></div>';
     }
+    function aidChips() {
+      return (cfg.aid && cfg.aid.length) ? '<div class="qz-aids">' +
+        cfg.aid.map((a, i) => '<span class="qz-aid" data-i="' + i + '"><img src="' + a + '" alt=""></span>').join('') + '</div>' : '';
+    }
     function render() {
       if (idx >= cfg.qs.length) return finish();
       const q = cfg.qs[idx];
@@ -386,7 +437,8 @@
           '<div class="qz-foe"><div class="foe-card" id="foeCard"><span class="foe-em">' + cfg.enemy.em + '</span>' +
           '<div class="foe-nm">' + esc(cfg.enemy.name) + '</div>' +
           '<div class="foe-hp"><i style="width:' + Math.max(0, eHp / cfg.enemy.hp * 100) + '%"></i></div></div></div>' +
-          '<div class="qz-vs"><img class="qz-pet ' + (cfg.mode === 'drill' ? '' : '') + '" id="qzPet" src="' + petSrc + '" alt=""></div>'
+          '<div class="qz-vs"><img class="qz-pet ' + (cfg.mode === 'drill' ? '' : '') + '" id="qzPet" src="' + petSrc + '" alt=""></div>' +
+          aidChips()
           : '<div class="qz-solo"><img class="qz-pet" id="qzPet" src="' + petSrc + '" alt=""><div class="qz-petnm">' + esc(petName) + '</div></div>') +
         '<div class="qz-card"><div class="qz-no">第 ' + (idx + 1) + ' / ' + cfg.qs.length + ' 题</div>' +
         '<div class="qz-qq">' + esc(q.q) + '</div>' +
@@ -395,6 +447,8 @@
         '</div>';
       el.querySelector('#qzX').onclick = () => { if (confirm('中途退出本题不记录成绩，确定退出？')) { el.remove(); } };
       el.querySelectorAll('.qz-opt').forEach((b) => (b.onclick = () => answer(+b.dataset.i, b)));
+      /* 自动化测试钩子: 仅当测试脚本显式写入 sessionStorage 时生效 */
+      if (sessionStorage.getItem('qzTestMark')) el.querySelectorAll('.qz-opt')[q.a].style.border = '3px solid gold';
     }
     function answer(i, btn) {
       const q = cfg.qs[idx];
@@ -416,8 +470,22 @@
         if (pet) { pet.classList.add('atk'); setTimeout(() => pet.classList.remove('atk'), 500); }
         const foe = el.querySelector('#foeCard');
         if (foe) { foe.classList.add('hit'); setTimeout(() => foe.classList.remove('hit'), 400); }
+        /* 助战宠物协战：每只 22% 概率追加 1 点伤害 */
+        let extra = 0;
+        if (cfg.enemy && cfg.aid) cfg.aid.forEach((a, i) => {
+          if (Math.random() < 0.22) {
+            extra++;
+            const chip = el.querySelector('.qz-aid[data-i="' + i + '"]');
+            if (chip) { chip.classList.add('go'); setTimeout(() => chip.classList.remove('go'), 600); }
+          }
+        });
+        if (extra) {
+          eHp -= extra;
+          const foe2 = el.querySelector('#foeCard');
+          if (foe2) { foe2.classList.add('hit'); setTimeout(() => foe2.classList.remove('hit'), 500); }
+        }
         const fb = el.querySelector('#qzFb');
-        fb.innerHTML = pick(['🎉 太棒了！', '✨ 答对啦！', '🔥 厉害！', '💫 知识就是力量！']);
+        fb.innerHTML = pick(['🎉 太棒了！', '✨ 答对啦！', '🔥 厉害！', '💫 知识就是力量！']) + (extra ? '<small class="aid-fx">🤝 助战宠物协力攻击 ×' + extra + '！</small>' : '');
         fb.className = 'qz-fb yes';
       }
       el.querySelector('.qz-hp').innerHTML = cfg.enemy ? '❤️'.repeat(Math.max(0, petHp)) : '';
@@ -533,8 +601,78 @@
       chestFX('+5 积分 · +15 经验 · 连续打卡 ' + d.streak + ' 天', () => render());
     };
   }
-  function chestFX(text, cb) {
+  /* 掉落宠物展示（带稀有度光效） */
+  function petDropFX(card, k, cb) {
+    const meta = BP.PETS[card] || { name: card, emoji: '🐾' };
+    const rar = rarOf(card), R = RAR[rar];
     const m = document.createElement('div');
+    m.className = 'evo-mask';
+    m.innerHTML = '<div class="evo-box drop-box" style="border-color:' + R.c + ';box-shadow:0 0 40px ' + R.c + '66">' +
+      '<div class="rar-chip" style="background:' + R.c + '">' + rar + ' · ' + R.name + '</div>' +
+      '<div class="big img"><img src="images/gif/' + card + '-growth.gif" alt=""></div>' +
+      '<h2>🐾 获得' + (rar === 'SSR' ? '传说' : '') + '宠物！</h2>' +
+      '<p>' + meta.emoji + ' <b>' + esc(meta.name) + '</b><br>已收入图鉴 · 可在收集页设为助战</p>' +
+      '<button class="btn sm" style="margin-top:14px;background:#ffd76e;color:#5b3a00" id="pdOk">收下啦</button></div>';
+    for (let i = 0; i < 14; i++) {
+      const s = document.createElement('i');
+      s.className = 'sparkle';
+      s.style.left = (30 + Math.random() * 40) + '%';
+      s.style.top = (30 + Math.random() * 30) + '%';
+      s.style.animationDelay = (Math.random() * .5) + 's';
+      m.querySelector('.evo-box').appendChild(s);
+    }
+    document.body.appendChild(m);
+    requestAnimationFrame(() => m.classList.add('in'));
+    const close = () => { m.classList.remove('in'); setTimeout(() => { m.remove(); if (cb) cb(); }, 320); };
+    m.querySelector('#pdOk').onclick = close;
+    m.onclick = (e) => { if (e.target === m) close(); };
+  }
+
+  /* ================= v3.24 每日互动（每天首次给经验） ================= */
+  const INTERS = {
+    pat:  { em: '🫶', label: '摸摸头', parts: ['💖', '✨', '😊'], lines: ['蹭了蹭你的手心', '眯起眼睛很享受', '尾巴摇成了小风扇'] },
+    feed: { em: '🍖', label: '喂食', parts: ['🍗', '😋', '💖'], lines: ['吧唧吧唧吃得真香', '还想再来一份！', '吃饱了更有劲学习'] },
+    play: { em: '🎾', label: '玩耍', parts: ['🎾', '⭐', '😆'], lines: ['追着球满地打滚', '接住啦！好身手！', '玩得不想停下来'] }
+  };
+  function petInteract(k, kind) {
+    const it = INTERS[kind] || INTERS.pat;
+    const stage = document.querySelector('.stage .pet-zone');
+    const pet = document.querySelector('#petTap');
+    if (pet) {
+      pet.classList.add('inter-go');
+      setTimeout(() => pet.classList.remove('inter-go'), 800);
+    }
+    /* 粒子动效 */
+    if (stage) {
+      for (let i = 0; i < 6; i++) {
+        const s = document.createElement('span');
+        s.className = 'inter-part';
+        s.textContent = it.parts[rnd(it.parts.length)];
+        s.style.left = (25 + Math.random() * 50) + '%';
+        s.style.animationDelay = (i * 0.08) + 's';
+        stage.appendChild(s);
+        setTimeout(() => s.remove(), 1600);
+      }
+    }
+    const first = !k.inter || k.inter.date !== todayStr();
+    if (first) {
+      k.inter = { date: todayStr(), kind };
+      addExp(k, 3);
+      addLog(k, it.em, '和' + (k.pet.name || '宠物') + it.label + ' · 每日首次互动 +3 经验', 0);
+      P.save();
+      toast('🫧 ' + (k.pet.name || '宠物') + pick(it.lines) + ' · +3 EXP ✨');
+      const bar = document.querySelector('.exp-bar i'), num = document.querySelector('.exp-num');
+      if (bar && num) {
+        const need = BP.expNeed(k.pet.lv);
+        bar.style.width = Math.min(100, Math.round(k.pet.exp / need * 100)) + '%';
+        num.textContent = k.pet.exp + '/' + need + ' EXP';
+      }
+    } else {
+      toast('🫧 ' + (k.pet.name || '宠物') + pick(it.lines) + '（今天的互动经验已领过啦）');
+    }
+  }
+
+  function chestFX(text, cb) {    const m = document.createElement('div');
     m.className = 'evo-mask';
     m.innerHTML = '<div class="evo-box"><div class="big img" style="font-size:80px;line-height:1.4">🎁</div>' +
       '<h2>打卡宝箱！</h2><p>' + esc(text) + '</p>' +
@@ -632,29 +770,46 @@
       : { em: '👑', name: '知识魔王', hp: 8 };
     quizRun({
       qs, enemy,
+      aid: aidList(k),
       onEnd: (r) => {
         if (!r.win) { refresh(); return; }
         n.done = true; n.stars = r.stars;
+        ensureAid(k);
         /* 错题入本 */
         r.wrongQs.forEach((w) => {
           if (k.wrongBook.length > 40) k.wrongBook.shift();
           k.wrongBook.push({ q: w, g, u: n.u, ok: false, t: Date.now() });
         });
-        if (n.t === 'battle') { reward(k, 2, 12, '冒险战斗获胜 · ' + DB[g].units[n.u].t, '⚔️'); }
-        if (n.t === 'review') { reward(k, 1, 6, '完成复习营地', '🛡️'); }
+        let dropMsg = '';
+        if (n.t === 'battle') {
+          const ft = dropFrag(k);
+          reward(k, 2, 12, '冒险战斗获胜 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '⚔️');
+          dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
+        }
+        if (n.t === 'review') {
+          const ft = dropFrag(k, ['N', 'R']);
+          reward(k, 1, 6, '完成复习营地 · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🛡️');
+          dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
+        }
         if (n.t === 'boss') {
           if (!q.badges.includes(n.u)) q.badges.push(n.u);
-          reward(k, 5, 25, '击败单元 Boss · 获得「' + DB[g].units[n.u].em + '」徽章', '👑');
+          const card = dropPetOf(k, q, rollRarity(['R', 'SR', 'SSR']));
+          reward(k, 5, 25, '击败单元 Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '👑');
+          dropMsg = card;
         }
         if (n.t === 'final') {
           q.trophy = true;
-          reward(k, 20, 60, '🏆 击败知识魔王，通关' + gradeName(g) + '冒险！', '🏆');
+          const card = dropPetOf(k, q, 'SSR');
+          reward(k, 20, 60, '🏆 击败知识魔王，通关' + gradeName(g) + '冒险 · 获得传说宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '🏆');
+          dropMsg = card;
         }
         P.save(); refresh();
-        if (n.t === 'boss' || n.t === 'final') victoryFX(n.t === 'final' ? '🏆 通关啦！' : '👑 Boss 击败！',
-          n.t === 'boss' ? '获得「' + DB[g].units[n.u].em + '」单元徽章' : gradeName(g) + '全部知识掌握！',
-          () => { if (n.t !== 'final') openTreasure(k, q, { t: 'treasure', u: n.u, done: false, stars: 0, i: -1 }, refresh); });
-        else toast('战斗胜利 +' + (n.t === 'review' ? 1 : 2) + ' 积分');
+        if (n.t === 'boss' || n.t === 'final') {
+          const isFinal = n.t === 'final';
+          victoryFX(isFinal ? '🏆 通关啦！' : '👑 Boss 击败！',
+            isFinal ? gradeName(g) + '全部知识掌握！' : '获得「' + DB[g].units[n.u].em + '」单元徽章',
+            () => petDropFX(dropMsg, k, refresh));
+        } else toast('战斗胜利 +' + (n.t === 'review' ? 1 : 2) + ' 积分' + (dropMsg ? ' · ' + dropMsg : ''));
       }
     });
   }
@@ -739,22 +894,79 @@
       });
   }
 
-  /* ================= 收集图鉴 ================= */
+  /* ================= 收集图鉴（v3.24：稀有度 + 碎片合成 + 助战栏位） ================= */
   function collSheet(k, q) {
     const g = gradeOf(k), G = DB[g];
+    ensureAid(k);
+    const slots = aidSlots(k);
+    const frags = k.frags || {};
+    const fragKeys = Object.keys(frags).filter((t) => frags[t] > 0).sort((a, b) => frags[b] - frags[a]);
     openSheet('<div class="sheet-h">🧸 我的收集</div>' +
-      '<div class="tiny">击败单元 Boss 得徽章 · 打开宝箱得宠物卡</div>' +
+      '<div class="tiny">徽章来自单元 Boss · 战斗掉碎片 · Boss 掉宠物 · 通关掉传说宠</div>' +
       '<div class="coll-h">🎖️ 单元徽章（' + (q.badges || []).length + '/' + G.units.length + '）</div>' +
       '<div class="badge-row">' + G.units.map((u, i) =>
         '<div class="badge-it' + ((q.badges || []).includes(i) ? ' on' : '') + '"><span>' + ((q.badges || []).includes(i) ? u.em : '❔') + '</span><small>' + esc(u.t.split(' ')[0].slice(0, 4)) + '</small></div>').join('') +
       (q.trophy ? '<div class="badge-it on big"><span>🏆</span><small>通关</small></div>' : '') + '</div>' +
+      '<div class="coll-h">🤝 助战栏位（' + slots + ' 个 · Lv.6/9/12 解锁）<small style="font-weight:400">助战宠物会一起出战，提供额外血量并有几率协力攻击</small></div>' +
+      '<div class="aid-row">' + (slots ? Array.from({ length: slots }, (_, i) => {
+        const t = k.aid[i];
+        return t
+          ? '<button class="aid-slot on" data-slot="' + i + '"><img src="images/gif/' + t + '-growth.gif" alt=""><small>' + esc((BP.PETS[t] || {}).name || t) + '</small></button>'
+          : '<button class="aid-slot" data-slot="' + i + '"><span>＋</span><small>选择助战</small></button>';
+      }).join('') : '<div class="tiny">宠物升到 Lv.6 解锁第一个助战位</div>') + '</div>' +
+      '<div class="coll-h">🧩 宠物碎片（共 ' + fragAll(k) + ' 枚 · 集满 10 枚合成宠物）</div>' +
+      (fragKeys.length ? '<div class="frag-grid">' + fragKeys.map((t) => {
+        const n = frags[t], can = n >= 10;
+        return '<div class="frag-it' + (can ? ' can' : '') + '"><img src="images/gif/' + t + '-baby.gif" alt="" onerror="this.style.display=\'none\'">' +
+          '<div class="frag-bar"><i style="width:' + Math.min(100, n * 10) + '%"></i></div>' +
+          '<small>' + esc((BP.PETS[t] || {}).name || t) + ' ' + n + '/10</small>' +
+          (can ? '<button class="frag-craft" data-t="' + t + '">合成</button>' : '') + '</div>';
+      }).join('') + '</div>' : '<div class="tiny">冒险战斗和复习营地会掉落碎片</div>') +
       '<div class="coll-h">🧸 宠物卡（' + (q.cards || []).length + ' 张）</div>' +
       '<div class="card-grid">' +
-      (q.cards || []).map((c) => '<div class="card-it"><img src="images/gif/' + c + '-baby.gif" alt=""><small>' + esc(BP.PETS[c] ? BP.PETS[c].name : c) + '</small></div>').join('') +
+      (q.cards || []).map((c) => {
+        const rar = rarOf(c), meta = BP.PETS[c] || { name: c, emoji: '🐾' };
+        return '<div class="card-it rar-' + rar + '"><i class="rar-tag" style="background:' + RAR[rar].c + '">' + rar + '</i><img src="images/gif/' + c + '-baby.gif" alt=""><small>' + esc(meta.name) + '</small></div>';
+      }).join('') +
       '<div class="card-it unknown"><span>❓</span></div>' +
       '</div>',
-      () => {});
+      (m, close) => {
+        /* 助战选择 */
+        m.querySelectorAll('.aid-slot').forEach((b) => (b.onclick = () => {
+          const slot = +b.dataset.slot;
+          const cur = k.aid[slot];
+          const cands = (q.cards || []).filter((t) => !k.aid.includes(t) || t === cur);
+          if (!cands.length && !cur) return toast('先去冒险收集宠物卡，再选助战');
+          const rows = (cur ? '<button class="aid-pick off" data-t="">🚫 卸下这只</button>' : '') +
+            cands.map((t) => {
+              const meta = BP.PETS[t] || { name: t, emoji: '🐾' };
+              const rar = rarOf(t);
+              return '<button class="aid-pick" data-t="' + t + '"><img src="images/gif/' + t + '-baby.gif" alt=""><div><b>' + esc(meta.name) + '</b><small style="color:' + RAR[rar].c + '">' + rar + ' · ' + RAR[rar].name + '</small></div></button>';
+            }).join('');
+          openSheet('<div class="sheet-h">选择助战宠物</div><div class="tiny">稀有度越高的助战并不更强，但都可以协战</div>' +
+            '<div class="aid-pick-list">' + rows + '</div>', (m2, close2) => {
+            m2.querySelectorAll('.aid-pick').forEach((bb) => (bb.onclick = () => {
+              const t = bb.dataset.t;
+              if (t) k.aid[slot] = t; else k.aid[slot] = null;
+              P.save(); close2(); close(); collSheet(k, q); toast(t ? '助战已设置 🤝' : '已卸下');
+            }));
+          });
+        }));
+        /* 碎片合成 */
+        m.querySelectorAll('.frag-craft').forEach((b) => (b.onclick = () => {
+          const t = b.dataset.t;
+          if ((k.frags[t] || 0) < 10) return;
+          k.frags[t] -= 10;
+          if (!q.cards.includes(t)) q.cards.push(t);
+          P.save();
+          close();
+          petDropFX(t, k, () => collSheet(k, q));
+        }));
+      });
   }
+
+  /* ================= 导出给 app.js 调用 ================= */
+  window.BPGames = { petInteract, aidSlots, rarOf, RAR };
 
   /* ================= 注册路由 ================= */
   const hook = window.BPHook;

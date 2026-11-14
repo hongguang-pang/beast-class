@@ -279,3 +279,47 @@
 .plc-grades button { border: 1.5px solid #e4d9f5; background: #f9f6fd; border-radius: 12px;
   padding: 12px 0; font-size: 14px; font-weight: 800; color: #4a3364; cursor: pointer; }
 .plc-grades button:active { background: #efe6fb; }
+
+/* ================= v3.27 学生端 / 学情分析 ================= */
+.mast-icons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 12px; }
+.mast-ic { background: #fff; border-radius: 12px; padding: 8px 2px 6px; text-align: center; border: 1.5px solid #eee2f8; }
+.mast-ic .mi-em { font-size: 18px; display: block; }
+.mast-ic small { font-size: 9.5px; color: #9a8ab0; display: block; margin-top: 2px; }
+.mast-ic b { font-size: 11px; display: block; margin-top: 1px; }
+.mast-ic.m-good { border-color: #9ad48f; background: #f4fbf1; }
+.mast-ic.m-good b { color: #4c9a3f; }
+.mast-ic.m-mid { border-color: #ffd76e; background: #fffbef; }
+.mast-ic.m-mid b { color: #d69a00; }
+.mast-ic.m-weak { border-color: #f2a09b; background: #fdf1f0; }
+.mast-ic.m-weak b { color: #d5483f; }
+.mast-ic.m-none b { color: #c0b2d4; }
+.stu-links, .fam-links { display: flex; gap: 8px; margin-top: 12px; }
+.stu-links button, .fam-links button { flex: 1; background: #fff; border: 1.5px solid #e4d9f5; border-radius: 12px;
+  padding: 10px 8px; font-size: 12.5px; font-weight: 700; color: #4a3364; cursor: pointer; }
+.fam-links button { background: linear-gradient(135deg, #f3ecff, #eaf3ff); }
+.ch-code { margin-top: 8px; opacity: .95; }
+.ch-code b { color: #ffd76e; font-weight: 800; letter-spacing: 1px; }
+.mast-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+.mast-row .mr-l { width: 74px; font-size: 12px; font-weight: 700; color: #4a3364; flex: none; }
+.mast-row .mr-bar { flex: 1; height: 10px; background: #f0eafb; border-radius: 99px; overflow: hidden; }
+.mast-row .mr-bar i { display: block; height: 100%; background: linear-gradient(90deg, #7c3aed, #4f46e5); border-radius: 99px; }
+.mast-row.good .mr-bar i { background: linear-gradient(90deg, #5cb85c, #7bc96f); }
+.mast-row.mid .mr-bar i { background: linear-gradient(90deg, #ff9800, #ffb74d); }
+.mast-row.weak .mr-bar i { background: linear-gradient(90deg, #e5484d, #ff7b72); }
+.mast-row .mr-v { width: 42px; font-size: 12px; font-weight: 800; color: #4a3364; text-align: right; flex: none; }
+.mast-row .mr-n { width: 36px; font-size: 10px; color: #9a8ab0; flex: none; }
+.mast-block { margin-top: 8px; }
+.mast-weak { margin-top: 12px; background: #fffaf2; border: 1px solid #ffe3b3; border-radius: 12px; padding: 10px 12px; }
+.mast-weak > b { font-size: 12.5px; color: #8a5a00; display: block; margin-bottom: 4px; }
+.mw-it { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 12.5px; color: #4a3364; border-top: 1px dashed #f2e2c2; }
+.mw-it:first-of-type { border-top: none; }
+.ana-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.ana-it { background: #fff; border: 1.5px solid #e4d9f5; border-radius: 14px; padding: 12px 6px; text-align: center; cursor: pointer; }
+.ana-it .av { display: block; width: 44px; height: 44px; margin: 0 auto 6px; border-radius: 12px; overflow: hidden; background: #f6f2fc; }
+.ana-it b { font-size: 13px; color: #3a2a4a; display: block; }
+.ana-it small { font-size: 10px; color: #9a8ab0; }
+.ana-card { margin-bottom: 10px; cursor: pointer; }
+.ana-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ana-h .av { width: 36px; height: 36px; border-radius: 10px; overflow: hidden; background: #f6f2fc; }
+.ana-h b { flex: 1; font-size: 14px; color: #3a2a4a; }
+.ana-h i { font-style: normal; color: #b49ad8; font-size: 12px; }

@@ -268,7 +268,9 @@
   ];
 
   /* ================= 存储 ================= */
-  const KEY = 'beast.v1';
+  /* v3.27 角色化数据隔离：学生/家庭/班级各自独立存储，互不相通 */
+  const ROLE_GET = () => { try { return localStorage.getItem('beast.role') || 'family'; } catch (e) { return 'family'; } };
+  const getKEY = () => 'beast.v1.' + ROLE_GET();
   const GROUPS_DEFAULT = ['第一组', '第二组', '第三组', '第四组'];
   /* 班内宠物去重：同一班出现重复宠物形象时，自动给重复的学生换一只没人用的。
      只换形象（type/name/skin），积分、等级、经验、记录都不动。
@@ -298,7 +300,12 @@
   const P = {
     d: null,
     load() {
-      try { this.d = JSON.parse(localStorage.getItem(KEY)); } catch (e) { this.d = null; }
+      try { this.d = JSON.parse(localStorage.getItem(getKEY())); } catch (e) { this.d = null; }
+      /* 旧版单存储数据自动迁移到家庭存储（仅一次） */
+      if (!this.d && ROLE_GET() === 'family') {
+        try { this.d = JSON.parse(localStorage.getItem('beast.v1')); } catch (e) { this.d = null; }
+        if (this.d) this.d.mode = 'family';
+      }
       if (this.d && Array.isArray(this.d.kids)) {
         if (!this.d.cls) this.d.cls = freshCls();
         if (!Array.isArray(this.d.cls.groups) || !this.d.cls.groups.length) this.d.cls.groups = GROUPS_DEFAULT.slice();
@@ -389,7 +396,7 @@
       e.name = d.cls.name; e.kids = d.kids; e.groups = d.cls.groups;
       e.period = d.cls.period; e.rnd = d.cls.rnd; e.since = d.cls.since;
     },
-    save() { this.sync(); try { localStorage.setItem(KEY, JSON.stringify(this.d)); } catch (e) { toast('存储空间不足，请在「数据」里导出后清理'); } },
+    save() { this.sync(); try { localStorage.setItem(getKEY(), JSON.stringify(this.d)); } catch (e) { toast('存储空间不足，请在「数据」里导出后清理'); } },
     fresh() {
       return {
         pin: null,
@@ -618,18 +625,72 @@
     el.innerHTML =
       '<div class="big"><img src="images/egg.jpg" alt="" style="width:110px;height:110px;border-radius:26px;box-shadow:0 10px 40px rgba(255,215,110,.45)"></div>' +
       '<h2>伴学宠物</h2>' +
-      '<p>表现好就加分，积分让宠物升级进化 —— 班级和家庭都能用</p>' +
+      '<p>选一个入口进入，各入口数据相互独立</p>' +
       '<div class="w-role">' +
-      '<button data-r="class"><b>🎒 我是老师 · 带一个班</b><span>全班名单、批量加减分、光荣榜</span></button>' +
-      '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与宠物养成</span></button>' +
+      '<button data-r="student"><b>🎒 我是学生 · 来闯关</b><span>每日答题、知识冒险、加入班级</span></button>' +
+      '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
+      '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.21.5 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.27 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
-      if (b.dataset.r === 'class') stepClass(el); else stepFamily(el);
+      localStorage.setItem('beast.role', b.dataset.r);
+      if (b.dataset.r === 'class') stepClass(el);
+      else if (b.dataset.r === 'student') stepStudent(el);
+      else stepFamily(el);
     }));
     el.querySelector('#wMig').onclick = () => qrImportSheet(true);
+  }
+
+  /* 学生入口：建档 → 摸底掉宠；可选加入班级 */
+  function stepStudent(el) {
+    el.innerHTML =
+      '<h2 style="margin-top:0">学生入学</h2>' +
+      '<p>先做个摸底测试，成绩越好，降临的宠物伙伴越稀有！<br>有班级码的话可以填上，加入后跟着班级走。</p>' +
+      '<div class="field"><label>你的名字 / 昵称</label><input id="wsName" maxlength="8" placeholder="比如：小明"></div>' +
+      '<div class="field"><label>班级码（没有可留空）</label><input id="wsCode" maxlength="8" placeholder="问老师要 6 位班级码"></div>' +
+      '<button class="btn" id="wsGo" style="margin-top:14px">开始摸底 📚</button>' +
+      '<button class="w-back" id="wsBack">‹ 返回</button>';
+    el.querySelector('#wsBack').onclick = () => stepRole(el);
+    el.querySelector('#wsGo').onclick = () => {
+      const name = el.querySelector('#wsName').value.trim() || '同学';
+      const code = el.querySelector('#wsCode').value.trim().toUpperCase();
+      el.remove();
+      const afterPlacement = (r) => {
+        const k = { id: uid(), name, points: 0, daily: {}, grade: r.grade, pet: { name: PETS[r.type].name, type: r.type, exp: 0, lv: 1 }, dex: { egg: true, [r.type + '-baby']: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null, mastery: {}, mode: 'student' };
+        P.d.mode = 'student';
+        P.d.cls = { name: '', groups: [], on: false };
+        P.d.classes = [];
+        P.d.kids = [k];
+        P.d.cur = k.id;
+        P.d.log = [];
+        if (code) joinClassByCode(k, code);
+        P.save();
+        render();
+        toast('🎓 ' + PETS[r.type].name + ' 降临！每天来答题闯关吧');
+      };
+      placement(name, afterPlacement);
+    };
+  }
+
+  /* 学生按班级码加入班级：年级随班级，答题数据合入班级 */
+  function joinClassByCode(k, code) {
+    let cd = null;
+    try { cd = JSON.parse(localStorage.getItem('beast.v1.class')); } catch (e) {}
+    const cls = cd && (cd.classes || []).find((c) => c.code === code);
+    if (!cls) { toast('没找到班级码 ' + code + '，先按独立学生入学'); return false; }
+    k.classCode = code;
+    k.className = cls.name;
+    if (cls.grade) k.grade = cls.grade;
+    /* 合入班里：同名学生优先绑定，否则新建记录 */
+    let stu = cls.kids.find((x) => x.name === k.name) || cls.kids.find((x) => x.sid === k.id);
+    if (!stu) { stu = { name: k.name, points: 0, daily: {}, pet: { name: k.pet.name, type: k.pet.type, exp: 0, lv: 1 }, dex: { egg: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], mastery: {}, sid: k.id }; cls.kids.push(stu); }
+    stu.sid = k.id;
+    stu.joined = true;
+    try { localStorage.setItem('beast.v1.class', JSON.stringify(cd)); } catch (e) {}
+    toast('🏫 已加入 ' + cls.name + '，年级随班级：' + (cls.grade ? { g1: '一', g2: '二', g3: '三', g4: '四', g5: '五', g6: '六' }[cls.grade] || '' : '?') + '年级');
+    return true;
   }
 
   function stepClass(el) {
@@ -735,6 +796,115 @@
   }
 
   /* ================= 页面：宠物（首页） ================= */
+  /* ================= v3.27 学生端 ================= */
+  function mastIconsHTML(k) {
+    const M = window.BPGames;
+    if (!M || !M.SUBJ) return '';
+    const stats = M.mastStats(k);
+    return '<div class="mast-icons">' +
+      Object.keys(M.SUBJ).map((s) => {
+        const st = stats[s] || { r: 0, w: 0 };
+        const tot = st.r + st.w;
+        const pct = tot ? Math.round(st.r / tot * 100) : -1;
+        const cls = pct < 0 ? 'm-none' : pct >= 80 ? 'm-good' : pct >= 60 ? 'm-mid' : 'm-weak';
+        return '<div class="mast-ic ' + cls + '" title="' + M.SUBJ[s].name + '">' +
+          '<span class="mi-em">' + M.SUBJ[s].icon + '</span>' +
+          '<small>' + M.SUBJ[s].name + '</small>' +
+          '<b>' + (pct < 0 ? '—' : pct + '%') + '</b></div>';
+      }).join('') + '</div>' +
+      '<div class="tiny" style="text-align:center;margin-top:4px">我的知识掌握度（答题自动更新）</div>';
+  }
+  function studentHomeHTML(k) {
+    const today = todayStr();
+    const doneToday = k.dailyQuizDate === today;
+    const gname = { g1: '一年级', g2: '二年级', g3: '三年级', g4: '四年级', g5: '五年级', g6: '六年级' }[k.grade] || '三年级';
+    return '<div class="games-grid">' +
+      '<a class="game-card gc-daily" id="stDaily"><span class="gc-em">' + (doneToday ? '✅' : '📖') + '</span><div><b>每日答题</b><small>' +
+      (doneToday ? '今天已完成，明天再来' : '10 道题 · 语数英科全科') + '</small></div><i class="gc-go">GO</i></a>' +
+      '<a class="game-card gc-quest" href="#/quest"><span class="gc-em">🗺️</span><div><b>知识冒险闯关</b><small>' +
+      (k.className ? esc(k.className) + ' · ' : '') + gname + (k.classCode ? ' · 年级随班级' : '') + '</small></div><i class="gc-go">GO</i></a>' +
+      '</div>' +
+      mastIconsHTML(k) +
+      '<div class="inter-row">' +
+      '<button class="inter-btn" data-a="pat">🫶 摸摸头</button>' +
+      '<button class="inter-btn" data-a="feed">🍖 喂食</button>' +
+      '<button class="inter-btn" data-a="play">🎾 玩耍</button>' +
+      '</div>' +
+      '<div class="tiny" id="interHint" style="text-align:center;margin-top:6px">和宠物互动 · 每天第一次有经验奖励</div>' +
+      '<div class="stu-links">' +
+      '<button id="stJoin">🏫 ' + (k.classCode ? '我的班级：' + esc(k.className) : '加入班级（有班级码？）') + '</button>' +
+      '<button id="stSwitch">🔄 切换身份</button>' +
+      '</div>';
+  }
+
+  /* ================= v3.27 学情分析（家长/老师可见，学生不可见） ================= */
+  function mastBarHTML(label, r, w) {
+    const tot = r + w;
+    const pct = tot ? Math.round(r / tot * 100) : -1;
+    const cls = pct < 0 ? '' : pct >= 80 ? 'good' : pct >= 60 ? 'mid' : 'weak';
+    return '<div class="mast-row ' + cls + '"><span class="mr-l">' + label + '</span>' +
+      '<div class="mr-bar"><i style="width:' + (pct < 0 ? 0 : pct) + '%"></i></div>' +
+      '<span class="mr-v">' + (pct < 0 ? '暂无' : pct + '%') + '</span><span class="mr-n">' + (tot ? tot + '题' : '') + '</span></div>';
+  }
+  function mastSheet(k) {
+    const M = window.BPGames;
+    if (!M || !M.SUBJ) return;
+    const stats = M.mastStats(k);
+    let body = '<div class="mast-block">' +
+      Object.keys(M.SUBJ).map((s) => {
+        const st = stats[s] || { r: 0, w: 0 };
+        return mastBarHTML(M.SUBJ[s].icon + ' ' + M.SUBJ[s].name, st.r, st.w);
+      }).join('') + '</div>';
+    /* 薄弱知识点 top5：答题量>=2 且正确率最低 */
+    const rows = Object.entries(k.mastery || {})
+      .map(([key, m]) => { const p = key.split('|'); return { g: p[0], subj: p[1], kn: p[2], r: m.r, w: m.w, tot: m.r + m.w }; })
+      .filter((x) => x.tot >= 2)
+      .sort((a, b) => (a.r / a.tot) - (b.r / b.tot));
+    const weak = rows.filter((x) => x.r / x.tot < 0.8).slice(0, 5);
+    body += '<div class="mast-weak"><b>🔍 需要加强的知识点</b>' +
+      (weak.length ? weak.map((x) => '<div class="mw-it"><span>' + (M.SUBJ[x.subj] ? M.SUBJ[x.subj].icon : '📘') + ' ' + esc(x.kn || x.subj) + '</span><b style="color:' + (x.r / x.tot < 0.5 ? '#e5484d' : '#ff8a00') + '">' + Math.round(x.r / x.tot * 100) + '%</b></div>').join('')
+        : '<div class="tiny" style="margin-top:6px">暂无明显薄弱点，继续保持！</div>') + '</div>';
+    body += '<div class="tiny" style="margin-top:10px">掌握度来自每日答题与冒险闯关的自动记录 · 答错自动进入错题本</div>';
+    openSheet('<div class="sheet-h">📊 ' + esc(k.name) + ' · 知识点掌握分析</div>' + body);
+  }
+  function viewAnalysis() {
+    if (isStudent()) { location.hash = '#/home'; return; }
+    if (isClass()) {
+      $view.innerHTML = '<div class="page">' +
+        '<div class="section-h"><h2>📊 学情分析</h2><span class="sub">点学生查看知识点掌握</span></div>' +
+        (P.d.kids.length ? '<div class="ana-grid">' + P.d.kids.map((k) =>
+          '<button class="ana-it" data-k="' + k.id + '"><span class="av"><img src="' + petImg(k) + '" alt=""></span>' +
+          '<b>' + esc(k.name) + '</b><small>' + (k.joined ? '🟢 班级学员' : '名单') + '</small></button>').join('') + '</div>'
+          : '<div class="card empty">班里还没有学生，先去「全班」添加名单</div>') +
+        '</div>';
+      document.querySelectorAll('.ana-it').forEach((b) => (b.onclick = () => {
+        const k = P.d.kids.find((x) => x.id === b.dataset.k);
+        if (k) mastSheet(k);
+      }));
+      return;
+    }
+    /* 家庭模式：每个孩子一张掌握卡 */
+    $view.innerHTML = '<div class="page">' +
+      '<div class="section-h"><h2>📊 学情分析</h2><span class="sub">点孩子查看知识点掌握详情</span></div>' +
+      P.d.kids.map((k) =>
+        '<div class="card ana-card" data-k="' + k.id + '"><div class="ana-h"><span class="av"><img src="' + petImg(k) + '" alt=""></span>' +
+        '<b>' + esc(k.name) + '</b><i>详情 ›</i></div>' +
+        (function () {
+          const M = window.BPGames;
+          if (!M || !M.SUBJ) return '';
+          const stats = M.mastStats(k);
+          return Object.keys(M.SUBJ).map((s) => {
+            const st = stats[s] || { r: 0, w: 0 };
+            return mastBarHTML(M.SUBJ[s].icon + ' ' + M.SUBJ[s].name, st.r, st.w);
+          }).join('');
+        })() + '</div>').join('') +
+      '</div>';
+    document.querySelectorAll('.ana-card').forEach((c) => (c.onclick = () => {
+      const k = P.d.kids.find((x) => x.id === c.dataset.k);
+      if (k) mastSheet(k);
+    }));
+  }
+
   function viewHome() {
     const k = kid();
     if (!k) return;
@@ -760,22 +930,42 @@
       '</div>' +
       (isClass() ? '<div class="quick-links">' +
         '<a href="#/daily">🎯 每日答题</a><a href="#/quest">🗺️ 冒险闯关</a><a href="#/dex">📖 我的图鉴</a><a href="#/tasks">✅ 今日任务</a><a href="#/board">🏆 光荣榜</a><a href="#/lucky">🎡 幸运抽奖</a></div>'
-        : '<div class="games-grid">' +
+        : isStudent() ? studentHomeHTML(k) :
+        '<div class="games-grid">' +
           '<a class="game-card gc-daily" href="#/daily"><span class="gc-em">🎯</span><div><b>每日打卡答题</b><small>每天 5 种题型 · 连续打卡</small></div><i class="gc-go">GO</i></a>' +
           '<a class="game-card gc-quest" href="#/quest"><span class="gc-em">🗺️</span><div><b>知识冒险闯关</b><small>打 Boss · 收集 · 错题本</small></div><i class="gc-go">GO</i></a>' +
           '</div>' +
+        '<div class="fam-links"><button id="famAnalysis">📊 学情分析 · 知识点掌握</button></div>' +
         '<div class="inter-row">' +
           '<button class="inter-btn" data-a="pat">🫶 摸摸头</button>' +
           '<button class="inter-btn" data-a="feed">🍖 喂食</button>' +
           '<button class="inter-btn" data-a="play">🎾 玩耍</button>' +
         '</div>' +
         '<div class="tiny" id="interHint" style="text-align:center;margin-top:6px">和宠物互动 · 每天第一次有经验奖励</div>') +
-      '<div class="section-h"><h2>最近动态</h2><a class="more" href="#/log">全部记录</a></div>' +
-      '<div id="recentLogs">' + recentLogsHTML(k) + '</div>' +
+      (!isStudent() ? '<div class="section-h"><h2>最近动态</h2><a class="more" href="#/log">全部记录</a></div>' +
+      '<div id="recentLogs">' + recentLogsHTML(k) + '</div>' : '') +
       '</div>';
 
     const cta = document.getElementById('homeClsCta');
     if (cta) cta.onclick = () => newClassSheet();
+
+    /* 学生端绑定 */
+    if (isStudent()) {
+      const d = document.getElementById('stDaily');
+      if (d) d.onclick = () => { if (window.BPGames) BPGames.studentDaily(k); };
+      const j = document.getElementById('stJoin');
+      if (j) j.onclick = () => {
+        if (k.classCode) { openSheet('<div class="sheet-h">我的班级</div><div class="tiny">已加入 <b>' + esc(k.className) + '</b>（' + (k.classCode || '') + '），年级随班级，答题数据会同步给老师</div><button class="btn" id="stLeave" style="margin-top:12px">退出班级</button>', (m2, close2) => { m2.querySelector('#stLeave').onclick = () => { delete k.classCode; delete k.className; P.save(); close2(); render(); toast('已退出班级'); }; }); }
+        else if (window.BPGames) BPGames.joinClassSheet(k, render);
+      };
+      const sw = document.getElementById('stSwitch');
+      if (sw) sw.onclick = () => { if (confirm('切换身份会回到入口选择页，学生数据保留')) { localStorage.removeItem('beast.role'); location.reload(); } };
+      const mg = document.getElementById('stMast');
+      if (mg) mg.onclick = () => mastSheet(k);
+    }
+    /* 家庭/班级端学情分析入口 */
+    const fa = document.getElementById('famAnalysis');
+    if (fa) fa.onclick = () => { location.hash = '#/analysis'; };
     document.querySelectorAll('.inter-btn').forEach((b) => (b.onclick = () => {
       if (window.BPGames) window.BPGames.petInteract(k, b.dataset.a);
     }));
@@ -1853,7 +2043,7 @@
             (mm, cc) => {
               mm.querySelector('#rsNo').onclick = cc;
               mm.querySelector('#rsYes').onclick = () => {
-                P.d = P.fresh(); localStorage.removeItem(KEY); P.save();
+                P.d = P.fresh(); localStorage.removeItem(getKEY()); P.save();
                 P.d.admin = true;
                 cc(); close(); close(); render();
                 parentPanel();
@@ -1921,13 +2111,22 @@
   function createClass(name, listText) {
     P.save();
     const id = 'c' + uid();
-    P.d.classes.push({ id, name, kids: [], groups: GROUPS_DEFAULT.slice(), period: 'today', rnd: { pool: [], round: 0 }, since: Date.now() });
+    P.d.classes.push({ id, name, kids: [], groups: GROUPS_DEFAULT.slice(), period: 'today', rnd: { pool: [], round: 0 }, since: Date.now(), code: clsCodeOf(), grade: '' });
     P.d.cls.on = true;
     loadClass(id);
     const r = importRoster(listText || '', true);
     if (!P.d.cur && P.d.kids.length) P.d.cur = P.d.kids[0].id;
     P.save();
     return r;
+  }
+  /* v3.27 班级码：6 位大写字母数字，学生端凭码加入 */
+  function clsCodeOf() {
+    if (P.d.cls && P.d.cls.code) return P.d.cls.code;
+    const cs = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let c = '';
+    for (let i = 0; i < 6; i++) c += cs[Math.floor(Math.random() * cs.length)];
+    if (P.d.cls) { P.d.cls.code = c; P.save(); }
+    return c;
   }
   function deleteClass(id) {
     if (P.d.classes.length <= 1) { toast('至少要保留一个班'); return; }
@@ -2000,8 +2199,11 @@
       '<div class="ch-acts"' + (P.d.classes.length > 1 ? ' style="grid-template-columns:repeat(4,1fr)"' : '') + '>' +
       '<button id="qaAll"><span>⚡</span>全班加分</button>' +
       '<button id="qaRnd"><span>🎲</span>随机点名</button>' +
+      '<button id="clsAna"><span>📊</span>学情分析</button>' +
       (P.d.classes.length > 1 ? '<button id="qaCmp"><span>📊</span>跨班对比</button>' : '') +
-      '</div></div>' +
+      '</div>' +
+      '<div class="ch-code tiny">🏫 班级码 <b id="clsCodeB">' + esc(P.d.cls.code || clsCodeOf()) + '</b> · 班级年级 <b id="clsGradeB">' + ({ g1: '一', g2: '二', g3: '三', g4: '四', g5: '五', g6: '六' }[P.d.cls.grade] || '未设') + '</b>（学生加入后年级随班）' +
+      ' <button id="clsGradeSet" style="font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff">设置年级</button></div>' +
       '<div class="cls-tools">' +
       '<input id="clsQ" placeholder="搜索学生" value="' + esc(clsFilter.q) + '">' +
       '<button id="clsRoster">名单</button></div>' +
@@ -2024,6 +2226,25 @@
     document.getElementById('chSwitch').onclick = classListSheet;
     document.getElementById('clsSet').onclick = classSetupSheet;
     document.getElementById('clsRoster').onclick = rosterSheet;
+    const anaBtn = document.getElementById('clsAna');
+    if (anaBtn) anaBtn.onclick = () => { location.hash = '#/analysis'; };
+    const gradeBtn = document.getElementById('clsGradeSet');
+    if (gradeBtn) gradeBtn.onclick = () => {
+      openSheet('<div class="sheet-h">班级年级</div><div class="tiny">设置后学生加入班级会自动跟随，且不能自己改年级</div>' +
+        '<div class="grade-grid">' + ['g1', 'g2', 'g3', 'g4', 'g5', 'g6'].map((g) =>
+          '<button class="grade-it' + (g === P.d.cls.grade ? ' on' : '') + '" data-g="' + g + '">' + { g1: '一年级', g2: '二年级', g3: '三年级', g4: '四年级', g5: '五年级', g6: '六年级' }[g] + '</button>').join('') + '</div>',
+        (m2, close2) => {
+          m2.querySelectorAll('.grade-it').forEach((b) => (b.onclick = () => {
+            P.d.cls.grade = b.dataset.g;
+            /* 同步回班级列表（学生端按 classes[].code 读取） */
+            const cur = (P.d.classes || []).find((c) => c.id === P.d.clsId);
+            if (cur) cur.grade = b.dataset.g;
+            P.d.kids.forEach((k) => (k.grade = b.dataset.g));
+            P.save(); close2(); render();
+            toast('班级年级已设为' + { g1: '一', g2: '二', g3: '三', g4: '四', g5: '五', g6: '六' }[b.dataset.g] + '年级，全班同步');
+          }));
+        });
+    };
     document.getElementById('qaAll').onclick = () => quickAward(P.d.kids.map((k) => k.id));
     document.getElementById('qaRnd').onclick = randomPick;
     const qc = document.getElementById('qaCmp');
@@ -3243,9 +3464,12 @@
   };
   const TABS_FAMILY = [['home', '宠物', 'home'], ['dex', '图鉴', 'dex'], ['tasks', '任务', 'tasks'], ['shop', '商店', 'shop'], ['log', '记录', 'log']];
   const TABS_CLASS = [['home', '我的', 'home'], ['class', '全班', 'cls'], ['board', '光荣榜', 'board'], ['shop', '商店', 'shop'], ['log', '记录', 'log']];
+  /* 学生端极简 Tab：宠物 / 图鉴 / 记录（答题与冒险从首页进） */
+  const TABS_STUDENT = [['home', '宠物', 'home'], ['dex', '图鉴', 'dex'], ['log', '记录', 'log']];
+  const isStudent = () => !!(P.d && P.d.mode === 'student');
 
   function renderTabs(active) {
-    const set = isClass() ? TABS_CLASS : TABS_FAMILY;
+    const set = isClass() ? TABS_CLASS : isStudent() ? TABS_STUDENT : TABS_FAMILY;
     const nav = document.getElementById('tabbar');
     nav.style.gridTemplateColumns = 'repeat(' + set.length + ',1fr)';
     nav.innerHTML = set.map(([k, t, ic]) =>
@@ -3253,14 +3477,18 @@
       '<svg viewBox="0 0 24 24">' + ICONS[ic] + '</svg><span>' + t + '</span></a>').join('');
   }
 
-  const routes = { home: viewHome, dex: viewDex, tasks: viewTasks, shop: viewShop, log: viewLog, class: viewClass, board: viewBoard, compare: viewCompare, lucky: viewLucky };
-  const ROUTES_ALL = ['home', 'dex', 'tasks', 'shop', 'log', 'class', 'board', 'compare', 'lucky'];
+  const routes = { home: viewHome, dex: viewDex, tasks: viewTasks, shop: viewShop, log: viewLog, class: viewClass, board: viewBoard, compare: viewCompare, lucky: viewLucky, analysis: viewAnalysis };
+  const ROUTES_ALL = ['home', 'dex', 'tasks', 'shop', 'log', 'class', 'board', 'compare', 'lucky', 'analysis'];
   function render() {
     if (!P.d) { P.d = P.fresh(); }
-    /* 家庭模式极简：不显示班级切换和教师/家长管理入口 */
+    /* 家庭/学生模式极简：不显示班级切换和教师/家长管理入口 */
     document.getElementById('classBtn').style.visibility = isClass() ? 'visible' : 'hidden';
     document.getElementById('parentBtn').style.visibility = isClass() ? 'visible' : 'hidden';
     document.getElementById('parentBtn').textContent = isClass() ? '老师' : '家长';
+    /* 学生端只允许 宠物/图鉴/记录/每日答题/冒险，老师家长页面一概不可见 */
+    if (isStudent() && ['class', 'board', 'compare', 'tasks', 'shop', 'lucky'].includes((location.hash || '').replace('#/', '').split('?')[0])) {
+      location.hash = '#/home';
+    }
     const empty = !P.d.kids || !P.d.kids.length;
     if (empty && !isClass()) {
       $view.innerHTML = '';
@@ -3275,10 +3503,11 @@
     (routes[h] || viewHome)();
     let tab = h;
     if (isClass() && (h === 'dex' || h === 'tasks')) tab = 'home';
+    if (isStudent() && h === 'analysis') tab = 'home';
     if (h === 'compare') tab = 'class';
     if (h === 'lucky') tab = 'shop';
     renderTabs(tab);
-    document.getElementById('tbTitle').textContent = isClass() ? (P.d.cls.name || '伴学宠物') : '伴学宠物 · 家庭';
+    document.getElementById('tbTitle').textContent = isClass() ? (P.d.cls.name || '伴学宠物') : isStudent() ? '伴学宠物 · 学生' : '伴学宠物 · 家庭';
     bindKidsRow();
   }
 

@@ -575,8 +575,13 @@
     const subj = node.subj || 'en';
     const WS = () => genSubjectQ(weightedSubj(), g, lv, node.u);
     if (node.t === 'kn') {
+      const fmt = CHAPTER_FMT[g] || CHAPTER_FMT.g3;
       const f = () => genSubjectQ(subj, g, lv, node.u);
-      return genMix(3, [f, f, f], WS);
+      return genMix(fmt.perKn, [f, f, f], WS);
+    }
+    if (node.t === 'chall') {
+      /* 挑战关：4 题全科混排，考本章综合 */
+      return genMix(4, [WS, WS, WS, WS], WS);
     }
     if (node.t === 'boss') {
       const b = () => genSubjectQ(subj, g, lv, node.u);
@@ -631,30 +636,68 @@
     '知识城堡就在眼前，把守城门的 Boss 可不好对付，做好准备！',
     '最终决战！集齐五章知识之力，挑战最强的知识魔王！'
   ];
-  /* 章内 12 个知识点的学科编排：英3 语文3 数学4 副课1+1，主课侧重 */
+  /* ================= v3.27 各年级差异化关卡格式 =================
+     g1: 每章8知识点/2题 线性短线 | g2: 10点/2题 | g3: 12点/3题
+     g4: 12点/3题+章末挑战关 | g5: 14点/3题+挑战关+章中副Boss | g6: 16点/3题+挑战关+副Boss */
+  const CHAPTER_FMT = {
+    g1: { kn: 8,  perKn: 2, mix: { en: 2, math: 3, cn: 2, sub: 1 } },
+    g2: { kn: 10, perKn: 2, mix: { en: 3, math: 4, cn: 2, sub: 1 } },
+    g3: { kn: 12, perKn: 3, mix: { en: 3, math: 4, cn: 3, sub: 2 } },
+    g4: { kn: 12, perKn: 3, mix: { en: 3, math: 4, cn: 3, sub: 2 }, chall: true },
+    g5: { kn: 14, perKn: 3, mix: { en: 4, math: 5, cn: 3, sub: 2 }, chall: true, boss2: true },
+    g6: { kn: 16, perKn: 3, mix: { en: 4, math: 5, cn: 4, sub: 3 }, chall: true, boss2: true }
+  };
+  /* 章内知识点编排：主课各取大纲切片，池不足用「综合练习」节点补足 */
   function buildChapterKn(g, c) {
+    const fmt = CHAPTER_FMT[g] || CHAPTER_FMT.g3;
     const un = DB[g].units[c];
-    return [
-      { s: 'en', n: '单词 · ' + un.words[0][1] },
-      { s: 'en', n: '单词 · ' + un.words[1][1] },
-      { s: 'math', n: MATH_KN[g][c * 4] },
-      { s: 'cn', n: CN_KN[g][c * 3] },
-      { s: 'en', n: '单词 · ' + un.words[2][1] },
-      { s: 'cn', n: CN_KN[g][c * 3 + 1] },
-      { s: 'math', n: MATH_KN[g][c * 4 + 1] },
-      { s: 'cn', n: CN_KN[g][c * 3 + 2] },
-      { s: 'math', n: MATH_KN[g][c * 4 + 2] },
-      { s: 'en', n: '句型 · ' + un.sents[0][0] },
-      { s: 'math', n: MATH_KN[g][c * 4 + 3] },
-      { s: c % 2 ? 'eth' : 'sci', n: SC_KN[g][c] }
-    ];
+    const list = [];
+    const pushSub = (subj, i) => {
+      if (subj === 'en') {
+        const w = un.words[i];
+        list.push({ s: 'en', n: w ? '单词 · ' + w[1] : '英语综合 · ' + un.t });
+      } else if (subj === 'math') {
+        const kn = MATH_KN[g][c * 4 + i];
+        list.push({ s: 'math', n: kn || '数学综合练习 · ' + un.t });
+      } else if (subj === 'cn') {
+        const kn = CN_KN[g][c * 3 + i];
+        list.push({ s: 'cn', n: kn || '语文综合练习 · ' + un.t });
+      } else {
+        list.push({ s: c % 2 ? 'eth' : 'sci', n: SC_KN[g][(c + i) % SC_KN[g].length] });
+      }
+    };
+    /* 交错排布避免同科连排 */
+    const order = [];
+    const pools = { en: [], math: [], cn: [], sub: [] };
+    for (let i = 0; i < fmt.mix.en; i++) pools.en.push(['en', i]);
+    for (let i = 0; i < fmt.mix.math; i++) pools.math.push(['math', i]);
+    for (let i = 0; i < fmt.mix.cn; i++) pools.cn.push(['cn', i]);
+    for (let i = 0; i < fmt.mix.sub; i++) pools.sub.push(['sub', i]);
+    let pickOrder = [];
+    const keys = ['en', 'math', 'cn', 'sub'];
+    let ki = 0;
+    while (pickOrder.length < fmt.kn) {
+      const k = keys[ki % keys.length]; ki++;
+      if (pools[k].length) pickOrder.push(pools[k].shift());
+      if (pickOrder.length >= fmt.kn) break;
+      if (keys.every((x) => !pools[x].length)) { /* 池尽则用英语综合循环 */ pickOrder.push(['en', 99]); }
+    }
+    pickOrder.forEach((x) => pushSub(x[0], x[1]));
+    return list;
   }
   function buildMap(g) {
+    const fmt = CHAPTER_FMT[g] || CHAPTER_FMT.g3;
     const nodes = [];
     for (let c = 0; c < 5; c++) {
-      buildChapterKn(g, c).forEach((kn, i) => {
-        nodes.push({ t: 'kn', u: c, subj: kn.s, kn: kn.n, lv: Math.min(4, Math.floor((c * 12 + i) / 60 * 5)) });
+      const kns = buildChapterKn(g, c);
+      kns.forEach((kn, i) => {
+        nodes.push({ t: 'kn', u: c, subj: kn.s, kn: kn.n, lv: Math.min(4, Math.floor((c * fmt.kn + i) / (5 * fmt.kn) * 5)) });
+        /* g5/g6 章中副 Boss：知识点过半时出现 */
+        if (fmt.boss2 && i === Math.floor(kns.length / 2) - 1) {
+          nodes.push({ t: 'boss', u: c, subj: SUBJ_ROT[(c * 3 + 2) % SUBJ_ROT.length], mid: true, lv: Math.min(4, 1 + c) });
+        }
       });
+      if (fmt.chall) nodes.push({ t: 'chall', u: c, lv: Math.min(4, 1 + c) }); /* 章末挑战：4 题混科 */
       /* 章 Boss：学科轮换，难度随章加深 */
       nodes.push({ t: 'boss', u: c, subj: SUBJ_ROT[c * 3 % SUBJ_ROT.length], lv: Math.min(4, 2 + Math.floor(c / 2)) });
       if (c < 4) nodes.push({ t: 'treasure', u: c });
@@ -674,11 +717,11 @@
   function questState(k) {
     const g = gradeOf(k);
     /* v3.26 知识图谱版地图（ver=2）：旧 20 关地图自动迁移，已通关数平移到新图前段 */
-    if (!k.quest || k.quest.grade !== g || !Array.isArray(k.quest.nodes) || k.quest.ver !== 2) {
+    if (!k.quest || k.quest.grade !== g || !Array.isArray(k.quest.nodes) || k.quest.ver !== 3) {
       const oldDone = (k.quest && Array.isArray(k.quest.nodes)) ? k.quest.nodes.filter((n) => n.done).length : 0;
       const nodes = buildMap(g);
       nodes.slice(0, Math.min(oldDone, nodes.length - 1)).forEach((n) => { n.done = true; n.stars = 3; });
-      k.quest = { grade: g, ver: 2, nodes, cards: (k.quest && k.quest.cards) || [], badges: (k.quest && k.quest.badges) || [], trophy: false, built: todayStr() };
+      k.quest = { grade: g, ver: 3, nodes, cards: (k.quest && k.quest.cards) || [], badges: (k.quest && k.quest.badges) || [], trophy: false, built: todayStr() };
       P.save();
     }
     return k.quest;
@@ -745,6 +788,7 @@
   function quizRun(cfg) {
     const k = kid();
     let idx = 0, petHp = 3 + (cfg.aid ? cfg.aid.length : 0), eHp = cfg.enemy ? cfg.enemy.hp : 0;
+    const results = []; /* v3.27 逐题对错记录，供知识点掌握分析 */
     const wrongQs = [];
     const el = document.createElement('div');
     el.className = 'qz-mask';
@@ -786,6 +830,7 @@
     function answer(i, btn) {
       const q = cfg.qs[idx];
       const right = i === q.a;
+      results.push({ q, ok: right });
       el.querySelectorAll('.qz-opt').forEach((b) => (b.disabled = true));
       btn.classList.add(right ? 'good' : 'bad');
       if (!right) {
@@ -852,7 +897,7 @@
       if (ok) ok.onclick = () => el.remove();
       if (go) go.onclick = () => el.remove();
       if (re) re.onclick = () => { el.remove(); quizRun(cfg); };
-      if (cfg.onEnd) cfg.onEnd({ win, stars, right, total, wrongQs });
+      if (cfg.onEnd) cfg.onEnd({ win, stars, right, total, wrongQs, results });
     }
     render();
     return el;
@@ -1049,6 +1094,7 @@
       '<div class="quest-hero">' +
       '<img class="qh-pet" src="' + petImg(k) + '" alt="">' +
       '<div class="qh-t"><b>' + gradeName(g) + ' · 知识冒险</b><small>' +
+      (k.className ? esc(k.className) + ' · ' : '') +
       (q.trophy ? '🏆 已通关！可以重刷拿满星' : '进度 ' + q.nodes.filter((n) => n.done).length + '/' + q.nodes.length) + ' · 语数英为主 · 科学常识为辅</small></div>' +
       '<div class="qh-btns"><button id="qColl">🧸 收集</button><button id="qWrong">📕 错题本' + (wrongOpen(k).length ? ' <b class="wr-n">' + wrongOpen(k).length + '</b>' : '') + '</button><button id="qGrade">🎓</button></div></div>' +
       /* v3.26 章节式路径冒险地图：每章一段场景剧情，知识点沿蜿蜒路径排布 */
@@ -1105,7 +1151,9 @@
         return html;
       })() + '</div>';
 
-    document.getElementById('qGrade').onclick = () => pickGradeSheet((gg) => {
+    /* 班级学员年级随班级，不能自己选 */
+    if (k.classCode) document.getElementById('qGrade').style.display = 'none';
+    else document.getElementById('qGrade').onclick = () => pickGradeSheet((gg) => {
       if (gg === k.grade) return;
       const q2 = questState(k);
       const hasProgress = q2.nodes.some((n) => n.done);
@@ -1129,6 +1177,104 @@
     }));
   }
   function curIdxOk(i, q) { return i === curIdx(q); }
+
+  /* ================= v3.27 知识点掌握 + 班级数据同步 ================= */
+  function mastAdd(k, subj, knName, ok) {
+    if (!k.mastery) k.mastery = {};
+    const key = (k.grade || 'g3') + '|' + (subj || 'mix') + '|' + (knName || '综合');
+    const m = k.mastery[key] || (k.mastery[key] = { r: 0, w: 0 });
+    if (ok) m.r++; else m.w++;
+  }
+  /* 按学科聚合掌握度：{ en:{r,w}, math:{r,w}, ... } */
+  function mastStats(k) {
+    const out = {};
+    Object.keys(SUBJ).forEach((s) => (out[s] = { r: 0, w: 0 }));
+    Object.keys(k.mastery || {}).forEach((key) => {
+      const subj = key.split('|')[1];
+      if (!out[subj]) out[subj] = { r: 0, w: 0 };
+      out[subj].r += k.mastery[key].r;
+      out[subj].w += k.mastery[key].w;
+    });
+    return out;
+  }
+  /* 学生答题数据合入班级存储（老师端学情分析可见） */
+  function syncClassData(k) {
+    if (!k.classCode) return;
+    try {
+      const cd = JSON.parse(localStorage.getItem('beast.v1.class') || 'null');
+      if (!cd || !Array.isArray(cd.classes)) return;
+      cd.classes.forEach((c) => {
+        if (c.code !== k.classCode) return;
+        let stu = (c.kids || []).find((x) => x.sid === k.id) || (c.kids || []).find((x) => x.name === k.name);
+        if (!stu) { stu = { name: k.name, points: 0, daily: {}, pet: { name: k.pet.name, type: k.pet.type, exp: 0, lv: k.pet.lv }, dex: { egg: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [] }; c.kids.push(stu); }
+        stu.sid = k.id;
+        stu.joined = true;
+        stu.mastery = k.mastery || {};
+        stu.points = k.points;
+        stu.pet = stu.pet || {};
+        stu.pet.lv = k.pet.lv;
+        stu.wrongN = (k.wrongBook || []).filter((w) => !w.ok).length;
+      });
+      localStorage.setItem('beast.v1.class', JSON.stringify(cd));
+    } catch (e) {}
+  }
+  /* 学生加入班级（运行时入口） */
+  function joinClassSheet(k, refresh) {
+    openSheet('<div class="sheet-h">🏫 加入班级</div>' +
+      '<div class="tiny">问老师要 6 位班级码，加入后年级随班级、每天答题数据同步给老师</div>' +
+      '<div class="field"><label>班级码</label><input id="jcCode" maxlength="6" placeholder="比如：AB3CD5" style="text-transform:uppercase"></div>' +
+      '<button class="btn" id="jcGo" style="margin-top:12px">加入</button>', (m, close) => {
+      m.querySelector('#jcGo').onclick = () => {
+        const code = m.querySelector('#jcCode').value.trim().toUpperCase();
+        if (!code) return;
+        let cd = null;
+        try { cd = JSON.parse(localStorage.getItem('beast.v1.class') || 'null'); } catch (e) {}
+        const cls = cd && (cd.classes || []).find((c) => c.code === code);
+        if (!cls) { toast('没找到班级码 ' + code + '，请向老师确认'); return; }
+        k.classCode = code;
+        k.className = cls.name;
+        if (cls.grade) k.grade = cls.grade;
+        if (!k.quest || k.quest.grade !== k.grade) k.quest = null; /* 年级变了重开地图 */
+        let stu = (cls.kids || []).find((x) => x.name === k.name) || (cls.kids || []).find((x) => x.sid === k.id);
+        if (!stu) { stu = { name: k.name, points: 0, daily: {}, pet: { name: k.pet.name, type: k.pet.type, exp: 0, lv: k.pet.lv }, dex: { egg: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [] }; cls.kids.push(stu); }
+        stu.sid = k.id;
+        stu.joined = true;
+        try { localStorage.setItem('beast.v1.class', JSON.stringify(cd)); } catch (e) {}
+        P.save(); close(); if (refresh) refresh();
+        toast('🏫 已加入 ' + cls.name + '，年级随班级');
+      };
+    });
+  }
+  /* 学生每日答题：每天一次 10 题全科，成绩计入掌握度并同步班级 */
+  function studentDaily(k) {
+    ensureKid(k);
+    if (k.dailyQuizDate === todayStr()) { toast('今天已答过题啦，明天再来！'); return; }
+    /* 难度随冒险进度：通关越多题越难 */
+    const q = questState(k);
+    const prog = q.nodes.filter((n) => n.done).length / q.nodes.length;
+    const lv = Math.max(1, Math.min(4, Math.round(prog * 4) || 1));
+    const ROT = ['en', 'math', 'cn', 'math', 'en', 'cn', 'sci', 'math', 'en', 'eth'];
+    const qs = genMix(10, ROT.map((s) => () => genSubjectQ(s, gradeOf(k), lv, 0)), WS0);
+    function WS0() { return genSubjectQ(weightedSubj(), gradeOf(k), lv, 0); }
+    quizRun({
+      qs, mode: 'drill',
+      aid: aidList(k),
+      onEnd: (r) => {
+        k.dailyQuizDate = todayStr();
+        (r.results || []).forEach((x) => mastAdd(k, x.q.type, null, x.ok));
+        r.wrongQs.forEach((w) => {
+          if (k.wrongBook.length > 40) k.wrongBook.shift();
+          k.wrongBook.push({ q: w, g: gradeOf(k), u: 0, ok: false, t: Date.now() });
+        });
+        const right = r.results ? r.results.filter((x) => x.ok).length : 0;
+        reward(k, 2 + right, 8 + right * 3, '每日答题 · 答对 ' + right + '/' + qs.length, '📖');
+        syncClassData(k);
+        P.save();
+        toast('每日答题完成 · 答对 ' + right + '/' + qs.length + ' · 掌握度已更新 📊');
+        BP.render();
+      }
+    });
+  }
 
   /* 按本次答题成绩决定掉落稀有度：成绩越好 SSR 概率越高 */
   function rarityByScore(right, total, pool) {
@@ -1169,8 +1315,15 @@
           if (k.wrongBook.length > 40) k.wrongBook.shift();
           k.wrongBook.push({ q: w, g, u: n.u, ok: false, t: Date.now() });
         });
+        /* 知识点掌握累计（kn 关精确到知识点，混科关按学科） */
+        (r.results || []).forEach((x) => mastAdd(k, n.t === 'kn' ? n.subj : x.q.type, n.t === 'kn' ? n.kn : null, x.ok));
         let dropMsg = '';
         const bonus = n.lv || 0; /* 难度加成：关卡越靠后奖励越高 */
+        if (n.t === 'chall') {
+          const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
+          reward(k, 3 + bonus, 15 + bonus * 3, '挑战关达成 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🏅');
+          dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
+        }
         if (n.t === 'kn') {
           /* 知识点关：满分（成绩好）才有更高概率掉稀有碎片 */
           const full = r.right === r.total;
@@ -1202,7 +1355,9 @@
           reward(k, 20, 60, '🏆 击败知识魔王，通关' + gradeName(g) + '冒险 · 获得传说宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '🏆');
           dropMsg = card;
         }
-        P.save(); refresh();
+        P.save();
+        syncClassData(k); /* 班级学员：答题数据合入班级 */
+        refresh();
         if (n.t === 'boss' || n.t === 'final') {
           const isFinal = n.t === 'final';
           victoryFX(isFinal ? '🏆 通关啦！' : '👑 Boss 击败！',
@@ -1389,7 +1544,8 @@
   }
 
   /* ================= 导出给 app.js 调用 ================= */
-  window.BPGames = { petInteract, aidSlots, rarOf, RAR, genPlacement, rollPlacementPet };
+  window.BPGames = { petInteract, aidSlots, rarOf, RAR, SUBJ, mastStats, mastAdd,
+    genPlacement, rollPlacementPet, studentDaily, joinClassSheet, syncClassData };
 
   /* ================= 注册路由 ================= */
   const hook = window.BPHook;

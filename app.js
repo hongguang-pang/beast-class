@@ -471,7 +471,7 @@
     const p = PETS[type];
     const m = document.createElement('div');
     m.className = 'evo-mask';
-    m.innerHTML = '<div class="evo-box"><div class="big img"><img src="images/' + type + '-baby.jpg" alt=""></div>' +
+    m.innerHTML = '<div class="evo-box"><div class="big img"><img src="images/gif/' + type + '-baby.gif" alt=""></div>' +
       '<h2>神秘伙伴降临！</h2><p>Lv.' + fromLv + ' 里程碑达成 · 解锁 <b>' + p.name + '</b><br>去图鉴让它出战吧</p>' +
       '<button class="btn sm" style="margin-top:14px;background:#ffd76e;color:#5b3a00" id="rvOk">太棒了！</button></div>';
     for (let i = 0; i < 12; i++) {
@@ -658,6 +658,55 @@
     };
   }
 
+  /* ================= v3.26 入学摸底（家庭模式添加孩子第一步） =================
+     选年级 → 动态出 10 题（难度递进）→ 按成绩掉落初始宠物，成绩越好 SSR 概率越高 */
+  function placement(name, onDone) {
+    const m = document.createElement('div');
+    m.className = 'evo-mask plc-mask';
+    let step = 0, right = 0, qs = [];
+    const showGrade = () => {
+      m.innerHTML = '<div class="evo-box plc-box"><h2>📚 入学摸底</h2>' +
+        '<p>欢迎 <b>' + esc(name) + '</b>！<br>选一个年级，答 10 道题测一测：<br>成绩越好，降临的宠物伙伴越稀有（最高传说 SSR）！</p>' +
+        '<div class="plc-grades">' + [1, 2, 3, 4, 5, 6].map((n) => '<button data-g="g' + n + '">' + n + '年级</button>').join('') + '</div></div>';
+      m.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => {
+        qs = (window.BPGames && BPGames.genPlacement) ? BPGames.genPlacement(b.dataset.g) : [];
+        m.dataset.grade = b.dataset.g;
+        showQ();
+      }));
+    };
+    const showQ = () => {
+      if (step >= qs.length) return finish();
+      const q = qs[step];
+      m.innerHTML = '<div class="evo-box plc-box"><div class="plc-top">📖 摸底测试 ' + (step + 1) + '/' + qs.length + ' · 难度 ' + '●'.repeat(Math.floor(step / 2) + 1) + '</div>' +
+        '<div class="plc-q">' + esc(q.q) + '</div>' +
+        '<div class="plc-opts">' + q.opts.map((o, i) => '<button data-i="' + i + '">' + esc(o) + '</button>').join('') + '</div></div>';
+      m.querySelectorAll('.plc-opts button').forEach((b) => (b.onclick = () => {
+        const i = +b.dataset.i, all = m.querySelectorAll('.plc-opts button');
+        all.forEach((x) => (x.disabled = true));
+        if (i === q.a) { b.classList.add('ok'); right++; }
+        else { b.classList.add('no'); all[q.a].classList.add('ok'); }
+        setTimeout(() => { step++; showQ(); }, 750);
+      }));
+    };
+    const finish = () => {
+      const r = (window.BPGames && BPGames.rollPlacementPet) ? BPGames.rollPlacementPet(right, qs.length)
+        : { type: Object.keys(PETS)[0], rar: 'N', right, total: qs.length };
+      const RL = { SSR: '传说 🌟🌟🌟', SR: '史诗 🌟🌟', R: '稀有 🌟', N: '普通 ⭐' };
+      m.innerHTML = '<div class="evo-box plc-box"><div class="big img"><img src="images/gif/' + r.type + '-baby.gif" alt=""></div>' +
+        '<h2>神秘伙伴降临！</h2><p>摸底答对 <b>' + right + '/' + qs.length + '</b> · 评级 <b style="color:#ff9800">' + RL[r.rar] + '</b><br>' +
+        PETS[r.type].emoji + ' 恭喜解锁 <b>' + PETS[r.type].name + '</b>！</p>' +
+        '<button class="btn sm" style="margin-top:14px;background:#ffd76e;color:#5b3a00" id="plcOk">开始冒险</button></div>';
+      m.querySelector('#plcOk').onclick = () => {
+        m.classList.remove('in'); setTimeout(() => m.remove(), 320);
+        r.grade = m.dataset.grade || 'g3';
+        onDone(r);
+      };
+    };
+    document.body.appendChild(m);
+    requestAnimationFrame(() => m.classList.add('in'));
+    showGrade();
+  }
+
   function stepFamily(el) {
     const FIRST_PET = Object.keys(PETS)[0];
     let type = FIRST_PET;
@@ -665,27 +714,23 @@
       '<h2 style="margin-top:0">开始养成</h2>' +
       '<p>孩子做任务赚积分，宠物跟着升级进化；积分还能在商店兑换奖励。</p>' +
       '<div class="field"><label>孩子的名字 / 称呼</label><input id="wName" placeholder="比如：小明、姐姐、哥哥" maxlength="8"></div>' +
-      '<div style="margin-top:16px;font-size:13px;font-weight:650;opacity:.9">选一只初始宠物蛋</div>' +
-      '<div class="pet-picks">' + Object.entries(PETS).map(([k, p]) =>
-        '<button data-t="' + k + '" class="' + (k === FIRST_PET ? 'on' : '') + '">' + p.emoji + '</button>').join('') + '</div>' +
-      '<button class="btn" id="wGo">开始养成 🎉</button>' +
+      '<div class="tiny" style="margin-top:10px">点「开始摸底」先做 10 道入学题，成绩越好，降临的宠物伙伴越稀有！</div>' +
+      '<button class="btn" id="wGo" style="margin-top:14px">开始摸底 📚</button>' +
       '<button class="w-back" id="wcBack">‹ 返回</button>';
     el.querySelector('#wcBack').onclick = () => stepRole(el);
-    el.querySelectorAll('.pet-picks button').forEach((b) => (b.onclick = () => {
-      el.querySelectorAll('.pet-picks button').forEach((x) => x.classList.remove('on'));
-      b.classList.add('on'); type = b.dataset.t;
-    }));
     el.querySelector('#wGo').onclick = () => {
       const name = el.querySelector('#wName').value.trim() || '宝贝';
-      const k = { id: uid(), name, points: 0, daily: {}, pet: { name: PETS[type].name, type, exp: 0, lv: 1 }, dex: { egg: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null };
-      P.d.mode = 'family';
-      P.d.kids.push(k);
-      P.d.cur = k.id;
-      P.d.log.unshift({ ts: Date.now(), kid: k.id, kidName: name, em: '🥚', text: name + ' 的宠物之旅开始了', d: 0 });
-      P.save();
       el.remove();
-      render();
-      toast('🥚 ' + PETS[type].name + ' 破壳迎新，做任务让它快快成长吧');
+      placement(name, (r) => {
+        const k = { id: uid(), name, points: 0, daily: {}, grade: r.grade, pet: { name: PETS[r.type].name, type: r.type, exp: 0, lv: 1 }, dex: { egg: true, [r.type + '-baby']: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null };
+        P.d.mode = 'family';
+        P.d.kids.push(k);
+        P.d.cur = k.id;
+        P.d.log.unshift({ ts: Date.now(), kid: k.id, kidName: name, em: '🥚', text: name + ' 摸底答对 ' + r.right + '/' + r.total + '，' + PETS[r.type].name + ' 降临！', d: 0 });
+        P.save();
+        render();
+        toast('🎓 ' + PETS[r.type].name + ' 加入冒险！做任务、闯关卡快快成长吧');
+      });
     };
   }
 
@@ -811,11 +856,28 @@
           const name = m.querySelector('#nkName').value.trim();
           if (!name) return toast('先填个名字吧');
           const gsel = m.querySelector('#nkGroup');
-          const k = newStu(name, '', 1);
-          P.d.kids.push(k);
-          P.d.cur = k.id;
-          P.save(); close(); render();
-          toast(name + ' 加入了，抽到了 ' + petMeta(k.pet.type).name + ' ' + petMeta(k.pet.type).emoji);
+          const group = gsel ? gsel.value : '';
+          close();
+          if (!isClass() && window.BPGames && BPGames.genPlacement) {
+            /* 家庭模式：先摸底，按成绩掉落初始宠物 */
+            placement(name, (r) => {
+              const k = newStu(name, group, 1);
+              k.grade = r.grade;
+              k.pet = { name: PETS[r.type].name, type: r.type, exp: 0, lv: 1 };
+              if (!k.dex) k.dex = {};
+              k.dex[r.type + '-baby'] = true;
+              P.d.kids.push(k);
+              P.d.cur = k.id;
+              P.save(); render();
+              toast('🎓 ' + name + ' 摸底答对 ' + r.right + '/' + r.total + '，' + PETS[r.type].name + ' 降临！');
+            });
+          } else {
+            const k = newStu(name, group, 1);
+            P.d.kids.push(k);
+            P.d.cur = k.id;
+            P.save(); render();
+            toast(name + ' 加入了，抽到了 ' + petMeta(k.pet.type).name + ' ' + petMeta(k.pet.type).emoji);
+          }
         };
       });
   }
@@ -1184,7 +1246,7 @@
         const un = !!k.dex[key];
         const companion = k.companions.some((c) => c.type === el) && s.suffix === 'baby';
         const extra = un && companion ? 'data-skin="' + el + '" data-tip="tap"' : '';
-        return card(key, 'images/' + key + '.jpg', PETS[el].name, s.name + (companion ? ' · 伙伴' : ''), un, extra);
+        return card(key, 'images/gif/' + key + '.gif', PETS[el].name, s.name + (companion ? ' · 伙伴' : ''), un, extra);
       }).join('')).join('') +
       '</div>' +
       '<div class="tiny" style="margin:4px 2px">解锁条件：宠物进化填充本系形态；达到 Lv.5/10/15/20 会降临神秘伙伴，点伙伴卡片可让牠出战。</div>' +
@@ -3195,7 +3257,9 @@
   const ROUTES_ALL = ['home', 'dex', 'tasks', 'shop', 'log', 'class', 'board', 'compare', 'lucky'];
   function render() {
     if (!P.d) { P.d = P.fresh(); }
+    /* 家庭模式极简：不显示班级切换和教师/家长管理入口 */
     document.getElementById('classBtn').style.visibility = isClass() ? 'visible' : 'hidden';
+    document.getElementById('parentBtn').style.visibility = isClass() ? 'visible' : 'hidden';
     document.getElementById('parentBtn').textContent = isClass() ? '老师' : '家长';
     const empty = !P.d.kids || !P.d.kids.length;
     if (empty && !isClass()) {

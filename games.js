@@ -567,13 +567,17 @@
     return out;
   }
   /* 地图节点出题：学科混排 + 难度随节点 lv
-     battle/review：本节点学科 + 加权随机混科（保证一关多科）
+     kn（知识点关）：3 题聚焦该知识点学科
      boss：本节点学科为主（3/5），其余混科
      final：语数英全覆盖 + 混科，lv4 最高难度 */
   function genNodeQs(node, g) {
     const lv = node.lv == null ? 2 : node.lv;
     const subj = node.subj || 'en';
     const WS = () => genSubjectQ(weightedSubj(), g, lv, node.u);
+    if (node.t === 'kn') {
+      const f = () => genSubjectQ(subj, g, lv, node.u);
+      return genMix(3, [f, f, f], WS);
+    }
     if (node.t === 'boss') {
       const b = () => genSubjectQ(subj, g, lv, node.u);
       return genMix(5, [b, b, b, WS, WS], WS);
@@ -586,47 +590,96 @@
         WS, WS
       ], WS);
     }
-    return genMix(node.t === 'battle' && lv >= 3 ? 4 : 3, [() => genSubjectQ(subj, g, lv, node.u), WS, WS]);
+    return genMix(3, [() => genSubjectQ(subj, g, lv, node.u), WS, WS], WS);
   }
 
   /* ================= 地图生成 ================= */
   /* 学科轮换：保证相邻关卡不同科，主课出场多于副课 */
   const SUBJ_ROT = ['en', 'math', 'cn', 'sci', 'math', 'en', 'cn', 'eth'];
-  function buildMap(g) {
-    const G = DB[g], nodes = [];
-    G.units.forEach((un, i) => {
-      nodes.push({ t: 'battle', u: i });
-      if (i > 0) nodes.push({ t: 'review', u: i });
-      if (i === 0) nodes.push({ t: 'battle', u: i });
-      nodes.push({ t: 'boss', u: i });
-      if (i < G.units.length - 1) nodes.push({ t: 'treasure', u: i });
-    });
-    nodes.push({ t: 'final', u: G.units.length - 1 });
-    const total = nodes.length;
-    return nodes.map((n, i) => {
-      n.i = i; n.done = false; n.stars = 0;
-      if (n.t === 'battle' || n.t === 'review' || n.t === 'boss') {
-        n.subj = SUBJ_ROT[i % SUBJ_ROT.length];
-        n.lv = Math.min(4, Math.floor(i / total * 5));
-      }
-      if (n.t === 'final') n.lv = 4;
-      return n;
-    });
+  /* ================= v3.26 知识图谱 =================
+     每年级 5 章 × (12 知识点关 + 1 学科 Boss) + 最终 Boss = 66 关
+     知识点关 = 聚焦单科单知识点；题目难度 lv 随进度递增 */
+  const MATH_KN = {
+    g1: ['5以内数的认识', '5以内加法', '5以内减法', '6-10的认识', '10以内加法', '10以内减法', '连加连减', '认识图形', '11-20的认识', '20以内不进位加法', '20以内不退位减法', '20以内进位加法', '20以内退位减法', '认识钟表', '整十数加法', '比较大小', '找规律', '分类整理', '认识人民币', '看图解决问题'],
+    g2: ['100以内加减法', '乘法初步认识', '乘法口诀1-5', '乘法口诀6-9', '除法初步认识', '用口诀求商', '倍的认识', '角的认识', '观察物体', '万以内数的认识', '整百整十加减', '混合运算', '有余数的除法', '时分秒', '长度单位', '统计表', '图形拼组', '简单推理', '克与千克', '解决问题'],
+    g3: ['三位数加减法', '多位数乘一位数', '周长', '时分秒应用', '分数初步认识', '倍数关系', '数字编码', '多位数除以一位数', '长方形与正方形', '集合思想', '口算乘法', '笔算乘法', '面积', '年月日', '小数初步认识', '复式统计表', '搭配问题', '两位数乘两位数', '除数是一位数除法', '位置与方向'],
+    g4: ['大数的认识', '公顷与平方千米', '角的度量', '三位数乘两位数', '平行与垂直', '除数是两位数除法', '条形统计图', '优化问题', '小数的意义', '小数加减法', '运算律', '四则运算', '观察物体二', '三角形', '小数乘法', '用数对确定位置', '平均数', '鸡兔同笼', '小数除法', '简便计算'],
+    g5: ['小数乘法', '位置', '小数除法', '可能性', '简易方程', '多边形的面积', '数学广角', '因数与倍数', '长方体和正方体', '分数的意义', '真分数与假分数', '同分母分数加减', '图形的旋转', '约分与通分', '分数与小数互化', '折线统计图', '异分母分数加减', '解决问题策略', '图形面积变换', '找次品'],
+    g6: ['分数乘法', '位置与方向', '分数除法', '比的认识', '圆的认识', '百分数', '扇形统计图', '分数四则混合运算', '圆的面积', '百分数应用', '比的应用', '负数', '比例', '圆柱的认识', '比例尺', '反比例', '圆柱与圆锥', '比例应用', '数与形', '鸽巢问题']
+  };
+  const CN_KN = {
+    g1: ['拼音声母', '拼音韵母', '拼音声调', '整体认读音节', '笔画笔顺', '识字与朗读', '方位词', '反义词', '叠词', '量词', '姓氏歌', '四季与自然', '影子课文', '比尾巴', '古诗诵读一', '秋冬课文', '大小多少', '小书包', '升国旗', '阅读理解'],
+    g2: ['场景歌', '树之歌', '拍手歌', '田家四季歌', '曹冲称象', '玲玲的画', '古诗二首', '黄山奇石', '日月潭', '葡萄沟', '坐井观天', '寒号鸟', '我要的是葫芦', '大禹治水', '朱德的扁担', '纸船和风筝', '雪孩子', '狐假虎威', '成语积累', '看图写话'],
+    g3: ['生字词语', '多音字', '近义词与反义词', '修辞手法', '秋天的雨', '铺满金色巴掌的水泥道', '卖火柴的小女孩', '去年的树', '那一定会很好', '搭船的鸟', '翠鸟', '古诗三首', '富饶的西沙群岛', '美丽的小兴安岭', '搭石', '总也倒不了的老屋', '司马光', '守株待兔', '陶罐和铁罐', '阅读策略'],
+    g4: ['观潮', '走月亮', '现代诗', '繁星', '一个豆荚里的五粒豆', '蝙蝠和雷达', '呼风唤雨的世纪', '爬山虎的脚', '蟋蟀的住宅', '盘古开天地', '精卫填海', '普罗米修斯', '女娲补天', '母鸡', '猫', '白鹅', '古诗三首', '神话的特点', '批注阅读', '记叙文六要素'],
+    g5: ['白鹭', '落花生', '桂花雨', '珍珠鸟', '搭石', '将相和', '什么比猎豹的速度更快', '地道战', '太阳', '松鼠', '慈母情深', '父爱之舟', '鸟的天堂', '月迹', '古人谈读书', '忆读书', '四季之美', '圆明园的毁灭', '说明方法', '体会思想感情'],
+    g6: ['草原', '丁香结', '古诗词三首', '花之歌', '七律·长征', '狼牙山五壮士', '开国大典', '灯光', '竹节人', '宇宙生命之谜', '故宫博物院', '桥', '穷人', '在柏林', '夏天里的成长', '盼', '文言文二则', '月光曲', '少年闰土', '好的故事']
+  };
+  const SC_KN = {
+    g1: ['认识植物', '观察小动物', '太阳与影子', '四季变化', '垃圾分类', '交通规则', '礼貌用语', '爱护公物'],
+    g2: ['水的三态', '磁铁的秘密', '动植物的成长', '月相变化', '同伴互助', '诚实守信', '安全用电', '健康饮食'],
+    g3: ['天气观测', '水的循环', '动物分类', '认识空气', '校园安全', '集体荣誉', '节约用水', '废旧回收'],
+    g4: ['声音的产生', '光的传播', '呼吸与消化', '运动与力', '遵守交规', '网络文明', '团队合作', '感恩父母'],
+    g5: ['光的反射', '地球的运动', '生物与环境', '种子萌发', '社会公德', '爱护环境', '诚信友善', '珍爱生命'],
+    g6: ['微小世界', '地球的卫星', '能量与能源', '生物多样性', '宪法意识', '责任担当', '合理上网', '明辨是非']
+  };
+  /* 每章剧情引子（借鉴章节式冒险叙事） */
+  const CHAP_STORY = [
+    '冒险开始！和小伙伴一起踏上知识大陆，用知识点点亮脚下的路。',
+    '前方是迷雾森林，每答对一道题，迷雾就会散开一格。',
+    '问答桥到了——桥上每一块石板都刻着一个知识点，别踩空！',
+    '知识城堡就在眼前，把守城门的 Boss 可不好对付，做好准备！',
+    '最终决战！集齐五章知识之力，挑战最强的知识魔王！'
+  ];
+  /* 章内 12 个知识点的学科编排：英3 语文3 数学4 副课1+1，主课侧重 */
+  function buildChapterKn(g, c) {
+    const un = DB[g].units[c];
+    return [
+      { s: 'en', n: '单词 · ' + un.words[0][1] },
+      { s: 'en', n: '单词 · ' + un.words[1][1] },
+      { s: 'math', n: MATH_KN[g][c * 4] },
+      { s: 'cn', n: CN_KN[g][c * 3] },
+      { s: 'en', n: '单词 · ' + un.words[2][1] },
+      { s: 'cn', n: CN_KN[g][c * 3 + 1] },
+      { s: 'math', n: MATH_KN[g][c * 4 + 1] },
+      { s: 'cn', n: CN_KN[g][c * 3 + 2] },
+      { s: 'math', n: MATH_KN[g][c * 4 + 2] },
+      { s: 'en', n: '句型 · ' + un.sents[0][0] },
+      { s: 'math', n: MATH_KN[g][c * 4 + 3] },
+      { s: c % 2 ? 'eth' : 'sci', n: SC_KN[g][c] }
+    ];
   }
-  /* 旧存档节点缺 subj/lv 字段时补默认值（运行时兜底，宝箱不需要） */
+  function buildMap(g) {
+    const nodes = [];
+    for (let c = 0; c < 5; c++) {
+      buildChapterKn(g, c).forEach((kn, i) => {
+        nodes.push({ t: 'kn', u: c, subj: kn.s, kn: kn.n, lv: Math.min(4, Math.floor((c * 12 + i) / 60 * 5)) });
+      });
+      /* 章 Boss：学科轮换，难度随章加深 */
+      nodes.push({ t: 'boss', u: c, subj: SUBJ_ROT[c * 3 % SUBJ_ROT.length], lv: Math.min(4, 2 + Math.floor(c / 2)) });
+      if (c < 4) nodes.push({ t: 'treasure', u: c });
+    }
+    nodes.push({ t: 'final', u: 4, lv: 4 });
+    return nodes.map((n, i) => Object.assign(n, { i, done: false, stars: 0 }));
+  }
   function ensureMapFields(q) {
     if (!Array.isArray(q.nodes)) return;
     q.nodes.forEach((n) => {
-      const need = n.t === 'battle' || n.t === 'review' || n.t === 'boss' || n.t === 'final';
+      const need = n.t === 'kn' || n.t === 'battle' || n.t === 'review' || n.t === 'boss' || n.t === 'final';
       if (!need) return;
-      if (n.subj == null && n.t !== 'final') n.subj = SUBJ_ROT[n.i % SUBJ_ROT.length];
+      if (n.subj == null && n.t !== 'final') n.subj = SUBJ_ROT[(n.i || 0) % SUBJ_ROT.length];
       if (n.lv == null) n.lv = n.t === 'final' ? 4 : n.i != null ? Math.min(4, Math.floor(n.i / q.nodes.length * 5)) : 2;
     });
   }
   function questState(k) {
     const g = gradeOf(k);
-    if (!k.quest || k.quest.grade !== g || !Array.isArray(k.quest.nodes)) {
-      k.quest = { grade: g, nodes: buildMap(g), cards: [], badges: [], trophy: false, built: todayStr() };
+    /* v3.26 知识图谱版地图（ver=2）：旧 20 关地图自动迁移，已通关数平移到新图前段 */
+    if (!k.quest || k.quest.grade !== g || !Array.isArray(k.quest.nodes) || k.quest.ver !== 2) {
+      const oldDone = (k.quest && Array.isArray(k.quest.nodes)) ? k.quest.nodes.filter((n) => n.done).length : 0;
+      const nodes = buildMap(g);
+      nodes.slice(0, Math.min(oldDone, nodes.length - 1)).forEach((n) => { n.done = true; n.stars = 3; });
+      k.quest = { grade: g, ver: 2, nodes, cards: (k.quest && k.quest.cards) || [], badges: (k.quest && k.quest.badges) || [], trophy: false, built: todayStr() };
+      P.save();
     }
     return k.quest;
   }
@@ -998,29 +1051,59 @@
       '<div class="qh-t"><b>' + gradeName(g) + ' · 知识冒险</b><small>' +
       (q.trophy ? '🏆 已通关！可以重刷拿满星' : '进度 ' + q.nodes.filter((n) => n.done).length + '/' + q.nodes.length) + ' · 语数英为主 · 科学常识为辅</small></div>' +
       '<div class="qh-btns"><button id="qColl">🧸 收集</button><button id="qWrong">📕 错题本' + (wrongOpen(k).length ? ' <b class="wr-n">' + wrongOpen(k).length + '</b>' : '') + '</button><button id="qGrade">🎓</button></div></div>' +
-      '<div class="qmap">' +
-      q.nodes.map((n, i) => {
-        const meta = NODE_META[n.t];
-        const locked = i > ci || (n.t === 'final' && finalLocked);
-        const cur = i === ci && !(n.t === 'final' && finalLocked);
+      /* v3.26 章节式路径冒险地图：每章一段场景剧情，知识点沿蜿蜒路径排布 */
+      (function () {
         const G = DB[g];
-        const S = (n.t === 'battle' || n.t === 'boss') && n.subj ? SUBJ[n.subj] : null;
-        const title = n.t === 'final' ? FINAL : n.t === 'boss' ? (S ? S.icon + ' ' + S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[n.u]) : n.t === 'treasure' ? '神秘宝箱' :
-          n.t === 'review' ? '复习营地 · ' + G.units[n.u - 1].t : G.units[n.u].t + ' · ' + (n.t === 'battle' ? '战斗' : '');
-        let sub = meta.name;
-        if (n.lv != null && (n.t === 'battle' || n.t === 'review' || n.t === 'boss')) sub += ' · 难度 ' + '●'.repeat(n.lv + 1) + '○'.repeat(4 - n.lv);
-        if (n.t === 'final' && finalLocked && i === ci + 1) sub = '🔒 先去错题本订正错题';
-        else if (n.t === 'final' && i === ci + 1) sub = '🎓 挑战年级最强';
-        return '<div class="qnode ' + n.t + ' ' + (n.done ? 'done' : '') + (cur ? ' cur' : '') + (locked ? ' lock' : '') + '" data-i="' + i + '">' +
-          '<div class="qn-line"></div>' +
-          '<div class="qn-ic">' + (n.done ? (n.t === 'treasure' ? '📦' : '✅') : locked ? '🔒' : n.t === 'boss' && S ? S.icon : meta.icon) + '</div>' +
-          '<div class="qn-b">' +
-          (S ? '<i class="qn-tag" style="background:' + S.c + '">' + S.icon + S.name + '</i>' : '') +
-          '<b>' + esc(title) + '</b>' +
-          '<small>' + (n.done ? '⭐'.repeat(n.stars) + '☆'.repeat(3 - n.stars) + ' · 已通关' : esc(sub)) + '</small></div>' +
-          (cur ? '<span class="qn-go">GO</span>' : '') + '</div>';
-      }).join('') +
-      '</div></div>';
+        let html = '<div class="adv-map">';
+        let chap = -1, open = false, knIdx = 0;
+        const renderNode = (n, i) => {
+          const meta = NODE_META[n.t] || { icon: '📘', name: '知识点' };
+          const locked = i > ci || (n.t === 'final' && finalLocked);
+          const cur = i === ci && !(n.t === 'final' && finalLocked);
+          const S = n.subj ? SUBJ[n.subj] : null;
+          const icon = n.t === 'kn' ? (S ? S.icon : '📘')
+            : n.t === 'boss' ? (S ? S.icon : '👹')
+            : n.t === 'treasure' ? '📦' : n.t === 'final' ? '👑' : meta.icon;
+          const name = n.t === 'kn' ? n.kn
+            : n.t === 'boss' ? (S ? S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[n.u])
+            : n.t === 'treasure' ? '神秘宝箱' : n.t === 'final' ? '知识魔王' : meta.name;
+          const dot = n.done ? (n.t === 'treasure' ? '📦' : '✅') : locked ? '🔒' : icon;
+          let lbl = n.t === 'treasure' ? '' :
+            '<b>' + esc(name) + '</b>';
+          if (n.t === 'kn' && S) lbl = '<i class="qn-tag" style="background:' + S.c + '">' + S.name + '</i>' + lbl;
+          let small = '';
+          if (n.done) small = '⭐'.repeat(n.stars) + '☆'.repeat(3 - n.stars);
+          else if (n.t === 'final' && finalLocked && i === ci + 1) small = '🔒 先订正错题';
+          else if (n.t === 'final') small = '🎓 年级最强';
+          else if (n.t === 'boss') small = '章节 Boss · 难度 ' + '●'.repeat(n.lv + 1);
+          else if (n.t === 'kn') small = '难度 ' + '●'.repeat(n.lv + 1) + '○'.repeat(4 - n.lv);
+          return '<button class="adv-node t-' + n.t + ' pos-' + (knIdx % 4) + ' ' + (n.done ? 'done' : '') + (cur ? ' cur' : '') + (locked ? ' lock' : '') + '" data-i="' + i + '">' +
+            '<span class="an-dot">' + dot + '</span>' +
+            (lbl || small ? '<span class="an-lb">' + lbl + (small ? '<small>' + small + '</small>' : '') + '</span>' : '') +
+            (cur ? '<span class="qn-go">GO</span>' : '') + '</button>';
+        };
+        q.nodes.forEach((n, i) => {
+          if (n.t === 'final') {
+            if (open) { html += '</div></div>'; open = false; }
+            html += '<div class="adv-chap chap-final"><div class="ac-head"><b>🎓 最终决战</b></div>' +
+              '<div class="ac-story">' + esc(CHAP_STORY[4]) + '</div><div class="ac-path">' + renderNode(n, i) + '</div></div>';
+            return;
+          }
+          if (n.u !== chap) {
+            if (open) html += '</div></div>';
+            chap = n.u; knIdx = 0; open = true;
+            html += '<div class="adv-chap chap-' + (chap % 5) + '">' +
+              '<div class="ac-head"><b>第' + '一二三四五'[chap] + '章 · ' + esc(G.units[chap].t) + '</b>' +
+              (q.badges.includes(chap) ? '<span class="ac-badge">' + G.units[chap].em + ' 徽章</span>' : '') + '</div>' +
+              '<div class="ac-story">' + esc(CHAP_STORY[chap]) + '</div><div class="ac-path">';
+          }
+          html += renderNode(n, i);
+          if (n.t === 'kn') knIdx++;
+        });
+        if (open) html += '</div></div>';
+        html += '</div>';
+        return html;
+      })() + '</div>';
 
     document.getElementById('qGrade').onclick = () => pickGradeSheet((gg) => {
       if (gg === k.grade) return;
@@ -1028,12 +1111,12 @@
       const hasProgress = q2.nodes.some((n) => n.done);
       if (hasProgress && !confirm('切换到' + gradeName(gg) + '会重置当前冒险进度（收集保留），确定？')) return;
       k.grade = gg;
-      k.quest = { grade: gg, nodes: buildMap(gg), cards: q2.cards, badges: [], trophy: false, built: todayStr() };
+      k.quest = { grade: gg, ver: 2, nodes: buildMap(gg), cards: q2.cards, badges: [], trophy: false, built: todayStr() };
       P.save(); render(); toast('新的冒险：' + gradeName(gg));
     });
     document.getElementById('qColl').onclick = () => collSheet(k, q);
     document.getElementById('qWrong').onclick = () => wrongSheet(k, () => render());
-    document.querySelectorAll('.qnode').forEach((el) => (el.onclick = () => {
+    document.querySelectorAll('.adv-node').forEach((el) => (el.onclick = () => {
       const i = +el.dataset.i, n = q.nodes[i];
       const myCi = curIdx(q);
       const locked = i > myCi || (n.t === 'final' && wrongOpen(k).length > 0);
@@ -1047,6 +1130,19 @@
   }
   function curIdxOk(i, q) { return i === curIdx(q); }
 
+  /* 按本次答题成绩决定掉落稀有度：成绩越好 SSR 概率越高 */
+  function rarityByScore(right, total, pool) {
+    const p = right / Math.max(1, total);
+    let w;
+    if (p >= 0.95) w = { SSR: 18, SR: 32, R: 30, N: 20 };
+    else if (p >= 0.7) w = { SSR: 8, SR: 27, R: 35, N: 30 };
+    else w = { SSR: 3, SR: 15, R: 35, N: 47 };
+    const ps = (pool || Object.keys(w)).filter((r) => w[r]);
+    const tot = ps.reduce((s, r) => s + w[r], 0);
+    let v = Math.random() * tot;
+    for (const r of ps) { v -= w[r]; if (v <= 0) return r; }
+    return ps[0] || 'N';
+  }
   function tapNode(k, q, n, refresh) {
     const g = gradeOf(k);
     ensureMapFields(q);
@@ -1055,7 +1151,8 @@
     const qs = genNodeQs(n, g);
     /* 敌人血量 = 题目数（答对扣血，保证可击败）；难度体现在题目 lv 与题量上 */
     const bossS = n.subj ? SUBJ[n.subj] : null;
-    const enemy = n.t === 'battle' ? (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(ENEMIES[n.u % ENEMIES.length])
+    const enemy = n.t === 'kn' ? (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(ENEMIES[n.u % ENEMIES.length])
+      : n.t === 'battle' ? (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(ENEMIES[n.u % ENEMIES.length])
       : n.t === 'review' ? { em: '🛡️', name: '复习木桩', hp: qs.length }
       : n.t === 'boss' ? (bossS ? { em: bossS.icon, name: bossS.name + '·' + bossS.bosses[n.u % bossS.bosses.length], hp: qs.length }
         : (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(BOSSES[n.u]))
@@ -1074,8 +1171,17 @@
         });
         let dropMsg = '';
         const bonus = n.lv || 0; /* 难度加成：关卡越靠后奖励越高 */
+        if (n.t === 'kn') {
+          /* 知识点关：满分（成绩好）才有更高概率掉稀有碎片 */
+          const full = r.right === r.total;
+          reward(k, 1 + bonus, 8 + bonus * 2, '知识点掌握 · ' + n.kn + (full ? ' · 完美!' : ''), '📖');
+          if (full && Math.random() < 0.45) {
+            const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
+            dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
+          }
+        }
         if (n.t === 'battle') {
-          const ft = dropFrag(k);
+          const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
           reward(k, 2 + bonus, 12 + bonus * 3, '冒险战斗获胜 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '⚔️');
           dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
         }
@@ -1086,7 +1192,7 @@
         }
         if (n.t === 'boss') {
           if (!q.badges.includes(n.u)) q.badges.push(n.u);
-          const card = dropPetOf(k, q, rollRarity(['R', 'SR', 'SSR']));
+          const card = dropPetOf(k, q, rarityByScore(r.right, r.total, ['R', 'SR', 'SSR']));
           reward(k, 5 + bonus, 25 + bonus * 5, '击败' + (bossS ? bossS.name : '单元') + ' Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '👑');
           dropMsg = card;
         }
@@ -1102,7 +1208,7 @@
           victoryFX(isFinal ? '🏆 通关啦！' : '👑 Boss 击败！',
             isFinal ? gradeName(g) + '全部知识掌握！' : '获得「' + DB[g].units[n.u].em + '」单元徽章',
             () => petDropFX(dropMsg, k, refresh));
-        } else toast('战斗胜利 +' + (n.t === 'review' ? 1 + bonus : 2 + bonus) + ' 积分' + (dropMsg ? ' · ' + dropMsg : ''));
+        } else toast((n.t === 'kn' ? '知识点掌握 +' : '战斗胜利 +') + (n.t === 'review' ? 1 + bonus : n.t === 'kn' ? 1 + bonus : 2 + bonus) + ' 积分' + (dropMsg ? ' · ' + dropMsg : ''));
       }
     });
   }
@@ -1258,8 +1364,32 @@
       });
   }
 
+  /* ================= v3.26 入学摸底（家长模式添加孩子第一步） =================
+     动态出 10 题：混学科、难度递进；按正确率决定初始宠物稀有度 */
+  function genPlacement(g) {
+    const ROT = ['en', 'math', 'cn', 'math', 'en', 'cn', 'sci', 'math', 'en', 'eth'];
+    const qs = [];
+    for (let i = 0; i < 10; i++) {
+      const lv = Math.min(4, Math.floor(i / 2));
+      qs.push(genSubjectQ(ROT[i], g, lv, 0));
+    }
+    return qs;
+  }
+  function rollPlacementPet(right, total) {
+    const p = right / Math.max(1, total);
+    let pool;
+    if (p >= 0.9) pool = { SSR: 50, SR: 35, R: 15 };
+    else if (p >= 0.7) pool = { SSR: 20, SR: 45, R: 35 };
+    else if (p >= 0.4) pool = { SSR: 5, SR: 25, R: 45, N: 25 };
+    else pool = { R: 20, N: 80 };
+    const ps = Object.entries(pool);
+    let v = Math.random() * ps.reduce((s, x) => s + x[1], 0), rar = 'N';
+    for (const [r, wt] of ps) { v -= wt; if (v <= 0) { rar = r; break; } }
+    return { type: pick(petsOfRar(rar)), rar, right, total };
+  }
+
   /* ================= 导出给 app.js 调用 ================= */
-  window.BPGames = { petInteract, aidSlots, rarOf, RAR };
+  window.BPGames = { petInteract, aidSlots, rarOf, RAR, genPlacement, rollPlacementPet };
 
   /* ================= 注册路由 ================= */
   const hook = window.BPHook;

@@ -216,3 +216,66 @@
 .card-it.rar-SSR{border-color:#ffb300;box-shadow:0 0 12px rgba(255,179,0,.4)}
 .card-it.rar-SR{border-color:#b46bff}
 .card-it.rar-R{border-color:#4da3ff}
+
+/* ================= v3.26 章节式路径冒险地图 ================= */
+.adv-map { position: relative; padding-bottom: 30px; }
+.adv-chap { position: relative; border-radius: 18px; padding: 14px 12px 16px; margin-bottom: 14px;
+  border: 1.5px solid #efe4ff; overflow: hidden; }
+.adv-chap.chap-0 { background: linear-gradient(160deg, #fdf6e8, #fdeeda); border-color: #f3dfb9; }
+.adv-chap.chap-1 { background: linear-gradient(160deg, #eef7ea, #dff0e2); border-color: #cfe6cf; }
+.adv-chap.chap-2 { background: linear-gradient(160deg, #e9f3fd, #dcebf9); border-color: #c9def2; }
+.adv-chap.chap-3 { background: linear-gradient(160deg, #f7ecfa, #efdff5); border-color: #e2cdef; }
+.adv-chap.chap-4 { background: linear-gradient(160deg, #fdeef0, #f9dfe6); border-color: #f2ccd6; }
+.adv-chap.chap-final { background: linear-gradient(160deg, #241a3e, #3b2464); border: 1.5px solid #6d4fc4; }
+.adv-chap.chap-final .ac-head b { color: #ffd76e; }
+.adv-chap.chap-final .ac-story { color: #b9a8e8; }
+.ac-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.ac-head b { font-size: 15px; color: #4a3364; }
+.ac-badge { font-size: 10px; font-weight: 800; color: #fff; background: linear-gradient(135deg, #ff9800, #ff5722); border-radius: 99px; padding: 2px 8px; }
+.ac-story { font-size: 11.5px; color: #8a7aa0; line-height: 1.5; margin-bottom: 10px;
+  padding: 6px 10px; background: rgba(255,255,255,.55); border-radius: 10px; }
+.ac-path { position: relative; display: flex; flex-direction: column; gap: 4px; }
+/* S 形蜿蜒路径：节点左右交错 + 竖向虚线连接 */
+.adv-node { position: relative; display: flex; align-items: center; gap: 10px;
+  width: 78%; background: transparent; border: none; text-align: left; cursor: pointer; padding: 0; }
+.adv-node.pos-0 { align-self: flex-start; }
+.adv-node.pos-1 { align-self: flex-end; flex-direction: row-reverse; text-align: right; }
+.adv-node.pos-2 { align-self: flex-start; margin-left: 12%; }
+.adv-node.pos-3 { align-self: flex-end; margin-right: 12%; flex-direction: row-reverse; text-align: right; }
+.adv-node:not(:last-child)::after { content: ''; position: absolute; top: 100%; height: 8px; width: 0;
+  border-left: 2.5px dashed #c9b8e8; left: 19px; }
+.adv-node.pos-1:not(:last-child)::after, .adv-node.pos-3:not(:last-child)::after { left: auto; right: 19px; }
+.an-dot { flex: none; width: 40px; height: 40px; border-radius: 50%; background: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 19px;
+  border: 2.5px solid #d9c9f2; box-shadow: 0 2px 6px rgba(90,60,150,.14); transition: transform .15s; }
+.adv-node.treasure .an-dot { width: 34px; height: 34px; margin: 3px; }
+.adv-node.done .an-dot { background: #f2fbef; border-color: #9ad48f; }
+.adv-node.cur .an-dot { border-color: #7c3aed; background: #fff7e0; animation: nodeGlow 1.2s infinite; transform: scale(1.12); }
+.adv-node.lock .an-dot { opacity: .45; filter: grayscale(.6); }
+.an-lb { background: #fff; border-radius: 12px; padding: 6px 12px; min-width: 0; flex: 1;
+  border: 1px solid #eee2f8; box-shadow: 0 1px 4px rgba(90,60,150,.08); }
+.an-lb b { font-size: 12.5px; color: #3a2a4a; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-lb small { font-size: 10px; color: #9a8ab0; display: block; margin-top: 1px; }
+.an-lb .qn-tag { margin: 0 4px 0 0; }
+.adv-node.treasure .an-lb b { color: #b07a1f; }
+.adv-chap.chap-final .an-lb { background: rgba(255,255,255,.08); border-color: #6d4fc4; }
+.adv-chap.chap-final .an-lb b { color: #ffd76e; }
+.adv-chap.chap-final .an-lb small { color: #b9a8e8; }
+.adv-node .qn-go { position: absolute; top: -6px; right: -4px; background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: #fff; font-weight: 800; font-size: 10px; border-radius: 99px; padding: 2px 8px; animation: goBlink 1s infinite; }
+.adv-node.pos-0 .qn-go, .adv-node.pos-2 .qn-go { right: auto; left: 28px; }
+
+/* ================= v3.26 入学摸底 ================= */
+.plc-mask { z-index: 90; }
+.plc-box { max-width: 340px; width: 92%; text-align: center; }
+.plc-top { font-size: 11px; color: #9a8ab0; font-weight: 700; margin-bottom: 8px; }
+.plc-q { font-size: 16px; font-weight: 700; color: #3a2a4a; margin: 10px 0 16px; line-height: 1.5; }
+.plc-opts { display: flex; flex-direction: column; gap: 8px; }
+.plc-opts button { border: 1.5px solid #e4d9f5; background: #f9f6fd; border-radius: 12px;
+  padding: 11px 12px; font-size: 14px; color: #4a3364; font-weight: 650; cursor: pointer; }
+.plc-opts button.ok { border-color: #7bc96f; background: #eefae9; }
+.plc-opts button.no { border-color: #f28b82; background: #fdeceb; }
+.plc-grades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.plc-grades button { border: 1.5px solid #e4d9f5; background: #f9f6fd; border-radius: 12px;
+  padding: 12px 0; font-size: 14px; font-weight: 800; color: #4a3364; cursor: pointer; }
+.plc-grades button:active { background: #efe6fb; }

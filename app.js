@@ -690,7 +690,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.35 · 学生界面入口 · 科目必选<br>' +
+      '<div class="w-ver">版本 v3.36 · 道德与法治 · 学生界面入口<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -4312,7 +4312,7 @@
     { k: 'cn',   n: '语文', ic: '🀄', c: '#ff8a65' },
     { k: 'en',   n: '英语', ic: '🔤', c: '#4da3ff' },
     { k: 'sci',  n: '科学', ic: '🔬', c: '#9b7bff' },
-    { k: 'eth',  n: '常识', ic: '🌱', c: '#4db6ac' }
+    { k: 'eth',  n: '道德与法治', ic: '🌱', c: '#4db6ac' }
   ];
   let SUBJ_LIST = SUBJ_FALLBACK.map((f) => {
     const s = (window.BPGames && BPGames.SUBJ && BPGames.SUBJ[f.k]) || {};
@@ -4954,7 +4954,7 @@
     }
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3350', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3360', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

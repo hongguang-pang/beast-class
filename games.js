@@ -1200,6 +1200,8 @@
   /* 学生答题数据合入班级存储（老师端学情分析可见） */
   function syncClassData(k) {
     if (!k.classCode) return;
+    /* 跨设备：学生手机上没有本机班级副本，必须先把快照推到云端 */
+    try { if (window.BeastCloud) window.BeastCloud.report(k); } catch (e) {}
     try {
       const cd = JSON.parse(localStorage.getItem('beast.v1.class') || 'null');
       if (!cd || !Array.isArray(cd.classes)) return;
@@ -1227,21 +1229,48 @@
       m.querySelector('#jcGo').onclick = () => {
         const code = m.querySelector('#jcCode').value.trim().toUpperCase();
         if (!code) return;
-        let cd = null;
-        try { cd = JSON.parse(localStorage.getItem('beast.v1.class') || 'null'); } catch (e) {}
-        const cls = cd && (cd.classes || []).find((c) => c.code === code);
-        if (!cls) { toast('没找到班级码 ' + code + '，请向老师确认'); return; }
-        k.classCode = code;
-        k.className = cls.name;
-        if (cls.grade) k.grade = cls.grade;
-        if (!k.quest || k.quest.grade !== k.grade) k.quest = null; /* 年级变了重开地图 */
-        let stu = (cls.kids || []).find((x) => x.name === k.name) || (cls.kids || []).find((x) => x.sid === k.id);
-        if (!stu) { stu = { name: k.name, points: 0, daily: {}, pet: { name: k.pet.name, type: k.pet.type, exp: 0, lv: k.pet.lv }, dex: { egg: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [] }; cls.kids.push(stu); }
-        stu.sid = k.id;
-        stu.joined = true;
-        try { localStorage.setItem('beast.v1.class', JSON.stringify(cd)); } catch (e) {}
-        P.save(); close(); if (refresh) refresh();
-        toast('🏫 已加入 ' + cls.name + '，年级随班级');
+        const btn = m.querySelector('#jcGo');
+        const doneLocal = () => {
+          let cd = null;
+          try { cd = JSON.parse(localStorage.getItem('beast.v1.class') || 'null'); } catch (e) {}
+          const cls = cd && (cd.classes || []).find((c) => c.code === code);
+          if (!cls) { toast('没找到班级码 ' + code + '，请向老师确认'); btn.textContent = '加入'; return false; }
+          k.classCode = code;
+          k.className = cls.name;
+          if (cls.grade) k.grade = cls.grade;
+          if (!k.quest || k.quest.grade !== k.grade) k.quest = null;
+          P.save(); close(); if (refresh) refresh();
+          toast('🏫 已加入 ' + cls.name + '（本机）');
+          return true;
+        };
+        /* 优先云端：老师的班在老师的设备上，只有云端能跨过去 */
+        const C = window.BEAST_CLOUD;
+        if (!C) { doneLocal(); return; }
+        btn.textContent = '连接班级…';
+        C.join(code, {
+          name: k.name, points: k.points || 0,
+          petName: (k.pet && k.pet.name) || '', petType: (k.pet && k.pet.type) || '', petLv: (k.pet && k.pet.lv) || 1,
+          grade: k.grade || '', mastery: k.mastery || {},
+          sid: k.cloudSid, token: k.cloudToken
+        }).then((j) => {
+          k.classCode = code;
+          k.className = (j.cls && j.cls.name) || '班级';
+          k.cloudSid = j.sid;
+          k.cloudToken = j.token;
+          k.bonusApplied = (j.me && j.me.bonus) || 0;
+          if (j.cls && j.cls.grade) {
+            if (k.grade && k.grade !== j.cls.grade) k.quest = null;
+            k.grade = j.cls.grade;
+          }
+          P.save(); close(); if (refresh) refresh();
+          toast('🏫 已加入「' + k.className + '」· 年级随班级');
+          if (window.BeastCloud) window.BeastCloud.report(k);
+        }).catch((e) => {
+          btn.textContent = '加入';
+          const m2 = (e && e.message) || '';
+          if (m2 === 'class_not_found') toast('班级码 ' + code + ' 不存在，问问老师');
+          else if (!doneLocal()) toast('网络不通，稍后再试');
+        });
       };
     });
   }

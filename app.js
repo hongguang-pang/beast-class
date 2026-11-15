@@ -501,6 +501,11 @@
     if (n > 0) { const t = todayStr(); k.daily[t] = (k.daily[t] || 0) + n; }
     addLog(k, n >= 0 ? '✨' : '🧾', reason, n);
     if (n > 0) addExp(k, n);
+    /* 老师在电脑上给分 → 推到云端，学生手机下次同步能看到 */
+    if (n !== 0 && P.d.mode !== 'student' && k.sid) {
+      const c0 = (P.d.classes || []).find((c) => c.id === P.d.clsId);
+      if (c0 && c0.teacherKey && c0.code) cloudPushBonus([k.sid], n, reason || '老师奖励');
+    }
     P.save();
   }
   function addLog(k, em, text, delta, kind) {
@@ -631,7 +636,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.27 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.28 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -674,22 +679,61 @@
     };
   }
 
-  /* 学生按班级码加入班级：年级随班级，答题数据合入班级 */
-  function joinClassByCode(k, code) {
+  /* 学生按班级码加入班级：优先连云端（老师电脑上的班，跨设备唯一可行路径）
+     云端不可用时退回「本机同设备」的演示逻辑，保证离线也能开学 */
+  function joinClassByCode(k, code, cb) {
+    const C = CL();
+    if (C) {
+      C.join(code, {
+        name: k.name,
+        points: k.points || 0,
+        petName: (k.pet && k.pet.name) || '',
+        petType: (k.pet && k.pet.type) || '',
+        petLv: (k.pet && k.pet.lv) || 1,
+        grade: k.grade || '',
+        mastery: k.mastery || {},
+        sid: k.cloudSid,
+        token: k.cloudToken
+      }).then((j) => {
+        k.classCode = code;
+        k.className = (j.cls && j.cls.name) || '班级';
+        k.cloudSid = j.sid;
+        k.cloudToken = j.token;
+        k.classTeacher = (j.cls && j.cls.teacher) || '';
+        k.bonusApplied = (j.me && j.me.bonus) || 0;
+        if (j.cls && j.cls.grade) { k.grade = j.cls.grade; k.quest = null; }
+        P.save(); render();
+        toast('🏫 已加入「' + k.className + '」· 年级随班级');
+        if (cb) cb(true);
+        cloudReport(k);
+      }).catch((e) => {
+        console.warn('[cloud join]', e && e.message);
+        const ok = joinClassLocal(k, code);
+        if (!ok) toast('班级码 ' + code + ' 没找到（可能网络不通，问问老师）');
+        if (cb) cb(ok);
+      });
+      return true;
+    }
+    const ok = joinClassLocal(k, code);
+    if (cb) cb(ok);
+    return ok;
+  }
+
+  /* 同设备演示用：直接读写本机班级存储 */
+  function joinClassLocal(k, code) {
     let cd = null;
     try { cd = JSON.parse(localStorage.getItem('beast.v1.class')); } catch (e) {}
     const cls = cd && (cd.classes || []).find((c) => c.code === code);
-    if (!cls) { toast('没找到班级码 ' + code + '，先按独立学生入学'); return false; }
+    if (!cls) return false;
     k.classCode = code;
     k.className = cls.name;
     if (cls.grade) k.grade = cls.grade;
-    /* 合入班里：同名学生优先绑定，否则新建记录 */
     let stu = cls.kids.find((x) => x.name === k.name) || cls.kids.find((x) => x.sid === k.id);
     if (!stu) { stu = { name: k.name, points: 0, daily: {}, pet: { name: k.pet.name, type: k.pet.type, exp: 0, lv: 1 }, dex: { egg: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], mastery: {}, sid: k.id }; cls.kids.push(stu); }
     stu.sid = k.id;
     stu.joined = true;
     try { localStorage.setItem('beast.v1.class', JSON.stringify(cd)); } catch (e) {}
-    toast('🏫 已加入 ' + cls.name + '，年级随班级：' + (cls.grade ? { g1: '一', g2: '二', g3: '三', g4: '四', g5: '五', g6: '六' }[cls.grade] || '' : '?') + '年级');
+    toast('🏫 已加入 ' + cls.name + '（本机）');
     return true;
   }
 
@@ -702,8 +746,10 @@
       '<textarea id="wcList" rows="5" placeholder="张小明 第一组&#10;李小红 第一组&#10;王小刚 第二组"></textarea></div>' +
       '<div class="w-tip">提示：40 人以内粘贴进来最方便，重名会自动跳过</div>' +
       '<button class="btn" id="wcGo">开启班级模式 🎉</button>' +
+      '<button class="btn ghost" id="wcTake" style="margin-top:8px">☁️ 已有班级 · 用班级码接管</button>' +
       '<button class="w-back" id="wcBack">‹ 返回</button>';
     el.querySelector('#wcBack').onclick = () => stepRole(el);
+    el.querySelector('#wcTake').onclick = () => { el.remove(); cloudTakeOverSheet(); };
     el.querySelector('#wcGo').onclick = () => {
       const name = el.querySelector('#wcName').value.trim() || '我的班级';
       const txt = el.querySelector('#wcList').value;
@@ -831,6 +877,8 @@
       '<button class="inter-btn" data-a="play">🎾 玩耍</button>' +
       '</div>' +
       '<div class="tiny" id="interHint" style="text-align:center;margin-top:6px">和宠物互动 · 每天第一次有经验奖励</div>' +
+      (k.classCode ? '<div class="stu-sync" id="stSync"><i class="cc-dot ' + (cloudState().online ? 'on' : '') + '"></i>' +
+        esc(k.className || '我的班级') + ' · ' + (cloudState().online ? '已连接老师，答题数据自动同步' : '离线中，答题记录会联网后补发') + '</div>' : '') +
       '<div class="stu-links">' +
       '<button id="stJoin">🏫 ' + (k.classCode ? '我的班级：' + esc(k.className) : '加入班级（有班级码？）') + '</button>' +
       '<button id="stSwitch">🔄 切换身份</button>' +
@@ -955,9 +1003,11 @@
       if (d) d.onclick = () => { if (window.BPGames) BPGames.studentDaily(k); };
       const j = document.getElementById('stJoin');
       if (j) j.onclick = () => {
-        if (k.classCode) { openSheet('<div class="sheet-h">我的班级</div><div class="tiny">已加入 <b>' + esc(k.className) + '</b>（' + (k.classCode || '') + '），年级随班级，答题数据会同步给老师</div><button class="btn" id="stLeave" style="margin-top:12px">退出班级</button>', (m2, close2) => { m2.querySelector('#stLeave').onclick = () => { delete k.classCode; delete k.className; P.save(); close2(); render(); toast('已退出班级'); }; }); }
+        if (k.classCode) studentClassSheet(k);
         else if (window.BPGames) BPGames.joinClassSheet(k, render);
       };
+      const sy = document.getElementById('stSync');
+      if (sy) sy.onclick = () => studentClassSheet(k);
       const sw = document.getElementById('stSwitch');
       if (sw) sw.onclick = () => { if (confirm('切换身份会回到入口选择页，学生数据保留')) { localStorage.removeItem('beast.role'); location.reload(); } };
       const mg = document.getElementById('stMast');
@@ -2016,8 +2066,8 @@
         m.querySelector('#qrIn').onclick = () => { close(); qrImportSheet(false); };
         const syBtn = m.querySelector('#syncBtn');
         if (syBtn) syBtn.onclick = () => {
-          if (window.BEAST_SYNC) window.BEAST_SYNC.open();
-          else toast('同步模块未加载，请刷新页面');
+          close();
+          cloudSheet();
         };
         const file = m.querySelector('#impFile');
         m.querySelector('#impBtn').onclick = () => file.click();
@@ -2030,7 +2080,7 @@
               const d = JSON.parse(rd.result);
               if (!d || !Array.isArray(d.kids)) throw 0;
               /* 导入覆盖前先留一份底（与扫码导入同等待遇），误操作可去「云同步 → 恢复历史版本」找回 */
-              try { if (window.BEAST_SYNC && window.BEAST_SYNC.backup) window.BEAST_SYNC.backup(); } catch (e) {}
+              try { localSnapshot(); } catch (e) {}
               /* 归一化成多班结构并打时间戳，避免刚导入就被云端旧数据盖回 */
               P.d = adoptImported(d); P.save(); close(); render(); toast('导入成功');
             } catch (e) { toast('文件格式不对'); }
@@ -2083,8 +2133,23 @@
       dex: { egg: true }, companions: [], milestones: [], skin: null
     };
   }
+  /* 完整空档案（云端拉回来的学生用，字段齐全避免后续崩） */
+  function newKidShell(name) {
+    const type = pickType();
+    return {
+      id: uid(), name, group: '', points: 0, daily: {},
+      pet: { name: petMeta(type).name, type, exp: 0, lv: 1 },
+      dex: { egg: true }, companions: [], milestones: [], skin: null,
+      wrongBook: [], frags: {}, aid: [], inter: null, mastery: {},
+      sid: '', joined: false, bonus: 0, stuPoints: 0
+    };
+  }
 
   /* ---------- 多班级 ---------- */
+  /* 当前班（权威对象在 classes 里；P.d.cls 只是视图副本） */
+  function curCls() {
+    return (P.d.classes || []).find((c) => c.id === P.d.clsId) || null;
+  }
   function loadClass(id) {
     const e = P.d.classes.find((c) => c.id === id);
     if (!e) return false;
@@ -2117,6 +2182,9 @@
     const r = importRoster(listText || '', true);
     if (!P.d.cur && P.d.kids.length) P.d.cur = P.d.kids[0].id;
     P.save();
+    /* 建班上云：云端分配正式班级码（本地码只作离线兜底） */
+    const created = P.d.classes.find((c) => c.id === id);
+    setTimeout(() => cloudInitClass(created), 80);
     return r;
   }
   /* v3.27 班级码：6 位大写字母数字，学生端凭码加入 */
@@ -2134,6 +2202,344 @@
     if (P.d.clsId === id) { loadClass(P.d.classes[0].id); }
     P.save(); render();
   }
+
+  /* 导入/重置前留一份本机快照（原来靠旧云同步模块，现改为本地历史） */
+  function localSnapshot() {
+    try {
+      const his = JSON.parse(localStorage.getItem('beast.his') || '[]');
+      his.unshift({ ts: Date.now(), key: getKEY(), data: P.d });
+      /* 只留最近 2 份，防止撑爆 localStorage */
+      localStorage.setItem('beast.his', JSON.stringify(his.slice(0, 2)));
+    } catch (e) {}
+  }
+
+  /* ================= v3.28 云端同步（老师电脑 ↔ 学生手机） =================
+     分工：老师端权威（班名/年级/名单/加分），学生端权威（掌握度/进度/宠物/自己赚的分）
+     断网不阻塞：写操作失败进离线队列，恢复可见时自动补发 */
+  const CL = () => window.BEAST_CLOUD || null;
+  function cloudState() { const C = CL(); return C ? C.state() : { base: '', online: false, pending: 0 }; }
+
+  /* 把当前班级的云端绑定切到这个班（多班场景每个班各带自己的班级码与密钥） */
+  function cloudUseClass(cls) {
+    const C = CL(); if (!C || !cls || !cls.code) return;
+    C.bind(cls.code, { role: 'teacher', teacherKey: cls.teacherKey || '' });
+  }
+
+  /* 老师：建班后上云，班级码以云端为准 */
+  function cloudInitClass(cls, cb) {
+    const C = CL();
+    if (!C || !cls) { if (cb) cb(false); return; }
+    const names = (cls.kids || []).map((x) => x.name).filter(Boolean);
+    C.createClass(cls.name, cls.grade || '', '', names)
+      .then((j) => {
+        cls.code = j.code;
+        cls.teacherKey = j.teacherKey;
+        cls.cloudOn = true;
+        cls.cloudAt = Date.now();
+        P.save();
+        toast('☁️ 班级已上云 · 班级码 ' + j.code);
+        if (cb) cb(true);
+        if (location.hash === '#/class' || location.hash === '#/home') render();
+      })
+      .catch(() => {
+        cls.cloudOn = false;
+        toast('云端连接失败，本地照常使用（网络恢复后自动重试）');
+        if (cb) cb(false);
+      });
+  }
+
+  /* 老师端：把云端名单/学情合并进本机班级（不覆盖老师自己的积分账本） */
+  function cloudMergeRoster(cls, students) {
+    if (!cls || !Array.isArray(students)) return 0;
+    let n = 0;
+    students.forEach((st) => {
+      if (!st || !st.name) return;
+      let k = (cls.kids || []).find((x) => x.sid && x.sid === st.sid) ||
+        (cls.kids || []).find((x) => x.name === st.name);
+      if (!k) {
+        k = newKidShell(st.name);
+        cls.kids.push(k);
+      }
+      k.sid = st.sid;
+      k.joined = !!st.snap;              /* 有快照 = 学生已在自己手机上激活 */
+      k.cloudAt = st.lastSeen || 0;
+      k.cloudOn = !!st.active;
+      k.bonus = st.bonus || 0;
+      if (st.snap) {
+        k.mastery = st.snap.mastery || {};
+        k.wrongN = st.snap.wrongN || 0;
+        k.questDone = st.snap.questDone || 0;
+        k.questTotal = st.snap.questTotal || 0;
+        k.stuPoints = st.snap.points || 0;   /* 学生自己赚的 */
+        k.streak = st.snap.streak || 0;
+        k.dailyDone = !!st.snap.dailyDone;
+        if (st.snap.petName) { k.pet = k.pet || {}; k.pet.name = st.snap.petName; if (st.snap.petType) k.pet.type = st.snap.petType; k.pet.lv = st.snap.petLv || k.pet.lv || 1; }
+        /* 总分以云端为准 = 学生自己赚的 + 老师给的；云端值变了才覆盖，
+           避免老师刚加分（离线未确认）被旧值冲掉 */
+        const cloudTotal = (st.snap.points || 0) + (st.bonus || 0);
+        if (k.cloudTotal == null || cloudTotal !== k.cloudTotal) {
+          k.points = cloudTotal;
+          k.cloudTotal = cloudTotal;
+        }
+      }
+      n++;
+    });
+    return n;
+  }
+
+  /* 老师端：拉云端全班 */
+  function cloudPullRoster(silent) {
+    const C = CL();
+    const cls = curCls();
+    if (!C || !cls || !cls.code || P.d.mode === 'student') return Promise.resolve(false);
+    if (!cls.teacherKey) return Promise.resolve(false);
+    cloudUseClass(cls);
+    return C.roster(cls.code).then((j) => {
+      cloudMergeRoster(cls, j.students);
+      if (j.cls) {
+        if (P.d.cls) { P.d.cls.name = j.cls.name || P.d.cls.name; P.d.cls.grade = j.cls.grade || P.d.cls.grade; }
+        if (j.cls.name) cls.name = j.cls.name;
+        if (j.cls.grade) cls.grade = j.cls.grade;
+      }
+      P.save();
+      if (!silent) { render(); toast('☁️ 已同步：' + (j.students || []).length + ' 名学生'); }
+      return true;
+    }).catch((e) => {
+      if (!silent) toast(e && e.message === 'bad_key' ? '教师密钥无效，请在设置里重新接管班级' : '同步失败，请检查网络');
+      return false;
+    });
+  }
+
+  /* 老师端进入班级页自动同步（20 秒节流，避免 render → pull → render 循环） */
+  let cloudRosterAt = 0;
+  let classPollTimer = null;
+  function cloudAutoPull(force) {
+    if (!force && Date.now() - cloudRosterAt < 20000) return;
+    const cls = curCls();
+    if (!cls || !cls.code || !cls.teacherKey) return;
+    cloudRosterAt = Date.now();
+    cloudPullRoster(true).then((ok) => {
+      if (ok && /^#\/class/.test(location.hash || '')) render();
+    });
+  }
+  /* 停在班级页时每 20 秒自动收一次学生数据（学生随时可能在手机上答题） */
+  function startClassPolling() {
+    clearInterval(classPollTimer);
+    classPollTimer = setInterval(() => {
+      if (!/^#\/class/.test(location.hash || '')) { clearInterval(classPollTimer); classPollTimer = null; return; }
+      cloudRosterAt = 0;
+      cloudAutoPull(true);
+    }, 20000);
+  }
+
+  /* 学生端：上报自己的学习快照 */
+  function cloudReport(kidObj, cb) {
+    const C = CL();
+    if (!C || !kidObj || !kidObj.classCode) { if (cb) cb(false); return Promise.resolve(false); }
+    /* 2 秒节流：一次答题会连续写多处，避免抖成几十个请求 */
+    const tnow = Date.now();
+    if (kidObj._repAt && tnow - kidObj._repAt < 2000) { if (cb) cb(true); return Promise.resolve(true); }
+    kidObj._repAt = tnow;
+    const own = Math.max(0, (kidObj.points || 0) - (kidObj.bonusApplied || 0));
+    const snap = {
+      points: own,
+      petName: (kidObj.pet && kidObj.pet.name) || '',
+      petType: (kidObj.pet && kidObj.pet.type) || '',
+      petLv: (kidObj.pet && kidObj.pet.lv) || 1,
+      wrongN: (kidObj.wrongBook || []).filter((w) => !w.ok).length,
+      questDone: kidObj.quest && kidObj.quest.nodes ? kidObj.quest.nodes.filter((n) => n.done).length : 0,
+      questTotal: kidObj.quest && kidObj.quest.nodes ? kidObj.quest.nodes.length : 0,
+      grade: kidObj.grade || '',
+      dailyDone: kidObj.dailyQuizDate === todayStr(),
+      streak: kidObj.streak || 0,
+      mastery: kidObj.mastery || {}
+    };
+    return C.report(kidObj.classCode, kidObj.cloudSid, kidObj.cloudToken, snap)
+      .then(() => { if (cb) cb(true); return true; })
+      .catch(() => { if (cb) cb(false); return false; });
+  }
+
+  /* 学生端：拉班级变动（年级/班名）+ 老师给自己的加分 */
+  let cloudPullAt = 0;
+  function cloudStudentPull(silent) {
+    const C = CL();
+    if (!C || P.d.mode !== 'student') return Promise.resolve(false);
+    const k = kid();
+    if (!k || !k.classCode || !k.cloudSid) return Promise.resolve(false);
+    if (silent && Date.now() - cloudPullAt < 60000) return Promise.resolve(false);
+    cloudPullAt = Date.now();
+    return C.pull(k.classCode, k.cloudSid, k.cloudToken).then((j) => {
+      let changed = false;
+      /* 年级以班级为准 */
+      if (j.cls && j.cls.grade && j.cls.grade !== k.grade) {
+        k.grade = j.cls.grade;
+        k.quest = null;
+        changed = true;
+        toast('🎓 班级年级已更新为 ' + ({ g1: '一', g2: '二', g3: '三', g4: '四', g5: '五', g6: '六' }[k.grade] || '') + '年级');
+      }
+      if (j.cls && j.cls.name) k.className = j.cls.name;
+      /* 老师加分并入（只补差额，避免与上报来回打架） */
+      const bonus = (j.me && j.me.bonus) || 0;
+      if (bonus !== (k.bonusApplied || 0)) {
+        const delta = bonus - (k.bonusApplied || 0);
+        k.points = Math.max(0, (k.points || 0) + delta);
+        k.bonusApplied = bonus;
+        changed = true;
+        if (delta > 0) toast('🌟 老师给你加了 ' + delta + ' 分！');
+      }
+      if (changed) { P.save(); render(); }
+      return true;
+    }).catch(() => false);
+  }
+
+  /* 给 games.js 用的窄接口（两边在不同闭包里） */
+  window.BeastCloud = {
+    report: function (k) { return cloudReport(k); },
+    pull: function () { return cloudStudentPull(false); },
+    state: cloudState,
+    pullRoster: function () { cloudRosterAt = 0; return cloudPullRoster(false); },
+    sheet: function () { return cloudSheet(); },
+    reportNow: function (k) { return cloudReport(k); }
+  };
+
+  /* 老师加分后推给云端（学生下次联网就能看到） */
+  function cloudPushBonus(sids, delta, reason) {
+    const C = CL();
+    const cls = curCls();
+    if (!C || !cls || !cls.code || !cls.teacherKey) return;
+    cloudUseClass(cls);
+    C.bonus(cls.code, sids, delta, reason).catch(() => {});
+  }
+
+  /* 云端同步面板：状态 + 班级码 + 教师密钥 + 手动同步 */
+  function cloudSheet() {
+    const C = CL();
+    const k = kid();
+    const stu = P.d.mode === 'student';
+    const cls = curCls();
+    const st = cloudState();
+    const code = stu ? (k && k.classCode ? k.classCode : '') : (cls && cls.code ? cls.code : '');
+    const key = (cls && cls.teacherKey) || '';
+    const dot = st.base ? (st.online ? '🟢' : '🟡') : '⚪';
+    const txt = !st.base ? '未连接云端（仅本机可用）' : st.online ? '云端在线' : '网络不通，已排队 ' + (st.pending || 0) + ' 条待补发';
+    let body = '<div class="sheet-h">☁️ 云端同步</div>' +
+      '<div class="cloud-stat"><b>' + dot + ' ' + txt + '</b>' +
+      '<small>' + (st.base ? esc(st.base.replace(/^https?:\/\//, '').replace(/\?.*$/, '')) : '点下面「连接云端」重试') + '</small></div>';
+    if (code) {
+      body += '<div class="cloud-code"><span>班级码</span><b>' + esc(code) + '</b></div>';
+      body += stu
+        ? '<div class="tiny" style="margin-top:6px">把这个码给同学就行；你的答题数据会自动同步给老师</div>'
+        : '<div class="tiny" style="margin-top:6px">把它写在黑板/群公告里，学生用「我是学生 → 加入班级」输入即可</div>';
+    }
+    if (!stu && key) {
+      body += '<div class="cloud-key"><span>教师密钥（换设备接管用）</span><b>' + esc(key.slice(0, 10)) + '…</b>' +
+        '<button id="ckShow">显示</button></div>';
+    }
+    body += '<div style="margin-top:14px;display:flex;gap:8px">' +
+      '<button class="btn sm" id="csSync" style="flex:1">立即同步</button>' +
+      (stu ? '' : '<button class="btn sm ghost" id="csTake" style="flex:1">接管别的班</button>') +
+      '</div>';
+    if (!st.base) body += '<button class="btn ghost" id="csConn" style="margin-top:8px">连接云端</button>';
+    openSheet(body, (m, close) => {
+      const sy = m.querySelector('#csSync');
+      if (sy) sy.onclick = () => {
+        sy.textContent = '同步中…';
+        const job = stu ? cloudStudentPull(false) : cloudPullRoster(false);
+        job.then((ok) => { sy.textContent = ok ? '✓ 已同步' : '同步失败'; setTimeout(() => close(), 700); });
+      };
+      const tk = m.querySelector('#csTake');
+      if (tk) tk.onclick = () => { close(); cloudTakeOverSheet(); };
+      const cn = m.querySelector('#csConn');
+      if (cn) cn.onclick = () => {
+        cn.textContent = '连接中…';
+        C.probe().then((b) => { close(); toast(b ? '已连接云端' : '没连上，检查网络或服务地址'); cloudSheet(); });
+      };
+      const sh = m.querySelector('#ckShow');
+      if (sh) sh.onclick = () => {
+        m.querySelector('.cloud-key b').textContent = key;
+        if (window.mobileClipboardWrite) {} /* 占位 */
+        try { navigator.clipboard.writeText(key); toast('密钥已复制，请妥善保管'); } catch (e) {}
+      };
+    });
+  }
+
+  /* 学生：我的班级卡片（状态 + 立即同步 + 换班 + 退出） */
+  function studentClassSheet(k) {
+    const st = cloudState();
+    const on = !!st.online && !!st.base;
+    const GN = { g1: '一', g2: '二', g3: '三', g4: '四', g5: '五', g6: '六' };
+    openSheet(
+      '<div class="sheet-h">🏫 我的班级</div>' +
+      '<div class="cloud-stat"><b>' + esc(k.className || '班级') + '</b>' +
+      '<small>班级码 ' + esc(k.classCode || '') + (k.classTeacher ? ' · ' + esc(k.classTeacher) : '') + '</small></div>' +
+      '<div class="stu-sync" style="margin-top:10px"><i class="cc-dot ' + (on ? 'on' : '') + '"></i>' +
+      (on ? '已连接老师，答题数据会自动同步' : '当前离线，记录先存本机，联网后自动补发' + (st.pending ? '（待补发 ' + st.pending + ' 条）' : '')) + '</div>' +
+      '<div class="tiny" style="margin-top:8px">年级随班级：' + (GN[k.grade] || '未设') + '年级（老师统一设置，学生不能自己改）</div>' +
+      '<div style="margin-top:14px;display:flex;gap:8px">' +
+      '<button class="btn sm" id="scSync" style="flex:1">立即同步</button>' +
+      '<button class="btn sm ghost" id="scChange" style="flex:1">换班级</button>' +
+      '</div>' +
+      '<button class="btn ghost" id="stLeave" style="margin-top:8px;color:#d5483f">退出班级</button>',
+      (m, close) => {
+        m.querySelector('#scSync').onclick = (e) => {
+          const b = e.currentTarget;
+          b.textContent = '同步中…';
+          cloudReport(k).then(() => cloudStudentPull(false)).then((ok) => {
+            b.textContent = ok === false ? '同步失败' : '✓ 已同步';
+            setTimeout(() => close(), 700);
+          });
+        };
+        m.querySelector('#scChange').onclick = () => {
+          close();
+          if (window.BPGames) window.BPGames.joinClassSheet(k, render);
+        };
+        m.querySelector('#stLeave').onclick = () => {
+          if (!confirm('退出后老师将看不到你的答题数据，确定？')) return;
+          delete k.classCode; delete k.className; delete k.cloudSid; delete k.cloudToken; delete k.bonusApplied;
+          P.save(); close(); render(); toast('已退出班级');
+        };
+      });
+  }
+
+  /* 老师：换设备接管班级 */
+  function cloudTakeOverSheet() {
+    openSheet('<div class="sheet-h">☁️ 接管已有班级</div>' +
+      '<div class="tiny">换电脑或换手机时用：输入班级码 + 教师密钥，把云端班级（名单/积分/学情）拉回本机</div>' +
+      '<div class="field"><label>班级码</label><input id="toCode" maxlength="8" placeholder="6 位班级码" style="text-transform:uppercase"></div>' +
+      '<div class="field"><label>教师密钥</label><input id="toKey" placeholder="建班时生成的密钥（点显示可复制）"></div>' +
+      '<button class="btn" id="toGo" style="margin-top:12px">接管班级</button>', (m, close) => {
+      const go = m.querySelector('#toGo');
+      go.onclick = () => {
+        const code = m.querySelector('#toCode').value.trim().toUpperCase();
+        const key = m.querySelector('#toKey').value.trim();
+        if (!code || !key) return toast('班级码和密钥都要填');
+        go.textContent = '连接中…';
+        CL().takeOver(code, key).then((j) => {
+          /* 在本地重建这个班 */
+          const id = 'c' + uid();
+          const cls = {
+            id, name: (j.cls && j.cls.name) || '云端班级', kids: [], groups: GROUPS_DEFAULT.slice(),
+            period: 'today', rnd: { pool: [], round: 0 }, since: Date.now(),
+            code: code, teacherKey: key, cloudOn: true, grade: (j.cls && j.cls.grade) || '', takenOver: true
+          };
+          P.d.classes.push(cls);
+          P.d.cls.on = true;
+          P.d.mode = 'class';
+          P.d.admin = true;
+          loadClass(id);
+          cloudMergeRoster(cls, j.students || []);
+          P.save(); close();
+          location.hash = '#/class';
+          render();
+          toast('☁️ 已接管「' + cls.name + '」，' + (j.students || []).length + ' 名学生');
+        }).catch((e) => {
+          go.textContent = '接管班级';
+          toast(e && e.message === 'bad_key' ? '教师密钥不对' : (e && e.message === 'class_not_found' ? '没有这个班级码' : '连接失败，检查网络'));
+        });
+      };
+    });
+  }
+
   function classStat(e) {
     const from = dayStart();
     const sum = (e.kids || []).reduce((s, k) => s + ptsSince(k, from), 0);
@@ -2202,8 +2608,20 @@
       '<button id="clsAna"><span>📊</span>学情分析</button>' +
       (P.d.classes.length > 1 ? '<button id="qaCmp"><span>📊</span>跨班对比</button>' : '') +
       '</div>' +
-      '<div class="ch-code tiny">🏫 班级码 <b id="clsCodeB">' + esc(P.d.cls.code || clsCodeOf()) + '</b> · 班级年级 <b id="clsGradeB">' + ({ g1: '一', g2: '二', g3: '三', g4: '四', g5: '五', g6: '六' }[P.d.cls.grade] || '未设') + '</b>（学生加入后年级随班）' +
-      ' <button id="clsGradeSet" style="font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff">设置年级</button></div>' +
+      (function () {
+        const c = curCls() || {};
+        const st = cloudState();
+        const on = !!st.online && !!st.base;
+        const joinedN = (P.d.kids || []).filter((x) => x.joined).length;
+        return '<div class="ch-code tiny">🏫 班级码 <b id="clsCodeB">' + esc(c.code || clsCodeOf()) + '</b> · 班级年级 <b id="clsGradeB">' +
+          ({ g1: '一', g2: '二', g3: '三', g4: '四', g5: '五', g6: '六' }[c.grade] || '未设') + '</b>（学生加入后年级随班）' +
+          ' <button id="clsGradeSet" style="font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:#fff">设置年级</button></div>' +
+          '<div class="ch-cloud tiny"><i class="cc-dot ' + (on ? 'on' : '') + '"></i>' +
+          (st.base ? (on ? '云端已连接 · ' + joinedN + '/' + (P.d.kids || []).length + ' 名学员已在自己手机上激活' + (st.pending ? ' · ' + st.pending + ' 条待补发' : '')
+            : '云端暂离线，数据先存本机，联网自动补发')
+            : '未连接云端（只能本机使用）') +
+          ' <button id="clsCloud">同步</button></div>';
+      })() +
       '<div class="cls-tools">' +
       '<input id="clsQ" placeholder="搜索学生" value="' + esc(clsFilter.q) + '">' +
       '<button id="clsRoster">名单</button></div>' +
@@ -2217,6 +2635,7 @@
           '<div class="nm">' + esc(k.name) + '</div>' +
           '<div class="pt">' + k.points + '</div>' +
           (r <= 3 ? '<i class="rk">' + ['🥇', '🥈', '🥉'][r - 1] + '</i>' : '') +
+          (k.joined ? '<i class="jl" title="已在自己手机上激活' + (k.cloudOn ? ' · 在线' : '') + '">' + (k.cloudOn ? '🟢' : '📱') + '</i>' : '') +
           '</div>';
       }).join('') : '<div class="card empty" style="grid-column:1/-1">' + (P.d.kids.length ? '没有匹配的学生' : '还没有学生，点右上「名单」导入') + '</div>') +
       '</div></div>';
@@ -2226,6 +2645,10 @@
     document.getElementById('chSwitch').onclick = classListSheet;
     document.getElementById('clsSet').onclick = classSetupSheet;
     document.getElementById('clsRoster').onclick = rosterSheet;
+    const cloudBtn = document.getElementById('clsCloud');
+    if (cloudBtn) cloudBtn.onclick = () => { cloudBtn.textContent = '同步中…'; cloudPullRoster(false); };
+    setTimeout(() => cloudAutoPull(false), 400);
+    startClassPolling();
     const anaBtn = document.getElementById('clsAna');
     if (anaBtn) anaBtn.onclick = () => { location.hash = '#/analysis'; };
     const gradeBtn = document.getElementById('clsGradeSet');
@@ -2240,6 +2663,12 @@
             const cur = (P.d.classes || []).find((c) => c.id === P.d.clsId);
             if (cur) cur.grade = b.dataset.g;
             P.d.kids.forEach((k) => (k.grade = b.dataset.g));
+            /* 推到云端：学生手机下次同步自动跟随新年级 */
+            const CC = CL();
+            if (CC && cur && cur.code && cur.teacherKey) {
+              cloudUseClass(cur);
+              CC.setMeta(cur.code, { grade: b.dataset.g }).catch(() => {});
+            }
             P.save(); close2(); render();
             toast('班级年级已设为' + { g1: '一', g2: '二', g3: '三', g4: '四', g5: '五', g6: '六' }[b.dataset.g] + '年级，全班同步');
           }));
@@ -2690,6 +3119,10 @@
       '<div class="section-h" style="margin-top:16px"><h2>快捷分值</h2></div>' +
       '<div class="tiny" style="margin:2px 2px 8px">加减分面板上的按钮可自己定；临时要别的分值，点「± 自定」即可</div>' +
       '<div class="btn-row"><button class="btn ghost" id="csAmt">自定义加减分按钮</button></div>' +
+      '<div class="section-h" style="margin-top:16px"><h2>云端同步</h2></div>' +
+      '<div class="tiny" style="margin:2px 2px 8px">学生在自己手机上答题，数据通过云端汇总到这台设备</div>' +
+      '<div class="btn-row"><button class="btn ghost" id="csCloud">☁️ 同步状态 / 班级码</button>' +
+      '<button class="btn ghost" id="csTake">接管已有班级</button></div>' +
       '<div class="section-h" style="margin-top:16px"><h2>班级</h2></div>' +
       '<div class="tiny" style="margin:2px 2px 8px">共 ' + P.d.classes.length + ' 个班，每个班的名单和积分互相独立</div>' +
       '<div class="btn-row"><button class="btn ghost" id="csSwitch">切换班级</button><button class="btn ghost" id="csNew">＋ 新建班级</button></div>' +
@@ -2702,12 +3135,22 @@
       '<div class="section-h" style="margin-top:18px"><h2>模式</h2></div>' +
       '<div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="csExit">关闭班级模式（回到家庭版）</button></div>',
       (m, close) => {
-        m.querySelector('#cnName').onchange = (e) => { P.d.cls.name = e.target.value.trim(); P.save(); render(); };
+        m.querySelector('#cnName').onchange = (e) => {
+          P.d.cls.name = e.target.value.trim();
+          const c0 = curCls();
+          if (c0) {
+            c0.name = P.d.cls.name;
+            if (c0.teacherKey && c0.code) { cloudUseClass(c0); CL().setMeta(c0.code, { name: c0.name }).catch(() => {}); }
+          }
+          P.save(); render();
+        };
         m.querySelectorAll('#cnPeriod button').forEach((b) => (b.onclick = () => {
           m.querySelectorAll('#cnPeriod button').forEach((x) => x.classList.remove('on'));
           b.classList.add('on'); P.d.cls.period = b.dataset.v; P.save();
         }));
         m.querySelector('#csAmt').onclick = () => { close(); amtSetupSheet(); };
+        m.querySelector('#csCloud').onclick = () => { close(); cloudSheet(); };
+        m.querySelector('#csTake').onclick = () => { close(); cloudTakeOverSheet(); };
         m.querySelector('#csRoster').onclick = () => { close(); rosterSheet(); };
         m.querySelector('#csSwitch').onclick = () => { close(); classListSheet(); };
         m.querySelector('#csNew').onclick = () => { close(); newClassSheet(); };
@@ -2908,6 +3351,14 @@
     });
     if (!P.d.cur && P.d.kids.length) P.d.cur = P.d.kids[0].id;
     P.save();
+    /* 名单有变动就同步到云端：学生用名字认领，云端没名字会被当成新同学 */
+    if (added) {
+      const c0 = (P.d.classes || []).find((c) => c.id === P.d.clsId);
+      if (c0 && c0.teacherKey && c0.code) {
+        cloudUseClass(c0);
+        CL().pushRoster(c0.code, P.d.kids.map((x) => x.name)).catch(() => {});
+      }
+    }
     return { added, skip };
   }
 
@@ -3028,7 +3479,7 @@
       '<div style="margin-top:12px"><button class="btn" id="qiGo">确认导入</button></div>',
       (m, close) => {
         m.querySelector('#qiGo').onclick = () => {
-          try { if (window.BEAST_SYNC && window.BEAST_SYNC.backup) window.BEAST_SYNC.backup(); } catch (e) {}
+          try { localSnapshot(); } catch (e) {}
           P.d = adoptImported(d);
           P.save(); close();
           toast('已导入，正在刷新…');
@@ -3509,6 +3960,8 @@
     renderTabs(tab);
     document.getElementById('tbTitle').textContent = isClass() ? (P.d.cls.name || '伴学宠物') : isStudent() ? '伴学宠物 · 学生' : '伴学宠物 · 家庭';
     bindKidsRow();
+    /* 学生端：进页面顺手拉一次班级变动（年级/老师加分），60 秒节流 */
+    if (isStudent() && P.d.kids && P.d.kids.length) setTimeout(() => cloudStudentPull(true), 700);
   }
 
   /* ================= 旧网址提示（v3.20） ================= */

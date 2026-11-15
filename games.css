@@ -323,3 +323,55 @@
 .ana-h .av { width: 36px; height: 36px; border-radius: 10px; overflow: hidden; background: #f6f2fc; }
 .ana-h b { flex: 1; font-size: 14px; color: #3a2a4a; }
 .ana-h i { font-style: normal; color: #b49ad8; font-size: 12px; }
+
+/* ================= v3.29 知识图谱关卡 · 渐进式地图 ================= */
+.qbar-wrap { margin: 4px 2px 8px; }
+.qbar { height: 12px; border-radius: 999px; background: #ece3fa; overflow: hidden; box-shadow: inset 0 1px 3px rgba(90,60,140,.12); }
+.qbar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #8b5cf6, #ffd76e); transition: width .5s ease; }
+.qbar-lb { display: flex; justify-content: space-between; align-items: baseline; margin-top: 5px; font-size: 11px; color: #7c6a99; }
+.qbar-lb b { font-size: 15px; color: #6d28d9; }
+.q-tip { line-height: 1.55; margin: 0 2px 10px; color: #8f82a6; }
+.adv-chap.folded { padding-bottom: 10px; }
+.ac-head { width: 100%; background: none; border: 0; padding: 0; text-align: left; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.ac-head b { flex: 1; }
+.ac-cnt { font-size: 11px; color: #8b7aa8; background: rgba(255,255,255,.7); border-radius: 999px; padding: 2px 8px; }
+.ac-arrow { font-size: 12px; color: #a794c4; }
+.ac-prog { height: 6px; border-radius: 999px; background: rgba(255,255,255,.75); overflow: hidden; margin: 6px 0 2px; }
+.ac-prog i { display: block; height: 100%; background: linear-gradient(90deg, #a78bfa, #7ecb5f); border-radius: 999px; transition: width .4s; }
+.ac-story { font-size: 11.5px; color: #8a7aa3; margin: 6px 0 10px; line-height: 1.5; }
+.adv-chap.now { box-shadow: 0 6px 22px rgba(124,58,237,.14); border-color: #c9b3f5; }
+.adv-more { display: block; width: 100%; margin: 8px 0 2px; padding: 9px; border-radius: 12px; border: 1.5px dashed #cfc0ea;
+  background: rgba(255,255,255,.65); color: #6d5a8f; font-size: 12px; cursor: pointer; }
+.adv-more:active { transform: scale(.99); }
+.kn-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 14px; background: rgba(255,255,255,.82);
+  border: 1px solid rgba(180,160,215,.35); position: relative; }
+.kn-row + .kn-row { margin-top: 6px; }
+.kn-row.done { background: rgba(240,251,238,.9); border-color: #c6e6bf; }
+.kn-row.cur { background: linear-gradient(100deg, #fff8e4, #fffdf6); border-color: #ffcf5c; box-shadow: 0 5px 18px rgba(255,190,60,.22); }
+.kn-row.lock { opacity: .58; }
+.kn-info { flex: 1; min-width: 0; }
+.kn-info b { display: block; font-size: 13.5px; color: #3d2c55; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kn-info small { font-size: 10px; color: #9b8bb3; }
+.qkn-tag { display: inline-block; font-style: normal; font-size: 9.5px; color: #fff; border-radius: 6px; padding: 2px 6px; margin-bottom: 3px; }
+.kn-dots { display: flex; gap: 5px; flex: none; }
+.kn-dot { position: relative; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid #d8ccec; background: #fff;
+  color: #9b8bb3; font-size: 10.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.kn-dot i { position: absolute; bottom: -9px; font-style: normal; font-size: 8px; color: #b3a3c9; }
+.kn-dot.done { background: #eaf8e6; border-color: #9ad48f; color: #4c9a3f; }
+.kn-dot.cur { border-color: #f0a91f; background: #fff4d6; color: #a86a00; animation: nodeGlow 1.2s infinite; transform: scale(1.08); }
+.kn-dot.lock { opacity: .5; }
+.kn-row.pos-1 { margin-left: 10%; }
+.kn-row.pos-2 { margin-left: 4%; }
+.kn-row.pos-3 { margin-left: 8%; }
+.kn-row.pos-1 .kn-dot i, .kn-row.pos-3 .kn-dot i { color: #c4b6d8; }
+/* 知识图谱总览 */
+.knm-chap { margin-top: 12px; }
+.knm-chap > b { font-size: 12.5px; color: #5b21b6; display: block; margin-bottom: 6px; }
+.knm-it { display: flex; align-items: center; gap: 6px; padding: 5px 0; font-size: 12px; color: #4a3364; border-top: 1px dashed #eee4fb; }
+.knm-it .knm-em { width: 18px; text-align: center; }
+.knm-it .knm-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.knm-it b { font-size: 11px; color: #8b7aa8; font-weight: 700; }
+.knm-it small { width: 34px; text-align: right; font-size: 10.5px; color: #b3a3c9; }
+.knm-it.ok small { color: #4c9a3f; }
+.knm-it.weak small { color: #e5484d; }
+.knm-it.ok .knm-n { color: #3f7a34; }

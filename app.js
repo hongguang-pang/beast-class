@@ -636,7 +636,8 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.28 · 如果手机上还是旧版，请完全关闭页面后重新打开<br>' +
+      '<div class="w-ver">版本 v3.29 · 每学年 310 关知识图谱 · 账号管理 · 离线可玩<br>' +
+      '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
     el.querySelectorAll('.w-role button').forEach((b) => (b.onclick = () => {
@@ -654,6 +655,7 @@
       '<h2 style="margin-top:0">学生入学</h2>' +
       '<p>先做个摸底测试，成绩越好，降临的宠物伙伴越稀有！<br>有班级码的话可以填上，加入后跟着班级走。</p>' +
       '<div class="field"><label>你的名字 / 昵称</label><input id="wsName" maxlength="8" placeholder="比如：小明"></div>' +
+      '<div class="field"><label>设置密码（4-12 位字母或数字）</label><input id="wsPwd" maxlength="12" placeholder="换设备凭「名字+密码」找回档案"></div>' +
       '<div class="field"><label>班级码（没有可留空）</label><input id="wsCode" maxlength="8" placeholder="问老师要 6 位班级码"></div>' +
       '<button class="btn" id="wsGo" style="margin-top:14px">开始摸底 📚</button>' +
       '<button class="w-back" id="wsBack">‹ 返回</button>';
@@ -661,6 +663,10 @@
     el.querySelector('#wsGo').onclick = () => {
       const name = el.querySelector('#wsName').value.trim() || '同学';
       const code = el.querySelector('#wsCode').value.trim().toUpperCase();
+      const pwd = el.querySelector('#wsPwd').value.trim();
+      if (!window.BeastAuth || !BeastAuth.pwdOk(pwd)) { toast('先设置 4-12 位密码（字母/数字），换设备才能找回档案'); return; }
+      const ex = BeastAuth.find('student', name);
+      if (ex && ex.pwd !== BeastAuth.hashPwd(pwd, ex.salt)) { toast('「' + name + '」已有账号但密码不对：换个名字，或输入原密码'); return; }
       el.remove();
       const afterPlacement = (r) => {
         const k = { id: uid(), name, points: 0, daily: {}, grade: r.grade, pet: { name: PETS[r.type].name, type: r.type, exp: 0, lv: 1 }, dex: { egg: true, [r.type + '-baby']: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null, mastery: {}, mode: 'student' };
@@ -670,6 +676,11 @@
         P.d.kids = [k];
         P.d.cur = k.id;
         P.d.log = [];
+        /* 建档即注册：本机账号 + 云端备份（离线时自动入队补传） */
+        if (window.BeastAuth) {
+          const ar = BeastAuth.register({ role: 'student', name, pwd, kidId: k.id, grade: r.grade, classCode: code || '' });
+          toast(ar.existed ? '👋 欢迎回来，' + name + '（已登录原账号）' : '✅ 账号已创建：' + name);
+        }
         if (code) joinClassByCode(k, code);
         P.save();
         render();
@@ -741,6 +752,8 @@
     el.innerHTML =
       '<h2 style="margin-top:0">建一个班</h2>' +
       '<p>先填班名，再把学生名单粘进来（可以不填，之后随时导入）</p>' +
+      '<div class="field"><label>老师姓名（作为账号）</label><input id="wcTn" maxlength="12" placeholder="比如：王老师"></div>' +
+      '<div class="field"><label>设置密码（4-12 位字母或数字）</label><input id="wcPwd" maxlength="12" placeholder="换设备凭「姓名+密码」接管班级"></div>' +
       '<div class="field"><label>班级名称</label><input id="wcName" maxlength="14" placeholder="比如：三年二班" value="三年二班"></div>' +
       '<div class="field"><label>学生名单（一行一个，可选分组）</label>' +
       '<textarea id="wcList" rows="5" placeholder="张小明 第一组&#10;李小红 第一组&#10;王小刚 第二组"></textarea></div>' +
@@ -752,11 +765,24 @@
     el.querySelector('#wcTake').onclick = () => { el.remove(); cloudTakeOverSheet(); };
     el.querySelector('#wcGo').onclick = () => {
       const name = el.querySelector('#wcName').value.trim() || '我的班级';
+      const tName = el.querySelector('#wcTn').value.trim();
+      const pwd = el.querySelector('#wcPwd').value.trim();
+      if (tName && window.BeastAuth && !BeastAuth.pwdOk(pwd)) { toast('密码需要 4-12 位字母或数字'); return; }
+      if (tName && window.BeastAuth) {
+        const ex = BeastAuth.find('class', tName);
+        if (ex && ex.pwd !== BeastAuth.hashPwd(pwd, ex.salt)) { toast('「' + tName + '」已有账号但密码不对：换个名字或输入原密码'); return; }
+      }
       const txt = el.querySelector('#wcList').value;
       const r = createClass(name, txt);
       if (!P.d.kids.length) { P.d.kids = [newStu('小明', '')]; P.d.cur = P.d.kids[0].id; P.save(); }
       P.d.admin = true;
       P.d.mode = 'class';
+      /* 老师账号：绑定刚建的班 */
+      if (tName && window.BeastAuth) {
+        const c0 = (P.d.classes && P.d.classes[P.d.classes.length - 1]) || P.d.cls;
+        const ar = BeastAuth.register({ role: 'class', name: tName, pwd, clsId: (c0 && c0.id) || '', classCode: (c0 && c0.code) || '', grade: (c0 && c0.grade) || '' });
+        toast(ar.existed ? '👋 欢迎回来，' + tName : '✅ 老师账号已创建：' + tName);
+      }
       P.save();
       el.remove();
       location.hash = '#/class';
@@ -821,16 +847,29 @@
       '<h2 style="margin-top:0">开始养成</h2>' +
       '<p>孩子做任务赚积分，宠物跟着升级进化；积分还能在商店兑换奖励。</p>' +
       '<div class="field"><label>孩子的名字 / 称呼</label><input id="wName" placeholder="比如：小明、姐姐、哥哥" maxlength="8"></div>' +
+      '<div class="field"><label>家长账号名（管理多个孩子用）</label><input id="wFam" maxlength="12" placeholder="比如：李爸爸 / 王妈妈"></div>' +
+      '<div class="field"><label>设置密码（4-12 位字母或数字）</label><input id="wPwd" maxlength="12" placeholder="换设备凭「账号名+密码」找回全部分析数据"></div>' +
       '<div class="tiny" style="margin-top:10px">点「开始摸底」先做 10 道入学题，成绩越好，降临的宠物伙伴越稀有！</div>' +
       '<button class="btn" id="wGo" style="margin-top:14px">开始摸底 📚</button>' +
       '<button class="w-back" id="wcBack">‹ 返回</button>';
     el.querySelector('#wcBack').onclick = () => stepRole(el);
     el.querySelector('#wGo').onclick = () => {
       const name = el.querySelector('#wName').value.trim() || '宝贝';
+      const fam = el.querySelector('#wFam').value.trim();
+      const pwd = el.querySelector('#wPwd').value.trim();
+      if (fam && window.BeastAuth && !BeastAuth.pwdOk(pwd)) { toast('密码需要 4-12 位字母或数字'); return; }
+      if (fam && window.BeastAuth) {
+        const ex = BeastAuth.find('family', fam);
+        if (ex && ex.pwd !== BeastAuth.hashPwd(pwd, ex.salt)) { toast('「' + fam + '」已有账号但密码不对：换个名字或输入原密码'); return; }
+      }
       el.remove();
       placement(name, (r) => {
         const k = { id: uid(), name, points: 0, daily: {}, grade: r.grade, pet: { name: PETS[r.type].name, type: r.type, exp: 0, lv: 1 }, dex: { egg: true, [r.type + '-baby']: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null };
         P.d.mode = 'family';
+        if (fam && window.BeastAuth) {
+          const ar = BeastAuth.register({ role: 'family', name: fam, pwd, kidId: k.id, grade: r.grade });
+          toast(ar.existed ? '👋 欢迎回来，' + fam : '✅ 家长账号已创建：' + fam);
+        }
         P.d.kids.push(k);
         P.d.cur = k.id;
         P.d.log.unshift({ ts: Date.now(), kid: k.id, kidName: name, em: '🥚', text: name + ' 摸底答对 ' + r.right + '/' + r.total + '，' + PETS[r.type].name + ' 降临！', d: 0 });
@@ -3971,6 +4010,11 @@
     if (h === 'lucky') tab = 'shop';
     renderTabs(tab);
     document.getElementById('tbTitle').textContent = isClass() ? (P.d.cls.name || '伴学宠物') : isStudent() ? '伴学宠物 · 学生' : '伴学宠物 · 家庭';
+    const acctBtnEl = document.getElementById('acctBtn');
+    if (acctBtnEl && window.BeastAuth) {
+      const au = BeastAuth.current();
+      acctBtnEl.textContent = au ? au.name.slice(0, 3) : '👤';
+    }
     bindKidsRow();
     /* 学生端：进页面顺手拉一次班级变动（年级/老师加分），60 秒节流 */
     if (isStudent() && P.d.kids && P.d.kids.length) setTimeout(() => cloudStudentPull(true), 700);
@@ -4015,10 +4059,153 @@
     kid, todayStr, isClass, petImg, petMeta, imgFor, stageIdxOf, stageOf, expNeed, evoFX, PETS, displayName };
   window.BPHook = { routes, ROUTES_ALL };
 
+  /* ================= v3.29 账号中心 ================= */
+  let lastSnapAt = 0;
+  function maybeSnapshot(force) {
+    const A = window.BeastAuth;
+    if (!A || !A.current()) return;
+    if (!force && Date.now() - lastSnapAt < 90000) return;
+    lastSnapAt = Date.now();
+    A.snapshot().catch(() => {});
+  }
+  /* 账号面板：账号信息 / 云同步状态 / 切换 / 退出 / 改密 / 删除 */
+  function acctSheet() {
+    const A = window.BeastAuth;
+    if (!A) return;
+    const me = A.current();
+    const cs = cloudState();
+    const rn = (r) => A.ROLE_NAME[r] || r;
+    const accRows = A.list().map((u) => {
+      const isMe = me && u.id === me.id;
+      return '<div class="acc-it' + (isMe ? ' me' : '') + '" data-id="' + u.id + '">' +
+        '<span class="acc-av">' + rn(u.role).slice(0, 1) + '</span>' +
+        '<div class="acc-nm"><b>' + esc(u.name) + '</b><small>' + rn(u.role) +
+        (u.classCode ? ' · 班级 ' + esc(u.classCode) : '') + '</small></div>' +
+        (isMe ? '<span class="acc-cur">当前</span>' : '<button class="acc-sw" data-id="' + u.id + '">切换</button>') +
+        '</div>';
+    }).join('');
+    const body =
+      (me ?
+        '<div class="acc-me"><span class="acc-av big">' + rn(me.role).slice(0, 1) + '</span>' +
+        '<div><b>' + esc(me.name) + '</b><small>' + rn(me.role) + '账号 · 创建于 ' + new Date(me.createdAt).toLocaleDateString() +
+        (me.classCode ? ' · 班级 ' + esc(me.classCode) : '') + '</small></div></div>' : '') +
+      '<div class="acc-sync"><i class="cc-dot ' + (cs.online ? 'on' : '') + '"></i>' +
+      (cs.online ? '已连接云端 · 数据自动回传' : '当前离线 · 数据先存本机，联网后自动补传') +
+      (cs.pending ? ' · <b style="color:#ff8a00">待回传 ' + cs.pending + ' 条</b>' : '') + '</div>' +
+      '<div class="btn-row"><button class="btn ghost" id="accSync">🔄 立即同步</button>' +
+      '<button class="btn ghost" id="accPwd">🔑 改密码</button></div>' +
+      '<div class="section-h"><h2>本机账号</h2><span class="sub">同一台设备可保存多个账号</span></div>' +
+      (accRows || '<div class="tiny">暂无其他账号</div>') +
+      '<div class="btn-row" style="margin-top:12px">' +
+      (me ? '<button class="btn ghost" id="accOut">🚪 退出登录</button>' : '<button class="btn" id="accIn">🔑 登录已有账号</button>') +
+      '</div>' +
+      (me ? '<button class="w-back" id="accDel" style="margin-top:10px">🗑 删除当前账号（仅本机记录）</button>' : '');
+    openSheet('<div class="sheet-h">👤 账号中心</div>' + body, (m, close) => {
+      const A2 = window.BeastAuth;
+      m.querySelector('#accSync') && (m.querySelector('#accSync').onclick = () => {
+        const b = m.querySelector('#accSync');
+        b.textContent = '同步中…';
+        maybeSnapshot(true);
+        const C = window.BEAST_CLOUD;
+        (C ? C.flush() : Promise.resolve(0)).then((n) => {
+          b.textContent = '🔄 立即同步';
+          toast('同步完成' + (n ? '，补发 ' + n + ' 条' : '') + (cloudState().online ? '' : '（仍离线，稍后自动补传）'));
+        }).catch(() => { b.textContent = '🔄 立即同步'; toast('云端暂不可达，已存入离线队列'); });
+      });
+      m.querySelector('#accPwd') && (m.querySelector('#accPwd').onclick = () => {
+        if (!me) return toast('先登录账号');
+        openSheet('<div class="sheet-h">🔑 修改密码</div>' +
+          '<div class="field"><label>当前密码</label><input id="op0" type="password" maxlength="12"></div>' +
+          '<div class="field"><label>新密码（4-12 位字母/数字）</label><input id="op1" type="password" maxlength="12"></div>' +
+          '<button class="btn" id="opGo" style="margin-top:10px">确认修改</button>', (m2, close2) => {
+          m2.querySelector('#opGo').onclick = () => {
+            const r = A2.changePwd(me.id, m2.querySelector('#op0').value, m2.querySelector('#op1').value.trim());
+            if (r.err === 'bad_pwd') return toast('当前密码不对');
+            if (r.err === 'bad_new') return toast('新密码需要 4-12 位字母或数字');
+            close2(); close(); toast('✅ 密码已修改');
+          };
+        });
+      });
+      m.querySelectorAll('.acc-sw').forEach((b) => (b.onclick = () => {
+        if (A2.switchTo(b.dataset.id)) { location.reload(); }
+      }));
+      m.querySelector('#accOut') && (m.querySelector('#accOut').onclick = () => {
+        if (!confirm('退出后需要「名字+密码」重新登录，本机数据保留。确定退出？')) return;
+        A2.logout();
+        location.reload();
+      });
+      m.querySelector('#accIn') && (m.querySelector('#accIn').onclick = () => { close(); loginSheet(); });
+      m.querySelector('#accDel') && (m.querySelector('#accDel').onclick = () => {
+        if (!confirm('仅删除本机账号记录，云端备份与班级数据不受影响。确定？')) return;
+        A2.remove(me.id);
+        location.reload();
+      });
+    });
+  }
+  /* 登录已有账号（本机或云端） */
+  function loginSheet(prefRole) {
+    const A = window.BeastAuth;
+    if (!A) return;
+    const roles = ['student', 'family', 'class'];
+    const savedRole = (() => { try { return localStorage.getItem('beast.role') || 'student'; } catch (e) { return 'student'; } })();
+    let role = prefRole || savedRole || 'student';
+    const draw = (m) => {
+      m.querySelector('.auth-body').innerHTML =
+        '<div class="field"><label>身份</label><select id="lgRole">' +
+        roles.map((r) => '<option value="' + r + '"' + (r === role ? ' selected' : '') + '>' + A.ROLE_NAME[r] + '</option>').join('') +
+        '</select></div>' +
+        '<div class="field"><label>名字（注册时用的）</label><input id="lgName" maxlength="12" placeholder="学生昵称 / 家长账号名 / 老师姓名"></div>' +
+        '<div class="field"><label>密码</label><input id="lgPwd" type="password" maxlength="12"></div>' +
+        '<button class="btn" id="lgGo" style="margin-top:10px">登录</button>' +
+        '<div class="tiny" style="margin-top:8px">本机没有这个账号时，会自动连云端找回档案（需要网络）</div>';
+      m.querySelector('#lgRole').onchange = (e) => { role = e.target.value; draw(m); };
+      m.querySelector('#lgGo').onclick = () => {
+        const name = m.querySelector('#lgName').value.trim();
+        const pwd = m.querySelector('#lgPwd').value;
+        if (!name || !pwd) return;
+        const b = m.querySelector('#lgGo');
+        b.textContent = '登录中…';
+        A.login(role, name, pwd, (r, data, u) => {
+          /* 云端找回：用快照重建本机档案 */
+          try {
+            localStorage.setItem('beast.role', r);
+            localStorage.setItem('beast.v1.' + r, JSON.stringify(data));
+            if (u && data.kids && data.kids[0]) u.kidId = data.cur || data.kids[0].id;
+          } catch (e) {}
+        }).then((res) => {
+          if (!res.ok) {
+            b.textContent = '登录';
+            toast(res.err === 'bad_pwd' ? '密码不对' : res.err === 'no_user' ? '没有找到这个账号' : '登录失败，检查网络');
+            return;
+          }
+          location.reload();
+        });
+      };
+    };
+    openSheet('<div class="sheet-h">🔑 登录账号</div><div class="auth-body"></div>', (m) => draw(m));
+  }
+
+  /* 恢复账号会话：切到账号绑定的角色档案（一机多号互不串数据） */
+  function restoreAccount() {
+    const A = window.BeastAuth;
+    if (!A) return;
+    const u = A.current();
+    if (!u) return;
+    try { localStorage.setItem('beast.role', u.role); } catch (e) {}
+    if (u.role === 'student' && P.d && P.d.kids && P.d.kids.length) {
+      if (u.kidId && P.d.kids.some((k) => k.id === u.kidId)) P.d.cur = u.kidId;
+      else if (P.d.kids[0]) { P.d.cur = P.d.kids[0].id; A.touch({ kidId: P.d.cur }); }
+    }
+    if (u.role === 'class' && P.d && P.d.classes && P.d.classes.length) {
+      if (u.clsId && P.d.classes.some((c) => c.id === u.clsId)) P.d.clsId = u.clsId;
+    }
+  }
+
   /* ================= 启动 ================= */
   function boot() {
     P.load();
     if (!P.d) { P.d = P.fresh(); }
+    restoreAccount();
     P.save();   // 迁移结果立即落盘
     if (!location.hash) location.replace('#/home');
     window.addEventListener('hashchange', render);
@@ -4026,6 +4213,12 @@
       if (P.d.admin) parentPanel(); else parentEntry();
     };
     document.getElementById('classBtn').onclick = () => { location.hash = '#/class'; };
+    const acctBtn = document.getElementById('acctBtn');
+    if (acctBtn) acctBtn.onclick = () => acctSheet();
+    /* 联网后自动回传：网络恢复 / 页面可见 / 每分钟各触发一次 */
+    window.addEventListener('online', () => { const C = window.BEAST_CLOUD; if (C) C.flush().catch(() => {}); maybeSnapshot(true); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) maybeSnapshot(); });
+    setInterval(() => { const C = window.BEAST_CLOUD; if (C && C.pending()) C.flush().catch(() => {}); maybeSnapshot(); }, 60000);
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {

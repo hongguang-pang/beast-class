@@ -327,6 +327,34 @@
     /* 只查班级公开信息（加入前预览班名年级） */
     info: function (code) {
       return api('GET', '/api/class/' + String(code || '').trim().toUpperCase());
+    },
+
+    /* ================= v3.29 账号云备份 =================
+       pwd 已在客户端加盐混淆过，服务端不再看明文；salt 一并上传，
+       换设备时用「名字 + 密码」可从云端找回整包档案。 */
+    authRegister: function (role, name, pwd, salt) {
+      var path = '/api/auth/register';
+      var body = { role: role, name: name, pwd: pwd, salt: salt || '' };
+      return api('POST', path, body).catch(function (e) {
+        /* 5xx / 断网入队，恢复后补注册（幂等） */
+        if (!e.status || e.status >= 500) enqueue('POST', path, body);
+        throw e;
+      });
+    },
+    authLogin: function (role, name, pwd) {
+      return api('POST', '/api/auth/login', { role: role, name: name, pwd: pwd });
+    },
+    userSync: function (role, name, pwd, salt, snap) {
+      var path = '/api/user/sync';
+      var body = { role: role, name: name, pwd: pwd, salt: salt || '', snap: snap };
+      return api('POST', path, body).catch(function (e) {
+        if (!e.status || e.status >= 500) enqueue('POST', path, body);
+        throw e;
+      });
+    },
+    userPull: function (role, name, pwd) {
+      return api('GET', '/api/user/pull?role=' + encodeURIComponent(role) +
+        '&name=' + encodeURIComponent(name) + '&pwd=' + encodeURIComponent(pwd));
     }
   };
 

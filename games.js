@@ -575,14 +575,15 @@
     const subj = node.subj || 'en';
     const WS = () => genSubjectQ(weightedSubj(), g, lv, node.u);
     if (node.t === 'kn') {
-      const fmt = CHAPTER_FMT[g] || CHAPTER_FMT.g3;
-      const f = () => genSubjectQ(subj, g, lv, node.u);
-      return genMix(fmt.perKn, [f, f, f], WS);
+      /* 每个知识点 3 级：识记 2 题 / 练习 3 题 / 精通 3 题（精通难度 +1） */
+      const st = node.stage || 1;
+      const cnt = node.qn || (st === 1 ? 2 : 3);
+      if (subj === 'mix') return genMix(cnt, [WS, WS, WS], WS);
+      const qlv = Math.min(4, lv + (st === 3 ? 1 : 0));
+      const f = () => genSubjectQ(subj, g, qlv, node.u);
+      return genMix(cnt, [f, f, f], WS);
     }
-    if (node.t === 'chall') {
-      /* 挑战关：4 题全科混排，考本章综合 */
-      return genMix(4, [WS, WS, WS, WS], WS);
-    }
+    if (node.t === 'chall') return genMix(4, [WS, WS, WS, WS], WS);
     if (node.t === 'boss') {
       const b = () => genSubjectQ(subj, g, lv, node.u);
       return genMix(5, [b, b, b, WS, WS], WS);
@@ -628,6 +629,25 @@
     g5: ['光的反射', '地球的运动', '生物与环境', '种子萌发', '社会公德', '爱护环境', '诚信友善', '珍爱生命'],
     g6: ['微小世界', '地球的卫星', '能量与能源', '生物多样性', '宪法意识', '责任担当', '合理上网', '明辨是非']
   };
+  /* ================= v3.29 知识图谱扩充 =================
+     为了让每个年级的关卡真正铺满知识点，科学/常识各扩充到 15 / 10 个点，
+     每章取 3 科学 + 2 常识，与语数英一起组成 20 个知识点 / 章。 */
+  const SCI_KN = {
+    g1: ['植物有生命', '观察一棵树', '动物的家', '石头与土壤', '玩磁铁', '认识天气', '白天与黑夜', '水的样子', '空气在哪里', '声音从哪里来', '我们的感官', '身体的部位', '爱护小动物', '影子游戏', '种子的旅行'],
+    g2: ['植物的根', '茎和叶', '花与果实', '蚂蚁的家', '蜗牛观察', '石头分类', '土壤里的生物', '磁铁能吸什么', '指南针', '云和雨', '风向与风力', '声音的高低', '光的直线传播', '常见的材料', '纸的特点'],
+    g3: ['水沸腾', '水的蒸发与凝结', '空气占据空间', '空气有质量', '声音由振动产生', '声音的传播', '光的反射', '影子长短变化', '植物的一生', '动物的生命周期', '人的呼吸', '人的消化', '土壤的类型', '岩石与矿物', '天气与生活'],
+    g4: ['声音的强弱与高低', '噪声与危害', '光的传播', '平面镜成像', '潜望镜', '呼吸器官', '心跳与运动', '食物的营养', '消化与吸收', '植物的光合作用', '动物怎样繁殖', '岩石风化', '地球的内部', '火山与地震', '常见的力'],
+    g5: ['光的反射与折射', '透镜与放大镜', '地球自转', '地球公转与四季', '月相变化', '日食与月食', '生物与环境', '食物链', '种子萌发条件', '植物的繁殖方式', '热的传递', '保温与散热', '杠杆', '滑轮与斜面', '能源与节约'],
+    g6: ['显微镜与细胞', '微生物与健康', '生物的遗传', '生物的适应', '生态系统', '能量转换', '电磁铁', '电路与开关', '杠杆平衡', '轮轴与齿轮', '地球的资源', '太阳系', '月球的秘密', '星座与星空', '科技与生活']
+  };
+  const ETH_KN = {
+    g1: ['校园礼仪', '课间安全', '上下楼梯', '垃圾分类', '爱护课本', '诚实不说谎', '排队守秩序', '饭前洗手', '认识国旗', '和家人打招呼'],
+    g2: ['交通安全', '防溺水', '用电安全', '陌生人防范', '公共场所礼仪', '爱护花草', '借东西要说', '做错事要道歉', '班级值日', '节约用纸'],
+    g3: ['消防安全', '地震避险', '食品保质期', '上网时间管理', '对校园欺凌说不', '集体活动守则', '节约用电', '保护水资源', '尊重他人隐私', '按时完成作业'],
+    g4: ['遵守交通信号', '乘车安全', '拒绝烟酒', '网络文明用语', '保护个人隐私', '垃圾分类投放', '团队分工合作', '感恩与表达', '爱护公共设施', '遇到危险要求助'],
+    g5: ['社会公德', '公共场所秩序', '志愿服务', '诚实守信', '拒绝危险游戏', '合理使用零花钱', '尊重劳动成果', '保护生态环境', '遵守法律法规', '理性对待网络信息'],
+    g6: ['宪法与公民', '权利与义务', '责任担当', '国家安全意识', '明辨是非', '拒绝校园暴力', '青春期健康', '防沉迷上网', '保护文化遗产', '国际理解与尊重']
+  };
   /* 每章剧情引子（借鉴章节式冒险叙事） */
   const CHAP_STORY = [
     '冒险开始！和小伙伴一起踏上知识大陆，用知识点点亮脚下的路。',
@@ -636,68 +656,62 @@
     '知识城堡就在眼前，把守城门的 Boss 可不好对付，做好准备！',
     '最终决战！集齐五章知识之力，挑战最强的知识魔王！'
   ];
-  /* ================= v3.27 各年级差异化关卡格式 =================
-     g1: 每章8知识点/2题 线性短线 | g2: 10点/2题 | g3: 12点/3题
-     g4: 12点/3题+章末挑战关 | g5: 14点/3题+挑战关+章中副Boss | g6: 16点/3题+挑战关+副Boss */
+  /* ================= v3.29 知识图谱关卡引擎 =================
+     每章 20 个知识点：英语 6 个单词 · 数学 4 · 语文 4 · 科学 3 · 常识 2 · 本章综合 1
+     每个知识点 3 级关卡（识记 / 练习 / 精通）→ 60 关 + 章 Boss
+     5 章 + 最终 Boss = 每学年 310 关；1-6 年级合计 1860 关
+     关卡不一次性铺开：每章只渲染当前进度附近的一小段（见 viewQuest 的视窗逻辑） */
+  const KN_PER_CHAP = 20;
+  const KN_STAGES = 3;
+  const STAGE_NAME = ['识记', '练习', '精通'];
+  /* 旧格式表保留给历史数据引用，新地图不再依赖 */
   const CHAPTER_FMT = {
-    g1: { kn: 8,  perKn: 2, mix: { en: 2, math: 3, cn: 2, sub: 1 } },
-    g2: { kn: 10, perKn: 2, mix: { en: 3, math: 4, cn: 2, sub: 1 } },
-    g3: { kn: 12, perKn: 3, mix: { en: 3, math: 4, cn: 3, sub: 2 } },
-    g4: { kn: 12, perKn: 3, mix: { en: 3, math: 4, cn: 3, sub: 2 }, chall: true },
-    g5: { kn: 14, perKn: 3, mix: { en: 4, math: 5, cn: 3, sub: 2 }, chall: true, boss2: true },
-    g6: { kn: 16, perKn: 3, mix: { en: 4, math: 5, cn: 4, sub: 3 }, chall: true, boss2: true }
+    g1: { kn: 20, perKn: 2, mix: { en: 6, math: 4, cn: 4, sci: 3, eth: 2 } },
+    g2: { kn: 20, perKn: 2, mix: { en: 6, math: 4, cn: 4, sci: 3, eth: 2 } },
+    g3: { kn: 20, perKn: 3, mix: { en: 6, math: 4, cn: 4, sci: 3, eth: 2 } },
+    g4: { kn: 20, perKn: 3, mix: { en: 6, math: 4, cn: 4, sci: 3, eth: 2 } },
+    g5: { kn: 20, perKn: 3, mix: { en: 6, math: 4, cn: 4, sci: 3, eth: 2 } },
+    g6: { kn: 20, perKn: 3, mix: { en: 6, math: 4, cn: 4, sci: 3, eth: 2 } }
   };
-  /* 章内知识点编排：主课各取大纲切片，池不足用「综合练习」节点补足 */
+  /* 章内知识点编排：五科交错，避免同科连排，最后放本章综合 */
   function buildChapterKn(g, c) {
-    const fmt = CHAPTER_FMT[g] || CHAPTER_FMT.g3;
-    const un = DB[g].units[c];
+    const un = (DB[g] && DB[g].units[c]) || DB.g3.units[c];
+    const at = (arr, i) => arr[((i % arr.length) + arr.length) % arr.length];
+    const pools = { en: [], math: [], cn: [], sci: [], eth: [] };
+    (un.words || []).slice(0, 6).forEach((w) => pools.en.push({ s: 'en', n: '单词 ' + w[0] + '（' + w[1] + '）' }));
+    for (let i = 0; i < 4; i++) pools.math.push({ s: 'math', n: at(MATH_KN[g] || MATH_KN.g3, c * 4 + i) });
+    for (let i = 0; i < 4; i++) pools.cn.push({ s: 'cn', n: at(CN_KN[g] || CN_KN.g3, c * 4 + i) });
+    for (let i = 0; i < 3; i++) pools.sci.push({ s: 'sci', n: at(SCI_KN[g] || SCI_KN.g3, c * 3 + i) });
+    for (let i = 0; i < 2; i++) pools.eth.push({ s: 'eth', n: at(ETH_KN[g] || ETH_KN.g3, c * 2 + i) });
+    const keys = ['en', 'math', 'cn', 'sci', 'eth'];
     const list = [];
-    const pushSub = (subj, i) => {
-      if (subj === 'en') {
-        const w = un.words[i];
-        list.push({ s: 'en', n: w ? '单词 · ' + w[1] : '英语综合 · ' + un.t });
-      } else if (subj === 'math') {
-        const kn = MATH_KN[g][c * 4 + i];
-        list.push({ s: 'math', n: kn || '数学综合练习 · ' + un.t });
-      } else if (subj === 'cn') {
-        const kn = CN_KN[g][c * 3 + i];
-        list.push({ s: 'cn', n: kn || '语文综合练习 · ' + un.t });
-      } else {
-        list.push({ s: c % 2 ? 'eth' : 'sci', n: SC_KN[g][(c + i) % SC_KN[g].length] });
-      }
-    };
-    /* 交错排布避免同科连排 */
-    const order = [];
-    const pools = { en: [], math: [], cn: [], sub: [] };
-    for (let i = 0; i < fmt.mix.en; i++) pools.en.push(['en', i]);
-    for (let i = 0; i < fmt.mix.math; i++) pools.math.push(['math', i]);
-    for (let i = 0; i < fmt.mix.cn; i++) pools.cn.push(['cn', i]);
-    for (let i = 0; i < fmt.mix.sub; i++) pools.sub.push(['sub', i]);
-    let pickOrder = [];
-    const keys = ['en', 'math', 'cn', 'sub'];
-    let ki = 0;
-    while (pickOrder.length < fmt.kn) {
-      const k = keys[ki % keys.length]; ki++;
-      if (pools[k].length) pickOrder.push(pools[k].shift());
-      if (pickOrder.length >= fmt.kn) break;
-      if (keys.every((x) => !pools[x].length)) { /* 池尽则用英语综合循环 */ pickOrder.push(['en', 99]); }
+    let guard = 0;
+    while (list.length < KN_PER_CHAP - 1 && guard++ < 80) {
+      let took = false;
+      keys.forEach((k) => {
+        if (list.length >= KN_PER_CHAP - 1) return;
+        if (pools[k].length) { list.push(pools[k].shift()); took = true; }
+      });
+      if (!took) break;
     }
-    pickOrder.forEach((x) => pushSub(x[0], x[1]));
+    /* 池不足用「综合」补位，保证每章 20 个点 */
+    while (list.length < KN_PER_CHAP - 1) list.push({ s: 'mix', n: '综合练习 · ' + un.t });
+    list.push({ s: 'mix', n: '本章综合 · ' + un.t });
     return list;
   }
   function buildMap(g) {
-    const fmt = CHAPTER_FMT[g] || CHAPTER_FMT.g3;
     const nodes = [];
     for (let c = 0; c < 5; c++) {
       const kns = buildChapterKn(g, c);
-      kns.forEach((kn, i) => {
-        nodes.push({ t: 'kn', u: c, subj: kn.s, kn: kn.n, lv: Math.min(4, Math.floor((c * fmt.kn + i) / (5 * fmt.kn) * 5)) });
-        /* g5/g6 章中副 Boss：知识点过半时出现 */
-        if (fmt.boss2 && i === Math.floor(kns.length / 2) - 1) {
-          nodes.push({ t: 'boss', u: c, subj: SUBJ_ROT[(c * 3 + 2) % SUBJ_ROT.length], mid: true, lv: Math.min(4, 1 + c) });
+      kns.forEach((kn) => {
+        for (let st = 1; st <= KN_STAGES; st++) {
+          nodes.push({
+            t: 'kn', u: c, subj: kn.s, kn: kn.n, stage: st,
+            lv: Math.min(4, st + (c >= 4 ? 1 : 0)),
+            qn: st === 1 ? 2 : 3
+          });
         }
       });
-      if (fmt.chall) nodes.push({ t: 'chall', u: c, lv: Math.min(4, 1 + c) }); /* 章末挑战：4 题混科 */
       /* 章 Boss：学科轮换，难度随章加深 */
       nodes.push({ t: 'boss', u: c, subj: SUBJ_ROT[c * 3 % SUBJ_ROT.length], lv: Math.min(4, 2 + Math.floor(c / 2)) });
       if (c < 4) nodes.push({ t: 'treasure', u: c });
@@ -705,25 +719,46 @@
     nodes.push({ t: 'final', u: 4, lv: 4 });
     return nodes.map((n, i) => Object.assign(n, { i, done: false, stars: 0 }));
   }
+  /* 关卡总数（供 UI 展示，不生成节点） */
+  function mapSize(g) {
+    let n = 0;
+    for (let c = 0; c < 5; c++) { n += KN_PER_CHAP * KN_STAGES + 1; if (c < 4) n += 1; }
+    return n + 1;
+  }
   function ensureMapFields(q) {
     if (!Array.isArray(q.nodes)) return;
     q.nodes.forEach((n) => {
       const need = n.t === 'kn' || n.t === 'battle' || n.t === 'review' || n.t === 'boss' || n.t === 'final';
       if (!need) return;
       if (n.subj == null && n.t !== 'final') n.subj = SUBJ_ROT[(n.i || 0) % SUBJ_ROT.length];
+      if (n.stage == null && n.t === 'kn') n.stage = 1;
       if (n.lv == null) n.lv = n.t === 'final' ? 4 : n.i != null ? Math.min(4, Math.floor(n.i / q.nodes.length * 5)) : 2;
     });
   }
   function questState(k) {
     const g = gradeOf(k);
-    /* v3.26 知识图谱版地图（ver=2）：旧 20 关地图自动迁移，已通关数平移到新图前段 */
-    if (!k.quest || k.quest.grade !== g || !Array.isArray(k.quest.nodes) || k.quest.ver !== 3) {
-      const oldDone = (k.quest && Array.isArray(k.quest.nodes)) ? k.quest.nodes.filter((n) => n.done).length : 0;
+    /* v3.29 知识图谱地图（ver=4，310 关/年级）：
+       旧版关卡按通关比例平移到新图，老玩家的进度不清零。 */
+    if (!k.quest || k.quest.grade !== g || !Array.isArray(k.quest.nodes) || k.quest.ver !== 4) {
+      const oldQ = k.quest;
+      const oldNodes = (oldQ && Array.isArray(oldQ.nodes)) ? oldQ.nodes : [];
+      const oldDone = oldNodes.filter((n) => n.done).length;
       const nodes = buildMap(g);
-      nodes.slice(0, Math.min(oldDone, nodes.length - 1)).forEach((n) => { n.done = true; n.stars = 3; });
-      k.quest = { grade: g, ver: 3, nodes, cards: (k.quest && k.quest.cards) || [], badges: (k.quest && k.quest.badges) || [], trophy: false, built: todayStr() };
+      if (oldDone > 0 && oldNodes.length > 1) {
+        const ratio = oldDone / oldNodes.length;
+        const target = Math.max(1, Math.min(nodes.length - 1, Math.round(ratio * (nodes.length - 1))));
+        for (let i = 0; i < target; i++) { nodes[i].done = true; nodes[i].stars = 3; }
+      }
+      k.quest = {
+        grade: g, ver: 4, nodes,
+        cards: (oldQ && oldQ.cards) || [],
+        badges: (oldQ && oldQ.badges) || [],
+        trophy: false, built: todayStr(),
+        vis: {}   /* 每章「已展开到第几组」的视窗状态 */
+      };
       P.save();
     }
+    if (!k.quest.vis) k.quest.vis = {};
     return k.quest;
   }
   const curIdx = (q) => { for (let i = 0; i < q.nodes.length; i++) if (!q.nodes[i].done) return i; return -1; };
@@ -1082,6 +1117,22 @@
   }
 
   /* ================= 游戏二：知识冒险闯关 ================= */
+  /* 视窗：一次只铺开当前进度附近的一小段（渐近式），越往后越不让提前看 */
+  const VIS_DEFAULT = 2;   /* 默认可见组数：当前组 + 下一组 */
+  const VIS_MAX = 4;       /* 手动展开上限：最多再往后 2 组 */
+  function chapView(q, c, groups, curG, allDone) {
+    if (!q.vis) q.vis = {};
+    const v = q.vis[c] || (q.vis[c] = {});
+    const len = groups.length;
+    let e = v.e == null ? Math.min(len, (allDone ? len : curG + VIS_DEFAULT)) : v.e;
+    /* 渐近线：进度越过关卡视野时，视野自动跟着进度往前推 */
+    if (!allDone && curG >= e) { e = Math.min(len, curG + 1); v.e = e; v.b = null; }
+    e = Math.max(1, Math.min(len, e));
+    let b = v.b == null ? Math.max(0, e - 3) : v.b;
+    b = Math.max(0, Math.min(b, e - 1));
+    const cap = allDone ? len : Math.min(len, curG + VIS_MAX);
+    return { b, e, cap, len };
+  }
   function viewQuest() {
     const k = kid(); if (!k) return;
     ensureKid(k);
@@ -1089,69 +1140,113 @@
     ensureMapFields(q);
     const g = gradeOf(k);
     const ci = curIdx(q);
+    const curChap = ci >= 0 ? q.nodes[ci].u : 4;
+    const total = q.nodes.length;
+    const doneN = q.nodes.filter((n) => n.done).length;
+    const pct = total ? Math.round(doneN / total * 100) : 0;
     const finalLocked = wrongOpen(k).length > 0;
+    const chapName = ['一', '二', '三', '四', '五'];
+
+    /* 单关节点（Boss / 宝箱 / 决战） */
+    const renderSpecial = (n) => {
+      const meta = NODE_META[n.t] || { icon: '📘', name: '知识点' };
+      const locked = (ci === -1 ? false : n.i > ci) || (n.t === 'final' && finalLocked);
+      const cur = n.i === ci && !(n.t === 'final' && finalLocked);
+      const S = n.subj ? SUBJ[n.subj] : null;
+      const icon = n.t === 'boss' ? (S ? S.icon : '👹') : n.t === 'treasure' ? '📦' : n.t === 'final' ? '👑' : meta.icon;
+      const name = n.t === 'boss' ? (S ? S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[n.u])
+        : n.t === 'treasure' ? '神秘宝箱' : n.t === 'final' ? '知识魔王' : meta.name;
+      const dot = n.done ? (n.t === 'treasure' ? '📦' : '✅') : locked ? '🔒' : icon;
+      return '<button class="adv-node t-' + n.t + ' ' + (n.done ? 'done' : '') + (cur ? ' cur' : '') + (locked ? ' lock' : '') + '" data-i="' + n.i + '">' +
+        '<span class="an-dot">' + dot + '</span>' +
+        '<span class="an-lb"><b>' + esc(name) + '</b><small>' +
+        (n.done ? '⭐'.repeat(n.stars) + '☆'.repeat(3 - n.stars)
+          : n.t === 'final' ? (finalLocked ? '🔒 先订正错题' : '🎓 学年最强')
+            : n.t === 'boss' ? '章节 Boss · 难度 ' + '●'.repeat(n.lv + 1)
+              : '打开有惊喜') + '</small></span>' +
+        (cur ? '<span class="qn-go">GO</span>' : '') + '</button>';
+    };
+    /* 知识点组：一个知识点 3 个难度关 */
+    const renderGroup = (grp, pos) => {
+      const items = grp.items.slice().sort((x, y) => (x.stage || 1) - (y.stage || 1));
+      const first = items[0];
+      const doneC = items.filter((x) => x.done).length;
+      const cur = items.some((x) => x.i === ci);
+      const locked = first.i > ci;
+      const S = SUBJ[grp.subj] || { icon: '📘', name: '综合', c: '#8899aa' };
+      const dots = items.map((n) => {
+        const dn = n.done, cu = n.i === ci;
+        const lk = n.i > ci;
+        return '<button class="kn-dot' + (dn ? ' done' : '') + (cu ? ' cur' : '') + (lk && !cu ? ' lock' : '') +
+          '" data-i="' + n.i + '" title="' + STAGE_NAME[(n.stage || 1) - 1] + '">' +
+          (dn ? '✓' : cu ? 'GO' : lk ? '·' : '▶') + '<i>' + STAGE_NAME[(n.stage || 1) - 1].slice(0, 1) + '</i></button>';
+      }).join('');
+      return '<div class="kn-row pos-' + (pos % 4) + (doneC === items.length ? ' done' : '') + (cur ? ' cur' : '') + (locked ? ' lock' : '') + '">' +
+        '<div class="kn-info"><i class="qkn-tag" style="background:' + S.c + '">' + S.icon + ' ' + S.name + '</i>' +
+        '<b>' + esc(grp.kn) + '</b>' +
+        '<small>' + (doneC === items.length ? '已掌握 ⭐ 三级全通' : '难度 ' + (doneC + 1) + '/3 · ' + STAGE_NAME[doneC] + ' 待挑战') + '</small></div>' +
+        '<div class="kn-dots">' + dots + '</div></div>';
+    };
+
+    let html = '<div class="adv-map">';
+    for (let c = 0; c < 5; c++) {
+      const chNodes = q.nodes.filter((n) => n.u === c);
+      const groups = [];
+      chNodes.forEach((n) => {
+        if (n.t === 'kn') {
+          const last = groups[groups.length - 1];
+          if (last && last.kn === n.kn && !last.special) last.items.push(n);
+          else groups.push({ kn: n.kn, subj: n.subj, items: [n] });
+        } else groups.push({ special: n, items: [n] });
+      });
+      let curG = groups.findIndex((x) => x.items.some((n) => !n.done));
+      const allDone = curG < 0;
+      if (allDone) curG = groups.length;
+      const v = chapView(q, c, groups, curG, allDone);
+      if (!q.vis[c]) q.vis[c] = {};
+      const open = q.vis[c].open == null ? (c === curChap) : q.vis[c].open === true;
+      const chapDone = groups.reduce((s, x) => s + x.items.filter((n) => n.done).length, 0);
+      const chapTotal = groups.reduce((s, x) => s + x.items.length, 0);
+      const G = DB[g];
+      html += '<div class="adv-chap chap-' + (c % 5) + (open ? ' open' : ' folded') + (c === curChap ? ' now' : '') + '">' +
+        '<button class="ac-head" data-chap="' + c + '"><b>第' + chapName[c] + '章 · ' + esc(G.units[c].t) + '</b>' +
+        '<span class="ac-cnt">' + chapDone + '/' + chapTotal + (q.badges.includes(c) ? ' · ' + G.units[c].em + '徽章' : '') + '</span>' +
+        '<span class="ac-arrow">' + (open ? '▾' : '▸') + '</span></button>' +
+        '<div class="ac-prog"><i style="width:' + (chapTotal ? Math.round(chapDone / chapTotal * 100) : 0) + '%"></i></div>';
+      if (open) {
+        html += '<div class="ac-story">' + esc(CHAP_STORY[c]) + '</div>';
+        if (v.b > 0) html += '<button class="adv-more up" data-chap="' + c + '" data-dir="up">↑ 前面还有 ' + v.b + ' 组已通关知识点（回看）</button>';
+        html += '<div class="ac-path">';
+        groups.slice(v.b, v.e).forEach((grp, idx) => {
+          html += grp.special ? renderSpecial(grp.special) : renderGroup(grp, v.b + idx);
+        });
+        html += '</div>';
+        if (v.e < v.len) {
+          html += '<button class="adv-more down" data-chap="' + c + '" data-dir="down" data-cap="' + v.cap + '">' +
+            (v.e < v.cap ? '展开后续关卡（还有 ' + (v.len - v.e) + ' 组 · ' + ((v.len - v.e) * 3) + ' 关）' : '🔒 先通关当前知识点，后面的会逐步解锁') + '</button>';
+        }
+      }
+      html += '</div>';
+    }
+    /* 最终决战 */
+    const fin = q.nodes[q.nodes.length - 1];
+    html += '<div class="adv-chap chap-final open"><div class="ac-head"><b>🎓 最终决战</b></div>' +
+      '<div class="ac-story">' + esc(CHAP_STORY[4]) + '</div><div class="ac-path">' + renderSpecial(fin) + '</div></div>';
+    html += '</div>';
+
     BP.$view.innerHTML = '<div class="page quest-page">' +
       '<div class="quest-hero">' +
       '<img class="qh-pet" src="' + petImg(k) + '" alt="">' +
       '<div class="qh-t"><b>' + gradeName(g) + ' · 知识冒险</b><small>' +
       (k.className ? esc(k.className) + ' · ' : '') +
-      (q.trophy ? '🏆 已通关！可以重刷拿满星' : '进度 ' + q.nodes.filter((n) => n.done).length + '/' + q.nodes.length) + ' · 语数英为主 · 科学常识为辅</small></div>' +
-      '<div class="qh-btns"><button id="qColl">🧸 收集</button><button id="qWrong">📕 错题本' + (wrongOpen(k).length ? ' <b class="wr-n">' + wrongOpen(k).length + '</b>' : '') + '</button><button id="qGrade">🎓</button></div></div>' +
-      /* v3.26 章节式路径冒险地图：每章一段场景剧情，知识点沿蜿蜒路径排布 */
-      (function () {
-        const G = DB[g];
-        let html = '<div class="adv-map">';
-        let chap = -1, open = false, knIdx = 0;
-        const renderNode = (n, i) => {
-          const meta = NODE_META[n.t] || { icon: '📘', name: '知识点' };
-          const locked = i > ci || (n.t === 'final' && finalLocked);
-          const cur = i === ci && !(n.t === 'final' && finalLocked);
-          const S = n.subj ? SUBJ[n.subj] : null;
-          const icon = n.t === 'kn' ? (S ? S.icon : '📘')
-            : n.t === 'boss' ? (S ? S.icon : '👹')
-            : n.t === 'treasure' ? '📦' : n.t === 'final' ? '👑' : meta.icon;
-          const name = n.t === 'kn' ? n.kn
-            : n.t === 'boss' ? (S ? S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[n.u])
-            : n.t === 'treasure' ? '神秘宝箱' : n.t === 'final' ? '知识魔王' : meta.name;
-          const dot = n.done ? (n.t === 'treasure' ? '📦' : '✅') : locked ? '🔒' : icon;
-          let lbl = n.t === 'treasure' ? '' :
-            '<b>' + esc(name) + '</b>';
-          if (n.t === 'kn' && S) lbl = '<i class="qn-tag" style="background:' + S.c + '">' + S.name + '</i>' + lbl;
-          let small = '';
-          if (n.done) small = '⭐'.repeat(n.stars) + '☆'.repeat(3 - n.stars);
-          else if (n.t === 'final' && finalLocked && i === ci + 1) small = '🔒 先订正错题';
-          else if (n.t === 'final') small = '🎓 年级最强';
-          else if (n.t === 'boss') small = '章节 Boss · 难度 ' + '●'.repeat(n.lv + 1);
-          else if (n.t === 'kn') small = '难度 ' + '●'.repeat(n.lv + 1) + '○'.repeat(4 - n.lv);
-          return '<button class="adv-node t-' + n.t + ' pos-' + (knIdx % 4) + ' ' + (n.done ? 'done' : '') + (cur ? ' cur' : '') + (locked ? ' lock' : '') + '" data-i="' + i + '">' +
-            '<span class="an-dot">' + dot + '</span>' +
-            (lbl || small ? '<span class="an-lb">' + lbl + (small ? '<small>' + small + '</small>' : '') + '</span>' : '') +
-            (cur ? '<span class="qn-go">GO</span>' : '') + '</button>';
-        };
-        q.nodes.forEach((n, i) => {
-          if (n.t === 'final') {
-            if (open) { html += '</div></div>'; open = false; }
-            html += '<div class="adv-chap chap-final"><div class="ac-head"><b>🎓 最终决战</b></div>' +
-              '<div class="ac-story">' + esc(CHAP_STORY[4]) + '</div><div class="ac-path">' + renderNode(n, i) + '</div></div>';
-            return;
-          }
-          if (n.u !== chap) {
-            if (open) html += '</div></div>';
-            chap = n.u; knIdx = 0; open = true;
-            html += '<div class="adv-chap chap-' + (chap % 5) + '">' +
-              '<div class="ac-head"><b>第' + '一二三四五'[chap] + '章 · ' + esc(G.units[chap].t) + '</b>' +
-              (q.badges.includes(chap) ? '<span class="ac-badge">' + G.units[chap].em + ' 徽章</span>' : '') + '</div>' +
-              '<div class="ac-story">' + esc(CHAP_STORY[chap]) + '</div><div class="ac-path">';
-          }
-          html += renderNode(n, i);
-          if (n.t === 'kn') knIdx++;
-        });
-        if (open) html += '</div></div>';
-        html += '</div>';
-        return html;
-      })() + '</div>';
+      (q.trophy ? '🏆 已通关，可重刷拿满星' : '进度 ' + doneN + '/' + total + ' 关 · 5 大学科 100 个知识点') + '</small></div>' +
+      '<div class="qh-btns"><button id="qKnMap">📚</button><button id="qColl">🧸</button>' +
+      '<button id="qWrong">📕' + (wrongOpen(k).length ? '<b class="wr-n">' + wrongOpen(k).length + '</b>' : '') + '</button><button id="qGrade">🎓</button></div></div>' +
+      '<div class="qbar-wrap"><div class="qbar"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="qbar-lb"><span>本学年 ' + total + ' 关 · 已通关 ' + doneN + '</span><b>' + pct + '%</b></div></div>' +
+      '<div class="tiny q-tip">🎯 每章 20 个知识点，每个知识点 3 级关卡（识记 → 练习 → 精通）；只显示到当前进度附近，通关后自动推进</div>' +
+      html + '</div>';
 
-    /* 班级学员年级随班级，不能自己选 */
     if (k.classCode) document.getElementById('qGrade').style.display = 'none';
     else document.getElementById('qGrade').onclick = () => pickGradeSheet((gg) => {
       if (gg === k.grade) return;
@@ -1159,22 +1254,65 @@
       const hasProgress = q2.nodes.some((n) => n.done);
       if (hasProgress && !confirm('切换到' + gradeName(gg) + '会重置当前冒险进度（收集保留），确定？')) return;
       k.grade = gg;
-      k.quest = { grade: gg, ver: 2, nodes: buildMap(gg), cards: q2.cards, badges: [], trophy: false, built: todayStr() };
-      P.save(); render(); toast('新的冒险：' + gradeName(gg));
+      k.quest = { grade: gg, ver: 4, nodes: buildMap(gg), cards: q2.cards, badges: [], trophy: false, built: todayStr(), vis: {} };
+      P.save(); render(); toast('新的冒险：' + gradeName(gg) + ' · ' + mapSize(gg) + ' 关');
     });
     document.getElementById('qColl').onclick = () => collSheet(k, q);
     document.getElementById('qWrong').onclick = () => wrongSheet(k, () => render());
-    document.querySelectorAll('.adv-node').forEach((el) => (el.onclick = () => {
+    document.getElementById('qKnMap').onclick = () => knMapSheet(k, q);
+    /* 章节折叠 / 视窗展开 */
+    document.querySelectorAll('.ac-head').forEach((el) => (el.onclick = () => {
+      const c = +el.dataset.chap;
+      if (!q.vis) q.vis = {};
+      const cur = q.vis[c] || (q.vis[c] = {});
+      cur.open = !el.closest('.adv-chap').classList.contains('open');
+      P.save(); render();
+    }));
+    document.querySelectorAll('.adv-more').forEach((el) => (el.onclick = () => {
+      const c = +el.dataset.chap;
+      const cur = q.vis[c] || (q.vis[c] = {});
+      if (el.dataset.dir === 'up') cur.b = Math.max(0, (cur.b == null ? 0 : cur.b) - 3);
+      else {
+        const cap = +el.dataset.cap || 999;
+        const curE = cur.e == null ? cap : cur.e;
+        if (curE >= cap) return toast('先通关当前知识点，后面的关卡会逐步解锁 🔒');
+        cur.e = Math.min(cap, curE + 1);
+      }
+      P.save(); render();
+    }));
+    document.querySelectorAll('.adv-node, .kn-dot').forEach((el) => (el.onclick = () => {
       const i = +el.dataset.i, n = q.nodes[i];
+      if (!n) return;
       const myCi = curIdx(q);
-      const locked = i > myCi || (n.t === 'final' && wrongOpen(k).length > 0);
+      const locked = myCi !== -1 && i > myCi || (n.t === 'final' && wrongOpen(k).length > 0);
       if (locked) {
         if (n.t === 'final' && myCi === -1 && wrongOpen(k).length) return toast('错题本还有 ' + wrongOpen(k).length + ' 道题没订正，先把知识补牢！');
-        return;
+        return toast('这位知识点还没轮到，先完成前面的关卡');
       }
-      if (!curIdxOk(i, q)) return;
       tapNode(k, q, n, () => render());
     }));
+  }
+  /* 知识图谱总览：5 章 × 20 知识点，颜色=掌握度，数字=通关级数 */
+  function knMapSheet(k, q) {
+    const g = gradeOf(k);
+    const chapName = ['一', '二', '三', '四', '五'];
+    let body = '<div class="tiny">' + gradeName(g) + ' · ' + (5 * KN_PER_CHAP) + ' 个知识点 · ' + mapSize(g) + ' 个关卡（每点 3 级）</div>';
+    for (let c = 0; c < 5; c++) {
+      const kns = buildChapterKn(g, c);
+      body += '<div class="knm-chap"><b>第' + chapName[c] + '章 · ' + esc(DB[g].units[c].t) + '</b>' + kns.map((x) => {
+        const st = (k.mastery || {})[g + '|' + x.s + '|' + x.n];
+        const p = st ? Math.round(st.r / Math.max(1, st.r + st.w) * 100) : -1;
+        const ns = q.nodes.filter((n) => n.u === c && n.t === 'kn' && n.kn === x.n);
+        const d = ns.filter((n) => n.done).length;
+        const cls = d >= 3 ? 'ok' : p >= 0 && p < 60 ? 'weak' : d > 0 ? 'ing' : '';
+        const S = SUBJ[x.s] || { icon: '📘', name: '综合' };
+        return '<div class="knm-it ' + cls + '"><span class="knm-em">' + S.icon + '</span>' +
+          '<span class="knm-n">' + esc(x.n) + '</span><b>' + d + '/3</b>' +
+          (p >= 0 ? '<small>' + p + '%</small>' : '<small>—</small>') + '</div>';
+      }).join('') + '</div>';
+    }
+    body += '<div class="tiny" style="margin-top:8px">左侧图标=学科，右侧 3 级通关数，百分比=答题正确率。薄弱知识点优先出现在每日答题里。</div>';
+    openSheet('<div class="sheet-h">📚 ' + gradeName(g) + '知识图谱</div>' + body);
   }
   function curIdxOk(i, q) { return i === curIdx(q); }
 
@@ -1354,10 +1492,12 @@
           dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
         }
         if (n.t === 'kn') {
-          /* 知识点关：满分（成绩好）才有更高概率掉稀有碎片 */
+          /* 知识点三级关：识记 1 分 / 练习 2 分 / 精通 3 分，精通满分必掉碎片 */
           const full = r.right === r.total;
-          reward(k, 1 + bonus, 8 + bonus * 2, '知识点掌握 · ' + n.kn + (full ? ' · 完美!' : ''), '📖');
-          if (full && Math.random() < 0.45) {
+          const st = n.stage || 1;
+          reward(k, st + bonus, 6 + st * 4 + bonus * 2,
+            '知识点' + STAGE_NAME[st - 1] + ' · ' + n.kn + (full ? ' · 完美!' : ''), '📖');
+          if (full && (st >= 3 || Math.random() < 0.45)) {
             const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
             dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
           }

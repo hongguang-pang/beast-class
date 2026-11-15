@@ -1815,6 +1815,8 @@
     hook.routes.daily = viewDaily;
     hook.routes.quest = viewQuest;
     hook.ROUTES_ALL.push('daily', 'quest');
+    /* 知识图谱加载完毕：把学科名称/图标/颜色同步给 app.js 的全部界面 */
+    if (window.BP && BP.refreshSubjList) BP.refreshSubjList();
     /* 若打开时 hash 已指向游戏页（首渲染早于本文件注册），补一次渲染 */
     const h = (location.hash || '').replace('#/', '').split('?')[0];
     if (h === 'daily' || h === 'quest') BP.render();

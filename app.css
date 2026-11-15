@@ -978,3 +978,7 @@ details.knm-chap[open]>summary{border-bottom:1px dashed #f0e8fc;padding-bottom:5
   background: rgba(124, 58, 237, .07); border: 1px dashed rgba(124, 58, 237, .35);
 }
 .se-note { margin-top: 12px; line-height: 1.6; color: var(--text-3); }
+
+/* v3.34 建班/接管时的科目必选条：允许换行，六项全部可见 */
+.wc-subj { flex-wrap: wrap; overflow-x: visible; row-gap: 7px; }
+.wc-subj button { padding: 8px 13px; font-size: 13px; }

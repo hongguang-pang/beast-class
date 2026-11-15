@@ -690,7 +690,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.33 · 老师端不含答题 · 学生专属入口链接<br>' +
+      '<div class="w-ver">版本 v3.34 · 科目必选 · 学科名与知识图谱统一<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -810,6 +810,7 @@
       '<div class="field"><label>老师姓名（作为账号）</label><input id="wcTn" maxlength="12" placeholder="比如：王老师"></div>' +
       '<div class="field"><label>设置密码（4-12 位字母或数字）</label><input id="wcPwd" maxlength="12" placeholder="换设备凭「姓名+密码」接管班级"></div>' +
       '<div class="field"><label>班级名称</label><input id="wcName" maxlength="14" placeholder="比如：三年二班" value="三年二班"></div>' +
+      '<div class="field"><label>我的科目（必选 · 班主任管全科，学科老师只加本科分）</label>' + subjPickHTML() + '</div>' +
       '<div class="field"><label>学生名单（一行一个，可选分组）</label>' +
       '<textarea id="wcList" rows="5" placeholder="张小明 第一组&#10;李小红 第一组&#10;王小刚 第二组"></textarea></div>' +
       '<div class="w-tip">提示：40 人以内粘贴进来最方便，重名会自动跳过</div>' +
@@ -818,7 +819,10 @@
       '<button class="w-back" id="wcBack">‹ 返回</button>';
     el.querySelector('#wcBack').onclick = () => stepRole(el);
     el.querySelector('#wcTake').onclick = () => { el.remove(); cloudTakeOverSheet(); };
+    let mySubj = null;
+    bindSubjPick(el, (s) => (mySubj = s));
     el.querySelector('#wcGo').onclick = () => {
+      if (!mySubj) { toast('请先选择你的科目：班主任或其中一学科'); return; }
       const name = el.querySelector('#wcName').value.trim() || '我的班级';
       const tName = el.querySelector('#wcTn').value.trim();
       const pwd = el.querySelector('#wcPwd').value.trim();
@@ -832,12 +836,12 @@
       if (!P.d.kids.length) { P.d.kids = [newStu('小明', '')]; P.d.cur = P.d.kids[0].id; P.save(); }
       P.d.admin = true;
       P.d.mode = 'class';
+      /* 科目必选：落到班级（班主任写 head / 学科写 subs），并设为当前身份 */
+      const c0 = (P.d.classes && P.d.classes[P.d.classes.length - 1]) || P.d.cls;
+      applyTeacherSubj(mySubj, tName, c0, false);
       /* 老师账号：绑定刚建的班 */
       if (tName && window.BeastAuth) {
-        const c0 = (P.d.classes && P.d.classes[P.d.classes.length - 1]) || P.d.cls;
         const ar = BeastAuth.register({ role: 'class', name: tName, pwd, clsId: (c0 && c0.id) || '', classCode: (c0 && c0.code) || '', grade: (c0 && c0.grade) || '' });
-        if (c0) { c0.head = tName; }
-        P.d.teacher = { role: 'head' };
         toast(ar.existed ? '👋 欢迎回来，' + tName : '✅ 老师账号已创建：' + tName);
       }
       P.save();
@@ -2368,6 +2372,14 @@
         cls.cloudAt = Date.now();
         P.save();
         toast('☁️ 班级已上云 · 班级码 ' + j.code);
+        /* 建班时选的科目（班主任/学科老师）此时才补推云端 meta（班级刚注册好），
+           并把此前因 404 入队的 meta 补发掉 */
+        if (cls.code && window.BEAST_CLOUD) {
+          if (cls.head || (cls.subs && Object.keys(cls.subs).length)) {
+            window.BEAST_CLOUD.setMeta(cls.code, { head: cls.head || '', subs: cls.subs || {} }).catch(() => {});
+          }
+          C.flush().catch(() => {});
+        }
         if (cb) cb(true);
         if (location.hash === '#/class' || location.hash === '#/home') render();
       })
@@ -2705,11 +2717,15 @@
   function cloudTakeOverSheet() {
     openSheet('<div class="sheet-h">☁️ 接管已有班级</div>' +
       '<div class="tiny">换电脑或换手机时用：输入班级码 + 教师密钥，把云端班级（名单/积分/学情）拉回本机</div>' +
+      '<div class="field"><label>我的科目（必选 · 云端已有的老师姓名不会被覆盖）</label>' + subjPickHTML() + '</div>' +
       '<div class="field"><label>班级码</label><input id="toCode" maxlength="8" placeholder="6 位班级码" style="text-transform:uppercase"></div>' +
       '<div class="field"><label>教师密钥</label><input id="toKey" placeholder="建班时生成的密钥（点显示可复制）"></div>' +
       '<button class="btn" id="toGo" style="margin-top:12px">接管班级</button>', (m, close) => {
+      let tkSubj = null;
+      bindSubjPick(m, (s) => (tkSubj = s));
       const go = m.querySelector('#toGo');
       go.onclick = () => {
+        if (!tkSubj) return toast('请先选择你的科目：班主任或其中一学科');
         const code = m.querySelector('#toCode').value.trim().toUpperCase();
         const key = m.querySelector('#toKey').value.trim();
         if (!code || !key) return toast('班级码和密钥都要填');
@@ -2728,6 +2744,9 @@
           P.d.admin = true;
           loadClass(id);
           cloudMergeRoster(cls, j.students || []);
+          /* 科目必选：声明我在这个班的角色（班主任/某学科），云端已有姓名不覆盖 */
+          const me = (window.BeastAuth && BeastAuth.current()) || {};
+          applyTeacherSubj(tkSubj, me.name || '', cls, true);
           P.save(); close();
           location.hash = '#/class';
           render();
@@ -4256,15 +4275,30 @@
 
   /* v3.23 游戏桥接：games.js 通过它注册路由并复用核心逻辑 */
   /* ================= v3.31 学科宠物 · 饰品系统 ================= */
-  /* 五个学科各有自己的宠物：只吃本学科的经验，由本学科老师加分喂养 */
-  const SUBJ_LIST = [
-    { k: 'math', n: '数学', ic: '🔢', c: '#7c3aed' },
-    { k: 'cn',   n: '语文', ic: '📖', c: '#e5484d' },
-    { k: 'en',   n: '英语', ic: '🔤', c: '#2563eb' },
-    { k: 'sci',  n: '科学', ic: '🔬', c: '#0f9d58' },
-    { k: 'eth',  n: '常识', ic: '🌱', c: '#f59e0b' }
+  /* 五科宠物：只吃本学科的经验，由本学科老师加分喂养
+     v3.34 名称/图标/颜色一律以知识图谱（games.js SUBJ）为唯一来源，本表只定顺序与兜底 */
+  const SUBJ_FALLBACK = [
+    { k: 'math', n: '数学', ic: '➗', c: '#7ecb5f' },
+    { k: 'cn',   n: '语文', ic: '🀄', c: '#ff8a65' },
+    { k: 'en',   n: '英语', ic: '🔤', c: '#4da3ff' },
+    { k: 'sci',  n: '科学', ic: '🔬', c: '#9b7bff' },
+    { k: 'eth',  n: '常识', ic: '🌱', c: '#4db6ac' }
   ];
-  const SUBJ_NAME = { math: '数学', cn: '语文', en: '英语', sci: '科学', eth: '常识', mix: '综合' };
+  let SUBJ_LIST = SUBJ_FALLBACK.map((f) => {
+    const s = (window.BPGames && BPGames.SUBJ && BPGames.SUBJ[f.k]) || {};
+    return { k: f.k, n: s.name || f.n, ic: s.icon || f.ic, c: s.c || f.c };
+  });
+  const SUBJ_NAME = { mix: '综合' };
+  SUBJ_LIST.forEach((s) => (SUBJ_NAME[s.k] = s.n));
+  /* 知识图谱（games.js）加载完成后，以图谱 SUBJ 为准刷新学科名称/图标/颜色 */
+  function refreshSubjList() {
+    if (!(window.BPGames && BPGames.SUBJ)) return;
+    SUBJ_FALLBACK.forEach((f, i) => {
+      const s = BPGames.SUBJ[f.k] || {};
+      SUBJ_LIST[i] = { k: f.k, n: s.name || f.n, ic: s.icon || f.ic, c: s.c || f.c };
+      SUBJ_NAME[f.k] = SUBJ_LIST[i].n;
+    });
+  }
   /* 饰品：slot 决定叠在哪个部位；top/left 是相对宠物框的百分比 */
   const ACCS = {
     crown:  { n: '黄金王冠', slot: 'head', e: '👑', f: 30, top: 4,  l: 50, price: 60, rar: 'SSR' },
@@ -4585,6 +4619,36 @@
   }
 
   /* 教师团队：班主任 1 名 + 每科 1 名（班主任可兼某科） */
+  /* ================= v3.34 老师科目必选 =================
+     建班 / 接管班级时必须选择科目（班主任或某一学科）；
+     老数据没填科目的老师不受影响，默认可以看全部学科 */
+  function subjPickHTML() {
+    return '<div class="subj-chips wc-subj" id="wcSubj">' +
+      '<button data-s="head">👩‍🏫 班主任</button>' +
+      SUBJ_LIST.map((s) => '<button data-s="' + s.k + '">' + s.ic + ' ' + s.n + '</button>').join('') + '</div>';
+  }
+  function bindSubjPick(root, cb) {
+    root.querySelectorAll('#wcSubj button').forEach((b) => (b.onclick = () => {
+      root.querySelectorAll('#wcSubj button').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on'); cb(b.dataset.s);
+    }));
+  }
+  /* 把科目落到班级：班主任写 head，学科写 subs；并同步到云端 meta
+     keepExisting = 接管场景，云端已有的老师姓名不覆盖 */
+  function applyTeacherSubj(subj, tName, cls, keepExisting) {
+    if (!cls || !subj) return;
+    if (subj === 'head') {
+      if (!keepExisting || !cls.head) cls.head = tName || '班主任';
+    } else {
+      if (!cls.subs || typeof cls.subs !== 'object') cls.subs = {};
+      if (!keepExisting || !cls.subs[subj]) cls.subs[subj] = tName || '老师';
+    }
+    P.d.teacher = { role: subj };
+    if (cls.code && window.BEAST_CLOUD && window.BEAST_CLOUD.setMeta) {
+      window.BEAST_CLOUD.setMeta(cls.code, { head: cls.head, subs: cls.subs }).catch(() => {});
+    }
+  }
+
   function teacherTeamSheet() {
     const c = curCls();
     if (!c) return toast('先建班');
@@ -4670,7 +4734,7 @@
   window.BP = { P, esc, toast, openSheet, $view, render, addExp, grantPoints, addLog,
     kid, todayStr, isClass, petImg, petMeta, imgFor, stageIdxOf, stageOf, expNeed, evoFX, PETS, displayName,
     SUBJ_LIST, SUBJ_NAME, ACCS, ACC_SLOTS, WEAPONS, RARFX, rarFx, SND, ensurePetSys, addSubjExp, subjPetOf, petBand, petAv, subjPetAv,
-    dressSheet, subjPetSheet, subjAvgLv, mySubjScope, teacherTeamSheet, teacherRoleSheet, curCls, isStudent };
+    dressSheet, subjPetSheet, subjAvgLv, mySubjScope, teacherTeamSheet, teacherRoleSheet, curCls, isStudent, refreshSubjList };
   window.BPHook = { routes, ROUTES_ALL };
 
   /* ================= v3.29 账号中心 ================= */
@@ -4860,7 +4924,7 @@
     }
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3330', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3340', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

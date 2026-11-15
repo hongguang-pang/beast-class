@@ -2217,6 +2217,8 @@
      分工：老师端权威（班名/年级/名单/加分），学生端权威（掌握度/进度/宠物/自己赚的分）
      断网不阻塞：写操作失败进离线队列，恢复可见时自动补发 */
   const CL = () => window.BEAST_CLOUD || null;
+  /* 本次会话已尝试过上云的班级（不落盘，失败下次打开还会重试） */
+  const cloudTried = new Set();
   function cloudState() { const C = CL(); return C ? C.state() : { base: '', online: false, pending: 0 }; }
 
   /* 把当前班级的云端绑定切到这个班（多班场景每个班各带自己的班级码与密钥） */
@@ -2646,7 +2648,17 @@
     document.getElementById('clsSet').onclick = classSetupSheet;
     document.getElementById('clsRoster').onclick = rosterSheet;
     const cloudBtn = document.getElementById('clsCloud');
-    if (cloudBtn) cloudBtn.onclick = () => { cloudBtn.textContent = '同步中…'; cloudPullRoster(false); };
+    if (cloudBtn) cloudBtn.onclick = () => {
+      const c0 = curCls();
+      /* 老班级（v3.27 及以前建的）还没有云端身份，这里补一次上云 */
+      if (c0 && !c0.teacherKey) {
+        cloudBtn.textContent = '上云中…';
+        cloudInitClass(c0, (ok) => { if (ok) cloudPullRoster(false); });
+        return;
+      }
+      cloudBtn.textContent = '同步中…';
+      cloudPullRoster(false);
+    };
     setTimeout(() => cloudAutoPull(false), 400);
     startClassPolling();
     const anaBtn = document.getElementById('clsAna');
@@ -3962,6 +3974,11 @@
     bindKidsRow();
     /* 学生端：进页面顺手拉一次班级变动（年级/老师加分），60 秒节流 */
     if (isStudent() && P.d.kids && P.d.kids.length) setTimeout(() => cloudStudentPull(true), 700);
+    /* 老师端：老班级首次进入时自动补上云（只做一次，失败不打扰） */
+    if (!isStudent() && isClass() && P.d.kids && P.d.kids.length) {
+      const c0 = curCls();
+      if (c0 && !c0.teacherKey && !cloudTried.has(c0.id)) { cloudTried.add(c0.id); setTimeout(() => cloudInitClass(c0), 900); }
+    }
   }
 
   /* ================= 旧网址提示（v3.20） ================= */

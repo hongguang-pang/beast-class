@@ -10,8 +10,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="app.css?v=3290">
-  <link rel="stylesheet" href="games.css?v=3290">
+  <link rel="stylesheet" href="app.css?v=3300">
+  <link rel="stylesheet" href="games.css?v=3300">
 </head>
 <body>
   <header id="topbar">
@@ -22,12 +22,34 @@
   <main id="view"></main>
   <nav id="tabbar"></nav>
   <div id="toast"></div>
+  <div id="upTip" hidden>
+    <span>🎉 新版本已就绪：每学年 460 关</span>
+    <button id="upGo">立即更新</button>
+    <button id="upX" aria-label="稍后">×</button>
+  </div>
   <script src="lib/lz.min.js"></script>
   <script src="lib/qrg.js"></script>
   <script src="lib/jsqr.js"></script>
-  <script src="cloud.js?v=3290"></script>
-  <script src="auth.js?v=3290"></script>
-  <script src="app.js?v=3290"></script>
-  <script src="games.js?v=3290"></script>
+  <script src="cloud.js?v=3300"></script>
+  <script src="auth.js?v=3300"></script>
+  <script src="app.js?v=3300"></script>
+  <script src="games.js?v=3300"></script>
+  <script>
+    /* 版本更新提示：SW 换代后不打断答题，先给一条可点提示 */
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      var tip = document.getElementById('upTip');
+      window.showUpdTip = function () { if (tip) tip.hidden = false; };
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js?v=3300', { updateViaCache: 'none' }).then(function (reg) {
+          setInterval(function () { reg.update().catch(function () {}); }, 30 * 60 * 1000);
+        }).catch(function () {});
+      });
+      var go = document.getElementById('upGo');
+      if (go) go.onclick = function () { location.reload(); };
+      var x = document.getElementById('upX');
+      if (x) x.onclick = function () { tip.hidden = true; };
+    })();
+  </script>
 </body>
 </html>

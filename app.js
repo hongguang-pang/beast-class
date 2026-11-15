@@ -636,7 +636,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.29 · 每学年 310 关知识图谱 · 账号管理 · 离线可玩<br>' +
+      '<div class="w-ver">版本 v3.30 · 每学年 460 关知识图谱 · 账号管理 · 离线可玩<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -4222,10 +4222,13 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3215', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3300', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;
+        /* 答题/弹层正在进行时不要打断，只提示，用户打完点一下即可 */
+        const busy = document.querySelector('.qz-mask') || document.querySelector('.sheet-mask') || document.querySelector('#quiz');
+        if (busy) { if (window.showUpdTip) window.showUpdTip(); return; }
         if (!sessionStorage.getItem('swRld')) { sessionStorage.setItem('swRld', '1'); location.reload(); }
       });
     }

@@ -1043,3 +1043,28 @@ details.knm-chap[open]>summary{border-bottom:1px dashed #f0e8fc;padding-bottom:5
   min-width: 60px; cursor: pointer; }
 .ds-who.on { border-color: #7c6cf0; background: #efeaff; box-shadow: 0 2px 8px rgba(124, 108, 240, .25); }
 .ds-who small { font-size: 11px; color: #6a6390; white-space: nowrap; }
+
+/* ================= v3.42 顶栏身份切换 ================= */
+.tb-r { width: auto; min-width: 76px; gap: 3px; }
+#roleBtn { font-size: 15px; padding: 3px 6px; border-radius: 8px; }
+#roleBtn.on-stu { background: rgba(255, 196, 84, .28); }
+/* 身份提示条：进学生界面但本机还留着老师档案时，顶部给一键返回 */
+.role-tip { display: flex; align-items: center; gap: 8px; margin: 8px 12px 0; padding: 8px 11px;
+  border-radius: 12px; background: #fff7e6; border: 1px solid #ffe0a3; font-size: 12px; color: #8a6420; }
+.role-tip b { font-weight: 700; }
+.role-tip button { margin-left: auto; flex: 0 0 auto; border: 1px solid #f0c874; background: #fff;
+  color: #96690f; border-radius: 99px; padding: 4px 10px; font-size: 12px; }
+
+/* 切换身份面板 */
+.rs-row { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  background: #fff; border: 1px solid #ece8f8; border-radius: 14px; padding: 11px 13px; margin: 8px 0;
+  box-shadow: 0 2px 8px rgba(90, 80, 160, .05); }
+.rs-row.on { border-color: #cfc6ff; background: #f8f5ff; }
+.rs-em { font-size: 22px; flex: 0 0 26px; text-align: center; }
+.rs-t { flex: 1; min-width: 0; }
+.rs-t b { display: block; font-size: 14.5px; color: #38314f; }
+.rs-t small { font-size: 11.5px; color: #8f88a8; }
+.rs-cur { font-style: normal; font-size: 11.5px; color: #7c6cf0; background: #efeaff;
+  border-radius: 99px; padding: 3px 9px; }
+.rs-go { font-style: normal; font-size: 11.5px; color: #fff; background: linear-gradient(135deg, #7c6cf0, #a78bfa);
+  border-radius: 99px; padding: 4px 11px; }

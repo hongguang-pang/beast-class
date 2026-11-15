@@ -668,6 +668,13 @@
     const el = document.createElement('div');
     el.className = 'welcome';
     document.body.appendChild(el);
+    /* v3.42 本机身份已是学生但还没有学生档案（老师点了「学生界面」/ 学生链接进来）：
+       直接进学生入学，不要再让人先选一遍身份；入口链接里的班级码继续带着 */
+    if (ROLE_GET() === 'student') {
+      const pc = window.__entryCode || '';
+      window.__entryCode = '';
+      return stepStudent(el, pc);
+    }
     stepRole(el);
   }
 
@@ -2676,7 +2683,7 @@
       '<button class="btn sm" id="seCopy" style="flex:1">复制链接</button>' +
       '<button class="btn sm ghost" id="seCopyCode" style="flex:1"' + (code ? '' : ' disabled') + '>复制班级码</button></div>' +
       '<button class="btn ghost sm" id="sePreview" style="width:100%;margin-top:8px">📱 在这台设备上预览学生界面</button>' +
-      '<div class="tiny se-note">老师端只做管理与统计，不开放答题闯关，避免老师替学生刷分导致成绩失真。老师本人想体验关卡，可用手机打开此链接以学生身份注册一个体验号。</div>',
+      '<div class="tiny se-note">点开后这台设备会临时切到学生界面，老师档案原样保留；点顶栏右上角的 <b>🎒 切换身份</b> 或学生页顶部的黄色提示条，随时切回老师。本机还没有学生档案时，会先走一遍学生入学（班级码已自动填好）。老师端本身不开放答题闯关，避免替学生刷分导致成绩失真。</div>',
       (m) => {
         const cv = m.querySelector('#seQr');
         try { drawQr(cv, link, 230); } catch (e) { if (cv) cv.remove(); }
@@ -2694,8 +2701,9 @@
   /* 切到学生界面：学生档案与老师/家长档案分别存储，互不影响，随时可切回
      本机没有学生档案 → 走学生入学（带班级码）；已有 → 直接回到自己的学生主页 */
   function switchToStudent(code) {
+    /* 只改身份 + 强制重载；不要让老师账号的会话把人拉回老师界面 */
     try {
-      localStorage.setItem('beast.role', 'student');
+      localStorage.removeItem('beast.home');
       const raw = localStorage.getItem('beast.v1.student');
       if (raw) {
         let d = null;
@@ -2703,8 +2711,8 @@
         if (!d || !d.kids || !d.kids.length) localStorage.removeItem('beast.v1.student');
       }
     } catch (e) {}
-    const q = '?role=student' + (code ? '&code=' + encodeURIComponent(code) : '');
-    location.replace(location.pathname + q + '#/home');
+    setRole('student');
+    hardNav('role=student' + (code ? '&code=' + encodeURIComponent(code) : ''));
   }
   /* 在老师/家长设备上打开学生链接时的切换面板 */
   function studentSwitchSheet(code) {
@@ -2716,10 +2724,47 @@
       '<div class="se-link" style="margin-top:4px"><span>教学演示：把链接发到家长群 / 班级群，学生点开即入学</span></div>' +
       '<button class="btn" id="ssGo" style="width:100%;margin-top:12px">📱 在这台设备上进入学生界面</button>' +
       '<button class="btn ghost" id="ssStay" style="width:100%;margin-top:8px">留在' + curName + '界面</button>' +
-      '<div class="tiny se-note">' + curName + '的数据不会丢：进入学生界面后，点右上角头像（或在学生首页点「🔄 切换身份」）就能切回' + curName + '。</div>',
+      '<div class="tiny se-note">' + curName + '的数据不会丢：进入学生界面后，点顶栏右上角的 <b>🎒 切换身份</b>，或学生页顶部的黄色提示条，随时切回' + curName + '。</div>',
       (m, close) => {
         m.querySelector('#ssGo').onclick = () => { close(); switchToStudent(code); };
         m.querySelector('#ssStay').onclick = () => close();
+      });
+  }
+
+  /* v3.42 顶栏身份切换：本机已有几个档案就列几个，一键换界面 */
+  function roleSwitchSheet() {
+    const cur = (function () { try { return localStorage.getItem('beast.role') || ''; } catch (e) { return ''; } })();
+    const profs = roleProfiles();
+    const IC = { class: '🏫', family: '🏠', student: '🎒' };
+    const NM = { class: '老师界面', family: '家长界面', student: '学生界面' };
+    const au = window.BeastAuth && BeastAuth.current();
+    const rows = profs.map((p) => {
+      let d = null;
+      try { d = JSON.parse(localStorage.getItem('beast.v1.' + p.r) || 'null'); } catch (e) { d = null; }
+      const extra = p.r === 'class'
+        ? ((d && d.cls && d.cls.name) || '我的班级') + ' · ' + p.cnt + ' 人'
+        : p.r === 'student'
+          ? (p.cnt > 1 ? p.cnt + ' 个孩子' : ((d && d.kids && d.kids[0] && d.kids[0].name) || '我的学生页'))
+          : p.cnt + ' 个孩子';
+      return '<button class="rs-row' + (cur === p.r ? ' on' : '') + '" data-go="' + p.r + '">' +
+        '<span class="rs-em">' + IC[p.r] + '</span>' +
+        '<span class="rs-t"><b>' + NM[p.r] + '</b><small>' + esc(extra) + '</small></span>' +
+        (cur === p.r ? '<i class="rs-cur">当前</i>' : '<i class="rs-go">进入</i>') + '</button>';
+    }).join('');
+    openSheet('<div class="sheet-h">🔀 切换身份</div>' +
+      '<div class="tiny se-intro">这台设备上已有的档案都在下面，点一下换过去。各身份数据分开存放，不会互相覆盖。</div>' +
+      (rows || '<div class="tiny" style="margin:8px 0">本机还没有任何档案</div>') +
+      (au ? '<div class="tiny" style="margin-top:10px">当前登录账号：<b>' + esc(au.name) + '</b>（' + (BeastAuth.ROLE_NAME[au.role] || '') + '）</div>' : '') +
+      '<div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="rsHome" style="flex:1">🏠 回入口页</button>' +
+      '<button class="btn ghost" id="rsHelp" style="flex:1">📖 操作说明</button></div>',
+      (m, close) => {
+        m.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => {
+          const r = b.dataset.go;
+          if (r === cur) return close();
+          setRole(r); close(); hardNav();
+        }));
+        m.querySelector('#rsHome').onclick = () => { close(); goHome(); };
+        m.querySelector('#rsHelp').onclick = () => { close(); location.href = 'help.html'; };
       });
   }
 
@@ -4310,6 +4355,14 @@
     document.getElementById('classBtn').style.visibility = isClass() ? 'visible' : 'hidden';
     document.getElementById('parentBtn').style.visibility = isClass() ? 'visible' : 'hidden';
     document.getElementById('parentBtn').textContent = isClass() ? '老师' : '家长';
+    /* v3.42 顶栏身份按钮：入口页隐藏，其余按当前身份显示 */
+    const _rb = document.getElementById('roleBtn');
+    if (_rb) {
+      const _rr = ROLE_GET();
+      _rb.style.display = (P.d && P.d.kids && P.d.kids.length) ? '' : 'none';
+      _rb.textContent = _rr === 'student' ? '🎒' : _rr === 'class' ? '🏫' : '🏠';
+      _rb.classList.toggle('on-stu', _rr === 'student');
+    }
     /* 学生端只允许 宠物/图鉴/记录/每日答题/冒险，老师家长页面一概不可见 */
     if (isStudent() && ['class', 'board', 'compare', 'tasks', 'shop', 'lucky'].includes((location.hash || '').replace('#/', '').split('?')[0])) {
       location.hash = '#/home';
@@ -4345,6 +4398,22 @@
       acctBtnEl.textContent = au ? au.name.slice(0, 3) : '👤';
     }
     bindKidsRow();
+    /* v3.42 学生界面里的回退提示：本机还留着老师档案、且登录的是老师账号时给一键返回 */
+    if (isStudent()) {
+      try {
+        const cd = JSON.parse(localStorage.getItem('beast.v1.class') || 'null');
+        const au = window.BeastAuth && BeastAuth.current();
+        if (cd && cd.kids && cd.kids.length && (!au || au.role !== 'student')) {
+          const tip = document.createElement('div');
+          tip.className = 'role-tip';
+          tip.innerHTML = '<span>👩‍🏫 当前是<b>学生界面</b> · 老师档案（' +
+            esc((cd.cls && cd.cls.name) || '我的班级') + '）已保留</span><button id="rtBack">回老师界面</button>';
+          const v = document.getElementById('view');
+          v.insertBefore(tip, v.firstChild);
+          tip.querySelector('#rtBack').onclick = () => { setRole('class'); hardNav(); };
+        }
+      } catch (e) {}
+    }
     /* 学生端：进页面顺手拉一次班级变动（年级/老师加分），60 秒节流 */
     if (isStudent() && P.d.kids && P.d.kids.length) setTimeout(() => cloudStudentPull(true), 700);
     /* 老师端：老班级首次进入时自动补上云（只做一次，失败不打扰） */
@@ -5115,14 +5184,13 @@
       }));
       m.querySelector('#accHelp') && (m.querySelector('#accHelp').onclick = () => { close(); location.href = 'help.html'; });
       m.querySelector('#accHome') && (m.querySelector('#accHome').onclick = () => {
-        if (!confirm('回到首页选择入口？本机数据与账号都会保留，随时可以再进来。')) return;
-        try { localStorage.removeItem('beast.role'); } catch (e) {}
-        location.href = 'index.html';
+        if (!confirm('回到入口页重新选身份？本机所有档案与账号都会保留，随时可以再进来。')) return;
+        close(); goHome();
       });
       m.querySelector('#accOut') && (m.querySelector('#accOut').onclick = () => {
-        if (!confirm('退出后需要「名字+密码」重新登录，本机数据保留。确定退出？')) return;
+        if (!confirm('退出后需要「名字+密码」重新登录，本机档案不会删除。确定退出？')) return;
         A2.logout();
-        location.reload();
+        close(); goHome();
       });
       m.querySelector('#accIn') && (m.querySelector('#accIn').onclick = () => { close(); loginSheet(); });
       m.querySelector('#accDel') && (m.querySelector('#accDel').onclick = () => {
@@ -5175,13 +5243,29 @@
     openSheet('<div class="sheet-h">🔑 登录账号</div><div class="auth-body"></div>', (m) => draw(m));
   }
 
-  /* 恢复账号会话：切到账号绑定的角色档案（一机多号互不串数据） */
+  /* 强制重新加载：只改 hash 的 location.href 不会重载页面（v3.41 退出无反应的根因），
+     必须换掉 query 才能真正重新走一遍 boot */
+  function hardNav(qs) {
+    const url = location.pathname + '?' + (qs ? qs + '&' : '') + '_t=' + Date.now() + '#/home';
+    location.replace(url);
+  }
+  function setRole(r) { try { localStorage.setItem('beast.role', r); } catch (e) {} }
+  /* 回入口页：清身份 + 打标记，boot 时不再自动跟随登录账号 */
+  function goHome() {
+    try { localStorage.setItem('beast.home', '1'); localStorage.removeItem('beast.role'); } catch (e) {}
+    hardNav();
+  }
+
+  /* 恢复账号会话：把档案绑定到账号（一机多号互不串数据）
+     注意：身份以 beast.role 为准。只有还没选身份时才跟随登录账号——
+     否则「学生界面预览 / 手动切身份」会被老师账号覆盖回去，永远切不过去 */
   function restoreAccount() {
     const A = window.BeastAuth;
-    if (!A) return;
+    if (!A || window.__forceHome) return;
     const u = A.current();
     if (!u) return;
-    try { localStorage.setItem('beast.role', u.role); } catch (e) {}
+    if (!localStorage.getItem('beast.role')) setRole(u.role);
+    if (ROLE_GET() !== u.role) return;   /* 临时以另一身份使用这台设备，不做账号绑定 */
     if (u.role === 'student' && P.d && P.d.kids && P.d.kids.length) {
       if (u.kidId && P.d.kids.some((k) => k.id === u.kidId)) P.d.cur = u.kidId;
       else if (P.d.kids[0]) { P.d.cur = P.d.kids[0].id; A.touch({ kidId: P.d.cur }); }
@@ -5193,25 +5277,42 @@
 
   /* ================= 启动 ================= */
   function boot() {
-    P.load();
-    if (!P.d) { P.d = P.fresh(); }
-    /* v3.33 专属入口链接：?role=student&code=XXXXXX（老师生成发给学生） */
+    /* ① 入口链接先解析：?role=student&code=XXXXXX（老师生成发给学生） */
     try {
       const q = new URLSearchParams(location.search);
       const wr = (q.get('role') || '').toLowerCase();
-      if (wr) {
+      if (wr && ['student', 'family', 'class'].indexOf(wr) >= 0) {
         window.__entry = { role: wr, code: (q.get('code') || '').trim().toUpperCase() };
         history.replaceState(null, '', location.pathname + (location.hash || ''));
       }
     } catch (e) {}
+    /* ② 「回入口页」标记：清掉身份，且不让登录账号把人自动拉回原界面 */
+    try {
+      if (localStorage.getItem('beast.home') === '1') {
+        localStorage.removeItem('beast.home');
+        localStorage.removeItem('beast.role');
+        window.__forceHome = true;
+      }
+    } catch (e) {}
+    /* ③ 入口链接优先决定本机当前身份（先定身份，才读得到对应档案） */
+    if (window.__entry) {
+      window.__entryCode = window.__entry.code || '';
+      setRole(window.__entry.role);
+    }
+    /* ④ 读档案 */
+    P.load();
+    if (window.__forceHome) P.d = null;
+    if (!P.d) { P.d = P.fresh(); }
     restoreAccount();
-    P.save();   // 迁移结果立即落盘
+    if (!window.__forceHome) P.save();   // 迁移结果立即落盘（回入口页时不要写脏数据）
     if (!location.hash) location.replace('#/home');
     window.addEventListener('hashchange', render);
     document.getElementById('parentBtn').onclick = () => {
       if (P.d.admin) parentPanel(); else parentEntry();
     };
     document.getElementById('classBtn').onclick = () => { location.hash = '#/class'; };
+    const roleBtn = document.getElementById('roleBtn');
+    if (roleBtn) roleBtn.onclick = () => roleSwitchSheet();
     const acctBtn = document.getElementById('acctBtn');
     if (acctBtn) acctBtn.onclick = () => acctSheet();
     /* v3.32 音效/音乐开关 */
@@ -5228,19 +5329,12 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) maybeSnapshot(); });
     setInterval(() => { const C = window.BEAST_CLOUD; if (C && C.pending()) C.flush().catch(() => {}); maybeSnapshot(); }, 60000);
     render();
-    /* 学生链接在已有老师/家长档案的设备上打开：给出明确的一键切换（不再只弹一句提示） */
-    if (window.__entry) {
-      const wr = window.__entry.role;
-      const wc = window.__entry.code || '';
-      window.__entry = null;
-      const cur = (function () { try { return localStorage.getItem('beast.role') || 'family'; } catch (e) { return 'family'; } })();
-      if (wr === 'student' && cur !== 'student') {
-        setTimeout(() => studentSwitchSheet(wc), 600);
-      }
-    }
+    /* 入口链接已在 ③ 定好身份并渲染完毕（首次则进入学页，班级码已预填），
+       这里清掉标记即可，不再弹「是否切换」的框——那个框点了也切不过去 */
+    window.__entry = null;
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3390', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3420', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

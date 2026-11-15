@@ -9,7 +9,8 @@
   const BP = window.BP;
   if (!BP) return;
   const { P, esc, toast, openSheet, addExp, grantPoints, addLog, kid, todayStr, isClass,
-    petImg, petMeta, imgFor, stageIdxOf, render } = BP;
+    petImg, petMeta, imgFor, stageIdxOf, render, SUBJ_LIST, SUBJ_NAME, ensurePetSys, addSubjExp,
+    petBand, petAv, subjPetAv, subjPetOf, dressSheet, subjPetSheet, subjAvgLv, mySubjScope } = BP;
 
   /* ================= 题型定义 ================= */
   const QTYPES = {
@@ -775,6 +776,7 @@
     if (!Array.isArray(k.wrongBook)) k.wrongBook = [];
     if (!k.frags) k.frags = {};
     if (!Array.isArray(k.aid)) k.aid = [];
+    if (ensurePetSys) ensurePetSys(k);
   }
 
   /* ================= v3.24 稀有度 / 掉落 / 助战 ================= */
@@ -946,9 +948,9 @@
   }
 
   /* ================= 奖励发放 ================= */
-  function reward(k, pts, exp, text, em) {
-    if (pts) grantPoints(k, pts, text);
-    if (exp) addExp(k, exp);
+  function reward(k, pts, exp, text, em, subj) {
+    if (pts) grantPoints(k, pts, text, subj || 'all');
+    if (exp) { addExp(k, exp); addSubjExp(k, subj, exp); }
     addLog(k, em || '🎯', text, pts || 0);
   }
 
@@ -1003,7 +1005,7 @@
         onEnd: (r) => {
           if (r.win) {
             t.done = true; t.stars = r.stars;
-            reward(k, 2, 10, '完成每日答题「' + QTYPES[t.ty].name + '」', QTYPES[t.ty].icon);
+            reward(k, 2, 10, '完成每日答题「' + QTYPES[t.ty].name + '」', QTYPES[t.ty].icon, 'en');
             P.save(); toast('任务完成 +2 积分');
           }
           render();
@@ -1017,7 +1019,7 @@
       const y = yst.getFullYear() + '-' + String(yst.getMonth() + 1).padStart(2, '0') + '-' + String(yst.getDate()).padStart(2, '0');
       d.streak = (d.last === y || (d.streak || 0) === 0) ? (d.streak || 0) + 1 : 1;
       d.last = d.date;
-      reward(k, 5, 15, '完成全部每日答题，打开打卡宝箱', '🎁');
+      reward(k, 5, 15, '完成全部每日答题，打开打卡宝箱', '🎁', 'en');
       P.save();
       chestFX('+5 积分 · +15 经验 · 连续打卡 ' + d.streak + ' 天', () => render());
     };
@@ -1443,7 +1445,7 @@
           k.wrongBook.push({ q: w, g: gradeOf(k), u: 0, ok: false, t: Date.now() });
         });
         const right = r.results ? r.results.filter((x) => x.ok).length : 0;
-        reward(k, 2 + right, 8 + right * 3, '每日答题 · 答对 ' + right + '/' + qs.length, '📖');
+        reward(k, 2 + right, 8 + right * 3, '每日答题 · 答对 ' + right + '/' + qs.length, '📖', 'mix');
         syncClassData(k);
         P.save();
         toast('每日答题完成 · 答对 ' + right + '/' + qs.length + ' · 掌握度已更新 📊');
@@ -1497,7 +1499,7 @@
         const bonus = n.lv || 0; /* 难度加成：关卡越靠后奖励越高 */
         if (n.t === 'chall') {
           const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
-          reward(k, 3 + bonus, 15 + bonus * 3, '挑战关达成 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🏅');
+          reward(k, 3 + bonus, 15 + bonus * 3, '挑战关达成 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🏅', (n.subj || 'mix'));
           dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
         }
         if (n.t === 'kn') {
@@ -1505,7 +1507,7 @@
           const full = r.right === r.total;
           const st = n.stage || 1;
           reward(k, st + bonus, 6 + st * 4 + bonus * 2,
-            '知识点' + STAGE_NAME[st - 1] + ' · ' + n.kn + (full ? ' · 完美!' : ''), '📖');
+            '知识点' + STAGE_NAME[st - 1] + ' · ' + n.kn + (full ? ' · 完美!' : ''), '📖', (n.subj || 'mix'));
           if (full && (st >= 3 || Math.random() < 0.45)) {
             const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
             dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
@@ -1513,24 +1515,24 @@
         }
         if (n.t === 'battle') {
           const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
-          reward(k, 2 + bonus, 12 + bonus * 3, '冒险战斗获胜 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '⚔️');
+          reward(k, 2 + bonus, 12 + bonus * 3, '冒险战斗获胜 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '⚔️', (n.subj || 'mix'));
           dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
         }
         if (n.t === 'review') {
           const ft = dropFrag(k, ['N', 'R']);
-          reward(k, 1 + bonus, 6 + bonus * 2, '完成复习营地 · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🛡️');
+          reward(k, 1 + bonus, 6 + bonus * 2, '完成复习营地 · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🛡️', (n.subj || 'mix'));
           dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
         }
         if (n.t === 'boss') {
           if (!q.badges.includes(n.u)) q.badges.push(n.u);
           const card = dropPetOf(k, q, rarityByScore(r.right, r.total, ['R', 'SR', 'SSR']));
-          reward(k, 5 + bonus, 25 + bonus * 5, '击败' + (bossS ? bossS.name : '单元') + ' Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '👑');
+          reward(k, 5 + bonus, 25 + bonus * 5, '击败' + (bossS ? bossS.name : '单元') + ' Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '👑', (n.subj || 'mix'));
           dropMsg = card;
         }
         if (n.t === 'final') {
           q.trophy = true;
           const card = dropPetOf(k, q, 'SSR');
-          reward(k, 20, 60, '🏆 击败知识魔王，通关' + gradeName(g) + '冒险 · 获得传说宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '🏆');
+          reward(k, 20, 60, '🏆 击败知识魔王，通关' + gradeName(g) + '冒险 · 获得传说宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '🏆', 'mix');
           dropMsg = card;
         }
         P.save();
@@ -1616,7 +1618,7 @@
             onEnd: (r) => {
               if (r.win) {
                 w.ok = true;
-                reward(k, 1, 4, '错题订正成功', '📕');
+                reward(k, 1, 4, '错题订正成功', '📕', SUBJ[w.q.type] ? w.q.type : 'en');
                 P.save(); toast('订正成功！+1 积分');
               }
               if (refresh) refresh();

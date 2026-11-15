@@ -10,8 +10,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="app.css?v=3300">
-  <link rel="stylesheet" href="games.css?v=3300">
+  <link rel="stylesheet" href="app.css?v=3310">
+  <link rel="stylesheet" href="games.css?v=3310">
 </head>
 <body>
   <header id="topbar">
@@ -30,10 +30,10 @@
   <script src="lib/lz.min.js"></script>
   <script src="lib/qrg.js"></script>
   <script src="lib/jsqr.js"></script>
-  <script src="cloud.js?v=3300"></script>
-  <script src="auth.js?v=3300"></script>
-  <script src="app.js?v=3300"></script>
-  <script src="games.js?v=3300"></script>
+  <script src="cloud.js?v=3310"></script>
+  <script src="auth.js?v=3310"></script>
+  <script src="app.js?v=3310"></script>
+  <script src="games.js?v=3310"></script>
   <script>
     /* 版本更新提示：SW 换代后不打断答题，先给一条可点提示 */
     (function () {
@@ -41,7 +41,7 @@
       var tip = document.getElementById('upTip');
       window.showUpdTip = function () { if (tip) tip.hidden = false; };
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js?v=3300', { updateViaCache: 'none' }).then(function (reg) {
+        navigator.serviceWorker.register('sw.js?v=3310', { updateViaCache: 'none' }).then(function (reg) {
           setInterval(function () { reg.update().catch(function () {}); }, 30 * 60 * 1000);
         }).catch(function () {});
       });

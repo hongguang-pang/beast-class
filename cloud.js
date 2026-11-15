@@ -246,11 +246,11 @@
     },
 
     /* 老师：加减分（批量 sids） */
-    bonus: function (code, sids, delta, reason) {
+    bonus: function (code, sids, delta, reason, subj) {
       var c = readCfg();
       var key = c.teacherKey || '';
       var path = '/api/class/' + code + '/bonus';
-      var body = { sids: sids, delta: delta, reason: reason };
+      var body = { sids: sids, delta: delta, reason: reason, subj: subj || 'all' };
       var h = { 'X-Teacher-Key': key };
       return api('POST', path, body, h).catch(function (e) {
         enqueue('POST', path, body, h);

@@ -495,20 +495,26 @@
     m.querySelector('#rvOk').onclick = close;
     m.onclick = (e) => { if (e.target === m) close(); };
   }
-  function grantPoints(k, n, reason) {
+  function grantPoints(k, n, reason, subj) {
     k.points += n;
     if (!k.daily) k.daily = {};
     if (n > 0) { const t = todayStr(); k.daily[t] = (k.daily[t] || 0) + n; }
     addLog(k, n >= 0 ? '✨' : '🧾', reason, n);
-    if (n > 0) addExp(k, n);
+    if (n > 0) {
+      addExp(k, n);
+      /* v3.31 同一笔加分同时喂对应的学科宠物；未指定学科时按当前老师身份 */
+      const sk = subj === undefined ? mySubjScope() : subj;
+      addSubjExp(k, sk, n);
+    }
     /* 老师在电脑上给分 → 推到云端，学生手机下次同步能看到 */
     if (n !== 0 && P.d.mode !== 'student' && k.sid) {
       const c0 = (P.d.classes || []).find((c) => c.id === P.d.clsId);
-      if (c0 && c0.teacherKey && c0.code) cloudPushBonus([k.sid], n, reason || '老师奖励');
+      if (c0 && c0.teacherKey && c0.code) cloudPushBonus([k.sid], n, reason || '老师奖励', subj === undefined ? mySubjScope() : subj);
     }
     P.save();
   }
   function addLog(k, em, text, delta, kind) {
+    if (!Array.isArray(P.d.log)) P.d.log = [];
     P.d.log.unshift({ ts: Date.now(), kid: k.id, kidName: k.name, em, text, d: delta, kind: kind || null });
     if (P.d.log.length > 800) P.d.log.length = 800;
   }
@@ -636,7 +642,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.30 · 每学年 460 关知识图谱 · 账号管理 · 离线可玩<br>' +
+      '<div class="w-ver">版本 v3.31 · 五科宠物 · 装扮饰品 · 班主任与学科老师<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -781,6 +787,8 @@
       if (tName && window.BeastAuth) {
         const c0 = (P.d.classes && P.d.classes[P.d.classes.length - 1]) || P.d.cls;
         const ar = BeastAuth.register({ role: 'class', name: tName, pwd, clsId: (c0 && c0.id) || '', classCode: (c0 && c0.code) || '', grade: (c0 && c0.grade) || '' });
+        if (c0) { c0.head = tName; }
+        P.d.teacher = { role: 'head' };
         toast(ar.existed ? '👋 欢迎回来，' + tName : '✅ 老师账号已创建：' + tName);
       }
       P.save();
@@ -899,6 +907,23 @@
       }).join('') + '</div>' +
       '<div class="tiny" style="text-align:center;margin-top:4px">我的知识掌握度（答题自动更新）</div>';
   }
+  /* 五科宠物条：学生首页一眼看到每科宠物与经验 */
+  function subjPetsHTML(k) {
+    ensurePetSys(k);
+    return '<div class="subj-pets"><div class="sp-head"><b>🎒 我的五科宠物</b>' +
+      '<button class="sp-dress" id="spDress">🎀 装扮</button></div>' +
+      '<div class="sp-row">' + SUBJ_LIST.map((s) => {
+        const p = k.subjPets[s.k];
+        const need = expNeed(p.lv);
+        const pc = Math.min(100, Math.round(p.exp / need * 100));
+        return '<button class="sp-card" data-subj="' + s.k + '" style="--c:' + s.c + '">' +
+          '<span class="spc-av">' + subjPetAv(k, s.k, 44) + '</span>' +
+          '<span class="spc-t"><b>' + s.ic + ' ' + s.n + '</b><small>Lv.' + p.lv + ' · ' + pc + '%</small>' +
+          '<span class="spc-bar"><i style="width:' + pc + '%"></i></span></span></button>';
+      }).join('') + '</div>' +
+      '<div class="tiny sp-note">只吃本科经验：本科老师加分 · 本科知识点通关 · 每日答题里的本科题</div></div>';
+  }
+
   function studentHomeHTML(k) {
     const today = todayStr();
     const doneToday = k.dailyQuizDate === today;
@@ -909,6 +934,7 @@
       '<a class="game-card gc-quest" href="#/quest"><span class="gc-em">🗺️</span><div><b>知识冒险闯关</b><small>' +
       (k.className ? esc(k.className) + ' · ' : '') + gname + (k.classCode ? ' · 年级随班级' : '') + '</small></div><i class="gc-go">GO</i></a>' +
       '</div>' +
+      subjPetsHTML(k) +
       mastIconsHTML(k) +
       '<div class="inter-row">' +
       '<button class="inter-btn" data-a="pat">🫶 摸摸头</button>' +
@@ -1006,7 +1032,7 @@
       '<div class="stage" style="--pet-glow:' + petMeta(k.pet.type).glow + '">' +
       '<div class="stars"></div>' +
       '<div class="lv-badge">Lv.' + k.pet.lv + '</div>' +
-      '<div class="pet-zone"><div class="aura"><div class="pet ' + st.cls + '" id="petTap"><img src="' + petImg(k) + '" alt=""></div></div></div>' +
+      '<div class="pet-zone"><div class="aura"><div class="pet ' + st.cls + '" id="petTap">' + petBand(k.pet, 130, k.wardrobe) + '</div></div></div>' +
       '<div class="pet-name">' + esc(displayName(k)) + '</div>' +
       '<div class="pet-stage">' + st.name + ' · ' + petMeta(k.skin || k.pet.type).name + '</div>' +
       '<div class="exp-row"><div class="exp-bar"><i style="width:' + pct + '%"></i></div>' +
@@ -1051,6 +1077,9 @@
       if (sw) sw.onclick = () => { if (confirm('切换身份会回到入口选择页，学生数据保留')) { localStorage.removeItem('beast.role'); location.reload(); } };
       const mg = document.getElementById('stMast');
       if (mg) mg.onclick = () => mastSheet(k);
+      document.querySelectorAll('.sp-card').forEach((b) => (b.onclick = () => subjPetSheet(k, b.dataset.subj)));
+      const sd = document.getElementById('spDress');
+      if (sd) sd.onclick = () => dressSheet(k);
     }
     /* 家庭/班级端学情分析入口 */
     const fa = document.getElementById('famAnalysis');
@@ -1613,6 +1642,7 @@
       '<div class="tiny">' + (isClass() ? '数据只保存在这台设备上，换设备请用「数据备份」迁移' : '退出家长模式请在底部点「退出」，或等待下次打开自动退出') + '</div>' +
       (isClass() ? '<div class="cls-now" id="ppCls"><span>🏫</span><b>' + esc(P.d.cls.name || '我的班级') + '</b>' +
         '<small>' + P.d.kids.length + ' 人 · 共 ' + P.d.classes.length + ' 个班</small><i>切换 ›</i></div>' : '') +
+      (isClass() ? '<button class="me-chip" id="ppMe">🙋 我的身份：' + myRoleLabel() + '<i>切换 ›</i></button>' : '') +
       (isClass() ? '<div class="teacher-tools"' + (P.d.classes.length > 1 ? ' style="grid-template-columns:repeat(5,1fr)"' : ' style="grid-template-columns:repeat(4,1fr)"') + '>' +
         '<button id="ttGroup"><b>⚡</b>加减分</button>' +
         '<button id="ttRnd"><b>🎲</b>随机点名</button>' +
@@ -1645,6 +1675,7 @@
         '<div class="btn-row" style="margin-top:9px"><button class="btn ghost" id="mgTask">任务管理</button><button class="btn ghost" id="mgReward">奖励管理</button></div>' +
         '<div class="btn-row" style="margin-top:9px"><button class="btn ghost" id="mgRedeem">🎁 兑换记录</button><button class="btn ghost" id="mgRnd">🎲 随机点名</button></div>' +
         '<div class="btn-row" style="margin-top:9px"><button class="btn ghost" id="mgPin">' + (P.d.pin ? '修改 PIN' : '设置 PIN 防误触') + '</button><button class="btn ghost" id="mgData">数据备份</button></div>' +
+        '<div class="btn-row" style="margin-top:9px"><button class="btn ghost" id="mgTeam">👩‍🏫 教师团队</button><button class="btn ghost" id="mgMe">🙋 我的身份</button></div>' +
         '<div class="btn-row" style="margin-top:9px"><button class="btn ghost" id="mgAmt">快捷分值</button><button class="btn ghost" id="mgHelp">📖 使用说明</button></div>'
         : '<div class="btn-row"><button class="btn ghost" id="mgTask">任务管理</button><button class="btn ghost" id="mgReward">奖励管理</button></div>' +
         '<div class="btn-row" style="margin-top:9px"><button class="btn ghost" id="mgRedeem">🎁 兑换记录</button><button class="btn ghost" id="mgRnd">🎲 随机点名</button></div>' +
@@ -1717,6 +1748,9 @@
         tt('ppCls', () => { close(); classListSheet(); });
         tt('ttCmp', () => { close(); location.hash = '#/compare'; render(); });
         tt('mgToClass', () => { close(); newClassSheet(); });
+        tt('mgTeam', () => { close(); teacherTeamSheet(); });
+        tt('mgMe', () => { close(); teacherRoleSheet(); });
+        tt('ppMe', () => { close(); teacherRoleSheet(); });
       });
   }
   function addRedeemHis(k, r, cost, via) {
@@ -2215,7 +2249,7 @@
   function createClass(name, listText) {
     P.save();
     const id = 'c' + uid();
-    P.d.classes.push({ id, name, kids: [], groups: GROUPS_DEFAULT.slice(), period: 'today', rnd: { pool: [], round: 0 }, since: Date.now(), code: clsCodeOf(), grade: '' });
+    P.d.classes.push({ id, name, kids: [], groups: GROUPS_DEFAULT.slice(), period: 'today', rnd: { pool: [], round: 0 }, since: Date.now(), code: clsCodeOf(), grade: '', head: '', subs: {} });
     P.d.cls.on = true;
     loadClass(id);
     const r = importRoster(listText || '', true);
@@ -2426,7 +2460,20 @@
         k.points = Math.max(0, (k.points || 0) + delta);
         k.bonusApplied = bonus;
         changed = true;
-        if (delta > 0) toast('🌟 老师给你加了 ' + delta + ' 分！');
+        if (delta > 0) {
+          addExp(k, delta);
+          /* v3.31 按学科喂对应宠物：数学老师的分只进数学宠物 */
+          const by = (j.me && j.me.bonusBy) || {};
+          const prev = k.bonusByApplied || {};
+          Object.keys(by).forEach((sk) => {
+            const d = (by[sk] || 0) - (prev[sk] || 0);
+            if (d > 0) addSubjExp(k, sk, d);
+            prev[sk] = by[sk] || 0;
+          });
+          k.bonusByApplied = prev;
+          const who = Object.keys(by).filter((sk) => sk !== 'all').map((sk) => SUBJ_NAME[sk]).filter(Boolean);
+          toast('🌟 老师给你加了 ' + delta + ' 分！' + (who.length ? '（' + who.join('/') + '宠物也长经验了）' : ''));
+        }
       }
       if (changed) { P.save(); render(); }
       return true;
@@ -2444,12 +2491,12 @@
   };
 
   /* 老师加分后推给云端（学生下次联网就能看到） */
-  function cloudPushBonus(sids, delta, reason) {
+  function cloudPushBonus(sids, delta, reason, subj) {
     const C = CL();
     const cls = curCls();
     if (!C || !cls || !cls.code || !cls.teacherKey) return;
     cloudUseClass(cls);
-    C.bonus(cls.code, sids, delta, reason).catch(() => {});
+    C.bonus(cls.code, sids, delta, reason, subj || 'all').catch(() => {});
   }
 
   /* 云端同步面板：状态 + 班级码 + 教师密钥 + 手动同步 */
@@ -2747,6 +2794,13 @@
       '<div><div class="sh-nm">' + esc(k.name) + '</div>' +
       '<div class="sh-sub">' + (k.group ? esc(k.group) + ' · ' : '') + (k.skin ? petMeta(k.skin).name : k.pet.name) + ' Lv.' + k.pet.lv + '</div>' +
       '<div class="sh-pt"><b>' + k.points + '</b> 分 · 本周 +' + ptsSince(k, weekStart()) + ' · 第 ' + rTotal + ' 名</div></div></div>' +
+      '<div class="sh-subjs">' + SUBJ_LIST.map((s) => {
+        const p = subjPetOf(k, s.k);
+        return '<button class="sh-sp" data-ss="' + s.k + '">' + subjPetAv(k, s.k, 40) +
+          '<b>' + s.ic + '</b><small>Lv.' + p.lv + '</small></button>';
+      }).join('') + '</div>' +
+      '<div class="tiny" style="margin:2px 2px 8px">加分学科（只喂对应宠物）</div>' +
+      subjChipsHTML(mySubjScope()) +
       amtsHTML() +
       '<div class="chips" id="shWhy">' + WHY_POS.concat(WHY_NEG).map((w, i) =>
         '<button data-w="' + esc(w) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(w) + '</button>').join('') + '</div>' +
@@ -2757,6 +2811,12 @@
       (m, close) => {
         const st = { amt: amts().pos[0] || 1 };
         let why = WHY_POS[0];
+        let subjSel = mySubjScope();
+        m.querySelectorAll('#shSubj button').forEach((b) => (b.onclick = () => {
+          m.querySelectorAll('#shSubj button').forEach((x) => x.classList.remove('on'));
+          b.classList.add('on'); subjSel = b.dataset.sub;
+        }));
+        m.querySelectorAll('[data-ss]').forEach((b) => (b.onclick = () => { close(); subjPetSheet(k, b.dataset.ss); }));
         // 选了负分自动把理由切到扣分常用语（反之亦然）
         const syncWhy = () => {
           const cur = m.querySelector('#shWhy button.on');
@@ -2776,8 +2836,8 @@
         m.querySelector('#shGo').onclick = () => {
           const cus = m.querySelector('#shCustom').value.trim();
           const amt = st.amt;
-          grantPoints(k, amt, cus || why);
-          toast(k.name + ' ' + (amt > 0 ? '+' : '') + amt + ' 分');
+          grantPoints(k, amt, cus || why, subjSel);
+          toast(k.name + ' ' + (amt > 0 ? '+' : '') + amt + ' 分' + (amt > 0 && subjSel !== 'all' ? ' · 已喂' + SUBJ_NAME[subjSel] + '宠物' : ''));
           close(); render();
         };
         m.querySelector('#shOpen').onclick = () => { P.d.cur = k.id; P.save(); close(); location.hash = '#/home'; render(); };
@@ -2799,6 +2859,8 @@
         '<div class="av"><img src="' + petImg(k) + '" alt="" loading="lazy"></div>' +
         '<div class="nm">' + esc(k.name) + '</div><i class="ck">✓</i></div>').join('') + '</div>' +
       '<div class="qa-bar">' +
+      '<div class="tiny" style="margin:2px 2px 6px">加分学科（只喂对应宠物）</div>' +
+      subjChipsHTML(mySubjScope(), 'qaSubj') +
       amtsHTML(true) +
       '<div class="chips" id="qaWhy">' + WHY_POS.concat(WHY_NEG).map((w, i) =>
         '<button data-w="' + esc(w) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(w) + '</button>').join('') + '</div>' +
@@ -2806,6 +2868,11 @@
       (m, close) => {
         const st = { amt: amts().pos[0] || 1 };
         let why = WHY_POS[0];
+        let subjSel = mySubjScope();
+        m.querySelectorAll('#qaSubj button').forEach((b) => (b.onclick = () => {
+          m.querySelectorAll('#qaSubj button').forEach((x) => x.classList.remove('on'));
+          b.classList.add('on'); subjSel = b.dataset.sub;
+        }));
         const syncWhy = () => {
           const cur = m.querySelector('#qaWhy button.on');
           const curW = cur ? cur.dataset.w : why;
@@ -2837,9 +2904,9 @@
         m.querySelector('#qaGo').onclick = () => {
           if (!sel.size) return toast('先选学生');
           let n = 0;
-          sel.forEach((id) => { const k = P.d.kids.find((x) => x.id === id); if (k) { grantPoints(k, st.amt, why); n++; } });
+          sel.forEach((id) => { const k = P.d.kids.find((x) => x.id === id); if (k) { grantPoints(k, st.amt, why, subjSel); n++; } });
           close(); render();
-          toast('已给 ' + n + ' 人 ' + (st.amt > 0 ? '+' : '') + st.amt + ' 分');
+          toast('已给 ' + n + ' 人 ' + (st.amt > 0 ? '+' : '') + st.amt + ' 分' + (st.amt > 0 && subjSel !== 'all' ? ' · 只喂' + SUBJ_NAME[subjSel] + '宠物' : ''));
         };
       });
   }
@@ -3023,36 +3090,51 @@
   /* ---------- 光荣榜 ---------- */
   function viewBoard() {
     const p = P.d.cls.period || 'today';
-    const rows = rankBy(p);
+    const subj = P.d.boardSubj || 'all';
+    const S = SUBJ_LIST.find((x) => x.k === subj) || null;
     const label = { today: '今日', week: '本周', total: '总榜' };
-    const top = rows.slice(0, 3);
+    const pv = (k) => { ensurePetSys(k); const sp = k.subjPets[subj]; return sp ? sp.lv * 10000 + sp.exp : 0; };
+    const rows = (subj === 'all' ? rankBy(p)
+      : P.d.kids.map((k) => ({ k, v: pv(k) })).sort((x, y) => y.v - x.v).map((r, i) => Object.assign(r, { rank: i + 1 })));
     const rest = rows.slice(3);
-    const podium = (r, idx) => r ? '<div class="pd-' + (idx + 1) + '" data-k="' + r.k.id + '"><div class="pd-av"><img src="' + petImg(r.k) + '" alt=""></div>' +
-      '<div class="pd-nm">' + esc(r.k.name) + '</div><div class="pd-v">' + r.v + '</div>' +
+    const top = rows.slice(0, 3);
+    const avOf = (k, size) => (subj === 'all' ? petAv(k, size) : subjPetAv(k, subj, size));
+    const valOf = (r) => (subj === 'all' ? r.v : 'Lv.' + (r.k.subjPets[subj] ? r.k.subjPets[subj].lv : 1));
+    const podium = (r, idx) => r ? '<div class="pd-' + (idx + 1) + '" data-k="' + r.k.id + '"><div class="pd-av">' + avOf(r.k, 74) + '</div>' +
+      '<div class="pd-nm">' + esc(r.k.name) + '</div><div class="pd-v">' + valOf(r) + '</div>' +
       '<div class="pd-base">' + (idx + 1) + '</div></div>' : '';
     const gs = groupsOf();
     const gStat = gs.map((g) => {
       const ms = P.d.kids.filter((k) => k.group === g);
-      const sum = ms.reduce((s, k) => s + (p === 'total' ? k.points : ptsSince(k, p === 'today' ? dayStart() : weekStart())), 0);
+      const sum = ms.reduce((s2, k) => s2 + (p === 'total' ? k.points : ptsSince(k, p === 'today' ? dayStart() : weekStart())), 0);
       return { g, sum, avg: ms.length ? sum / ms.length : 0, n: ms.length };
-    }).sort((a, b) => b.avg - a.avg);
+    }).sort((a2, b2) => b2.avg - a2.avg);
     const maxAvg = Math.max(1, ...gStat.map((x) => x.avg));
 
     $view.innerHTML = '<div class="page board-page">' +
-      '<div class="seg" id="bdSeg" style="grid-template-columns:repeat(3,1fr)">' +
-      ['today', 'week', 'total'].map((x) => '<button data-p="' + x + '"' + (p === x ? ' class="on"' : '') + '>' + label[x] + '</button>').join('') + '</div>' +
+      '<div class="bd-subj" id="bdSubj">' +
+      '<button data-s="all"' + (subj === 'all' ? ' class="on"' : '') + '>🏆 全部</button>' +
+      SUBJ_LIST.map((x) => '<button data-s="' + x.k + '"' + (subj === x.k ? ' class="on"' : '') + '>' + x.ic + ' ' + x.n + '</button>').join('') +
+      '</div>' +
+      (subj === 'all' ? '<div class="seg" id="bdSeg" style="grid-template-columns:repeat(3,1fr)">' +
+        ['today', 'week', 'total'].map((x) => '<button data-p="' + x + '"' + (p === x ? ' class="on"' : '') + '>' + label[x] + '</button>').join('') + '</div>' : '') +
       (rows.length ? '<div class="podium">' + podium(top[1], 1) + podium(top[0], 0) + podium(top[2], 2) + '</div>' : '') +
-      '<div class="section-h"><h2>' + label[p] + '排行</h2><span class="sub">全班共 +' + rows.reduce((s, r) => s + r.v, 0) + ' 分</span></div>' +
+      '<div class="section-h"><h2>' + (subj === 'all' ? label[p] + '排行' : (S ? S.ic + ' ' + S.n + '宠物墙' : '排行')) + '</h2>' +
+      '<span class="sub">' + (subj === 'all' ? '全班共 +' + rows.reduce((s2, r) => s2 + r.v, 0) + ' 分' : '按本科宠物等级排序 · 共 ' + rows.length + ' 只') + '</span></div>' +
       '<div class="board">' + (rest.length ? rest.map((r) =>
         '<div class="bd-row" data-k="' + r.k.id + '"><span class="bd-rk">' + r.rank + '</span>' +
-        '<span class="bd-av"><img src="' + petImg(r.k) + '" alt="" loading="lazy"></span>' +
-        '<span class="bd-nm">' + esc(r.k.name) + (r.k.group ? '<i>' + esc(r.k.group) + '</i>' : '') + '</span>' +
-        '<span class="bd-v">' + r.v + '</span></div>').join('') : (rows.length ? '<div class="card empty">只有 3 名学生上榜</div>' : '<div class="card empty">还没有学生</div>')) + '</div>' +
-      (gStat.length > 1 ? '<div class="section-h"><h2>小组 PK</h2><span class="sub">按人均分</span></div>' +
+        '<span class="bd-av">' + avOf(r.k, 34) + '</span>' +
+        '<span class="bd-nm">' + esc(r.k.name) + (r.k.group ? '<i>' + esc(r.k.group) + '</i>' : '') +
+        (subj !== 'all' ? '<em class="bd-sub">' + (r.k.subjPets[subj] ? PETS[r.k.subjPets[subj].type].name : '') + '</em>' : '') + '</span>' +
+        '<span class="bd-v">' + valOf(r) + '</span></div>').join('') : (rows.length ? '<div class="card empty">只有 3 名学生上榜</div>' : '<div class="card empty">还没有学生</div>')) + '</div>' +
+      (subj === 'all' && gStat.length > 1 ? '<div class="section-h"><h2>小组 PK</h2><span class="sub">按人均分</span></div>' +
         '<div class="card">' + gStat.map((x) => '<div class="gpk"><div class="gp-h"><b>' + esc(x.g) + '</b><span>' + x.n + ' 人 · 人均 ' + x.avg.toFixed(1) + '</span></div>' +
           '<div class="gp-bar"><i style="width:' + Math.max(4, (x.avg / maxAvg) * 100) + '%"></i></div></div>').join('') + '</div>' : '') +
+      (subj !== 'all' ? '<div class="tiny" style="margin-top:10px;text-align:center">这面墙上的宠物只吃「' + (S ? S.n : '') + '」的经验 · 学生换宠物后自动同步</div>' : '') +
       '</div>';
-    document.querySelectorAll('#bdSeg button').forEach((b) => (b.onclick = () => { P.d.cls.period = b.dataset.p; P.save(); render(); }));
+    document.querySelectorAll('#bdSubj button').forEach((b) => (b.onclick = () => { P.d.boardSubj = b.dataset.s; P.save(); render(); }));
+    const sg = document.getElementById('bdSeg');
+    if (sg) sg.querySelectorAll('button').forEach((b) => (b.onclick = () => { P.d.cls.period = b.dataset.p; P.save(); render(); }));
     document.querySelectorAll('.bd-row').forEach((r) => (r.onclick = () => stuSheet(r.dataset.k)));
     document.querySelectorAll('.podium [data-k]').forEach((d) => (d.onclick = () => stuSheet(d.dataset.k)));
   }
@@ -4055,8 +4137,270 @@
   }
 
   /* v3.23 游戏桥接：games.js 通过它注册路由并复用核心逻辑 */
+  /* ================= v3.31 学科宠物 · 饰品系统 ================= */
+  /* 五个学科各有自己的宠物：只吃本学科的经验，由本学科老师加分喂养 */
+  const SUBJ_LIST = [
+    { k: 'math', n: '数学', ic: '🔢', c: '#7c3aed' },
+    { k: 'cn',   n: '语文', ic: '📖', c: '#e5484d' },
+    { k: 'en',   n: '英语', ic: '🔤', c: '#2563eb' },
+    { k: 'sci',  n: '科学', ic: '🔬', c: '#0f9d58' },
+    { k: 'eth',  n: '常识', ic: '🌱', c: '#f59e0b' }
+  ];
+  const SUBJ_NAME = { math: '数学', cn: '语文', en: '英语', sci: '科学', eth: '常识', mix: '综合' };
+  /* 饰品：slot 决定叠在哪个部位；top/left 是相对宠物框的百分比 */
+  const ACCS = {
+    crown:  { n: '黄金王冠', slot: 'head', e: '👑', f: 30, top: 4,  l: 50, price: 60 },
+    cap:    { n: '棒球帽',   slot: 'head', e: '🧢', f: 28, top: 6,  l: 50, price: 40 },
+    bow:    { n: '蝴蝶结',   slot: 'head', e: '🎀', f: 20, top: 10, l: 64, price: 30 },
+    star:   { n: '星星光环', slot: 'head', e: '⭐', f: 18, top: -2, l: 36, price: 45 },
+    flower: { n: '小雏菊',   slot: 'head', e: '🌸', f: 18, top: 8,  l: 68, price: 22 },
+    glasses:{ n: '学霸眼镜', slot: 'face', e: '🕶️', f: 20, top: 30, l: 50, price: 50 },
+    mask:   { n: '小口罩',   slot: 'face', e: '😷', f: 17, top: 34, l: 50, price: 25 },
+    scarf:  { n: '暖围巾',   slot: 'neck', e: '🧣', f: 22, top: 50, l: 50, price: 35 },
+    bell:   { n: '铃铛项圈', slot: 'neck', e: '🔔', f: 15, top: 52, l: 50, price: 28 },
+    wings:  { n: '天使翅膀', slot: 'back', e: '🪽', f: 34, top: 40, l: 24, price: 80 },
+    cape:   { n: '英雄披风', slot: 'back', e: '🧥', f: 30, top: 42, l: 74, price: 70 },
+    mic:    { n: '小话筒',   slot: 'back', e: '🎤', f: 22, top: 48, l: 76, price: 36 }
+  };
+  const ACC_SLOTS = [{ k: 'head', n: '头部' }, { k: 'face', n: '脸部' }, { k: 'neck', n: '颈部' }, { k: 'back', n: '背部' }];
+
+  /* 补齐字段：老档案也能直接用（学科宠物默认继承主宠物的种类） */
+  function ensurePetSys(k) {
+    if (!k || !k.pet) return;
+    if (!k.subjPets || typeof k.subjPets !== 'object') k.subjPets = {};
+    const all = Object.keys(PETS);
+    const base = Math.max(0, all.indexOf(k.pet.type));
+    SUBJ_LIST.forEach((s, i) => {
+      const p = k.subjPets[s.k];
+      if (!p || !p.type || !PETS[p.type]) {
+        /* 开局五科五只不同的宠物：错位抽样，均从蛋期养起 */
+        const t = i === 0 ? k.pet.type : all[(base + i * 17) % all.length];
+        k.subjPets[s.k] = { type: t, exp: 0, lv: 3 };
+      }
+    });
+    if (!k.wardrobe || typeof k.wardrobe !== 'object') k.wardrobe = {};
+    if (!Array.isArray(k.owned)) k.owned = ['bow'];
+  }
+  function subjPetOf(k, subj) { ensurePetSys(k); return (k.subjPets && k.subjPets[subj]) || null; }
+
+  /* 学科经验：只喂对应学科的宠物；subj 为空 = 全科（班主任综合加分） */
+  function addSubjExp(k, subj, n) {
+    if (!k || !n || n <= 0) return [];
+    ensurePetSys(k);
+    const list = (subj && subj !== 'mix' && k.subjPets[subj]) ? [subj] : SUBJ_LIST.map((x) => x.k);
+    const ups = [];
+    list.forEach((sk) => {
+      const p = k.subjPets[sk];
+      if (!p) return;
+      const before = p.lv;
+      p.exp += n;
+      while (p.exp >= expNeed(p.lv) && p.lv < 60) { p.exp -= expNeed(p.lv); p.lv += 1; }
+      if (p.lv > before) ups.push({ subj: sk, lv: p.lv });
+    });
+    P.save();
+    return ups;
+  }
+  /* 学科宠物平均等级：老师端一眼看出这个孩子哪科宠物养得好 */
+  function subjAvgLv(k) {
+    ensurePetSys(k);
+    const arr = SUBJ_LIST.map((s) => (k.subjPets[s.k] ? k.subjPets[s.k].lv : 0));
+    return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+  }
+
+  /* 带饰品的宠物形象：opts.size 像素，opts.noAcc 不戴饰品 */
+  function petBand(pet, size, wardrobe, noAcc) {
+    const w = size || 88;
+    if (!pet || !pet.type) return '<span class="pav" style="width:' + w + 'px;height:' + w + 'px"></span>';
+    const src = imgFor(pet.type, stageIdxOf(pet.lv || 1));
+    let layer = '';
+    if (!noAcc && wardrobe) {
+      Object.keys(wardrobe).forEach((slot) => {
+        const a = ACCS[wardrobe[slot]];
+        if (!a) return;
+        layer += '<i class="pav-acc ' + a.slot + '" style="left:' + a.l + '%;top:' + a.top + '%;font-size:' + Math.max(10, Math.round(w * a.f / 100)) + 'px">' + a.e + '</i>';
+      });
+    }
+    return '<span class="pav" style="width:' + w + 'px;height:' + w + 'px"><img src="' + src + '" alt="">' + layer + '</span>';
+  }
+  function petAv(k, size) {
+    ensurePetSys(k);
+    return petBand(k.pet, size, k.wardrobe);
+  }
+  function subjPetAv(k, subj, size) {
+    const p = subjPetOf(k, subj);
+    return petBand(p, size, k.wardrobe);
+  }
+
+  /* 装扮面板：四个槽位 + 已拥有/可购买 */
+  function dressSheet(k) {
+    ensurePetSys(k);
+    openSheet('<div class="sheet-h">🎀 宠物装扮</div><div class="dress-body"></div>', (m) => {
+    const render_ = () => {
+      const body = m.querySelector('.dress-body');
+      const slotHTML = ACC_SLOTS.map((sl) => {
+        const cur = k.wardrobe[sl.k] ? ACCS[k.wardrobe[sl.k]] : null;
+        return '<div class="ds-slot"><span class="ds-l">' + sl.n + '</span>' +
+          '<span class="ds-v">' + (cur ? cur.e + ' ' + cur.n + '<button class="ds-x" data-off="' + sl.k + '">取下</button>' : '未装扮') + '</span></div>';
+      }).join('');
+      const owned = k.owned.filter((id) => ACCS[id]);
+      const shop = Object.keys(ACCS).filter((id) => !k.owned.includes(id));
+      body.innerHTML =
+        '<div class="ds-preview">' + petAv(k, 120) + '<div class="ds-pt"><b>' + esc(k.pet.name) + '</b><small>Lv.' + k.pet.lv + ' · 试穿效果实时更新</small></div></div>' +
+        slotHTML +
+        '<div class="section-h" style="margin-top:12px"><h2>我的饰品</h2><span class="sub">' + owned.length + ' 件</span></div>' +
+        '<div class="ds-grid">' + (owned.length ? owned.map((id) => {
+          const a = ACCS[id];
+          const on = k.wardrobe[a.slot] === id;
+          return '<button class="ds-it' + (on ? ' on' : '') + '" data-wear="' + id + '">' +
+            '<span class="ds-e">' + a.e + '</span><b>' + a.n + '</b><small>' + (on ? '已穿戴' : '点我戴上') + '</small></button>';
+        }).join('') : '<div class="tiny">还没有饰品，去商店看看</div>') + '</div>' +
+        (shop.length ? '<div class="section-h" style="margin-top:14px"><h2>饰品商店</h2><span class="sub">积分兑换 · 余额 ' + k.points + '</span></div>' +
+          '<div class="ds-grid">' + shop.map((id) => {
+            const a = ACCS[id];
+            return '<button class="ds-it buy" data-buy="' + id + '"><span class="ds-e">' + a.e + '</span><b>' + a.n + '</b>' +
+              '<small>' + (k.points >= a.price ? '💰 ' + a.price + ' 分' : '🔒 需要 ' + a.price + ' 分') + '</small></button>';
+          }).join('') + '</div>' : '');
+      body.querySelectorAll('[data-wear]').forEach((b) => (b.onclick = () => {
+        const id = b.dataset.wear, a = ACCS[id];
+        k.wardrobe[a.slot] = k.wardrobe[a.slot] === id ? null : id;
+        if (!k.wardrobe[a.slot]) delete k.wardrobe[a.slot];
+        P.save(); render_();
+        toast(a.slot === 'head' ? '戴上啦，宠物形象已同步' : '已装扮 · 形象已同步');
+        if (typeof render === 'function') render();
+      }));
+      body.querySelectorAll('[data-off]').forEach((b) => (b.onclick = () => {
+        delete k.wardrobe[b.dataset.off]; P.save(); render_(); render();
+      }));
+      body.querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => {
+        const id = b.dataset.buy, a = ACCS[id];
+        if (k.points < a.price) return toast('积分不够，还差 ' + (a.price - k.points) + ' 分');
+        if (!confirm('用 ' + a.price + ' 积分兑换「' + a.n + '」？')) return;
+        k.points -= a.price; k.owned.push(id); k.wardrobe[a.slot] = id;
+        addLog(k, '🛍️', '兑换饰品「' + a.n + '」', -a.price);
+        P.save(); render_(); render(); toast('🎉 已拥有「' + a.n + '」，自动戴上');
+      }));
+    };
+    render_();
+    });
+  }
+
+  /* 学科宠物面板：看经验 / 换一只 / 说明来源 */
+  function subjPetSheet(k, subj) {
+    ensurePetSys(k);
+    const s = SUBJ_LIST.find((x) => x.k === subj) || SUBJ_LIST[0];
+    const p = k.subjPets[s.k];
+    const need = expNeed(p.lv);
+    const own = Object.keys(PETS).filter((t) => k.dex && (k.dex[t + '-baby'] || k.dex[t + '-growth'] || k.dex[t + '-adult'] || k.dex[t + '-ultimate']));
+    const pool = own.length ? own : [p.type];
+    const body =
+      '<div class="sp-hero" style="--c:' + s.c + '"><div class="sp-av">' + subjPetAv(k, s.k, 96) + '</div>' +
+      '<div class="sp-t"><b>' + PETS[p.type].name + '</b><small>' + s.ic + ' ' + s.n + '专属宠物 · Lv.' + p.lv + '</small>' +
+      '<div class="sp-bar"><i style="width:' + Math.round(p.exp / need * 100) + '%"></i></div>' +
+      '<span class="sp-exp">' + p.exp + ' / ' + need + ' 经验</span></div></div>' +
+      '<div class="tiny" style="margin:8px 2px">这只宠物只吃<b>' + s.n + '</b>的经验：' + s.n + '老师加分、' + s.n + '知识点通关、每日答题里的' + s.n + '题都会喂它。其他学科的经验不会分给它。</div>' +
+      '<div class="section-h" style="margin-top:12px"><h2>换一只' + s.n + '宠物</h2><span class="sub">从已解锁图鉴里选</span></div>' +
+      '<div class="sp-grid">' + pool.slice(0, 60).map((t) => {
+        const on = t === p.type;
+        const lv = Math.max(3, Math.min(12, p.lv));
+        return '<button class="sp-it' + (on ? ' on' : '') + '" data-t="' + t + '">' + petBand({ type: t, lv }, 56, null, true) +
+          '<b>' + PETS[t].name + '</b>' + (on ? '<small>当前</small>' : '') + '</button>';
+      }).join('') + '</div>';
+    openSheet('<div class="sheet-h">' + s.ic + ' ' + s.n + '宠物</div>' + body, (m) => {
+      m.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => {
+        p.type = b.dataset.t; P.save();
+        toast('已换成 ' + PETS[p.type].name + '（等级和经验保留）');
+        subjPetSheet(k, subj); render();
+      }));
+    });
+  }
+
+  /* 教师团队：班主任 1 名 + 每科 1 名（班主任可兼某科） */
+  function teacherTeamSheet() {
+    const c = curCls();
+    if (!c) return toast('先建班');
+    if (!c.head) c.head = '';
+    if (!c.subs || typeof c.subs !== 'object') c.subs = {};
+    const roles = [{ k: 'head', n: '班主任' }].concat(SUBJ_LIST.map((s) => ({ k: s.k, n: s.n + '老师' })));
+    const body = '<div class="tiny">一个年级一个班只有 1 名班主任；每个学科只有 1 名老师。班主任可以同时兼任某科老师。</div>' +
+      '<div class="tt-list">' + roles.map((r) => {
+        const val = r.k === 'head' ? (c.head || '') : (c.subs[r.k] || '');
+        return '<div class="tt-row"><span class="tt-r">' + r.n + '</span>' +
+          '<input class="tt-in" data-r="' + r.k + '" value="' + esc(val) + '" maxlength="10" placeholder="未设置">' +
+          '<button class="tt-save" data-save="' + r.k + '">保存</button></div>';
+      }).join('') + '</div>' +
+      '<div class="tiny" style="margin-top:8px">设置后，用「我的身份」切换到对应身份，加分只会加到该学科的宠物，别的科目老师改不了。</div>';
+    openSheet('<div class="sheet-h">👩‍🏫 教师团队</div>' + body, (m) => {
+      m.querySelectorAll('[data-save]').forEach((b) => (b.onclick = () => {
+        const rk = b.dataset.save;
+        const inp = m.querySelector('.tt-in[data-r="' + rk + '"]');
+        const v = inp.value.trim();
+        if (rk === 'head') c.head = v;
+        else {
+          /* 同一人不能同时占两个学科（班主任兼任除外） */
+          const dup = Object.keys(c.subs).find((x) => x !== rk && c.subs[x] === v && v);
+          if (dup) return toast('「' + v + '」已经是' + SUBJ_NAME[dup] + '老师，每科只能有 1 位老师');
+          c.subs[rk] = v;
+        }
+        P.save(); toast('已保存');
+        if (c.code && window.BEAST_CLOUD && window.BEAST_CLOUD.setMeta) {
+          window.BEAST_CLOUD.setMeta(c.code, { head: c.head, subs: c.subs }).catch(() => {});
+        }
+      }));
+    });
+  }
+
+  /* 我的身份：班主任 / 某科老师 */
+  function teacherRoleSheet() {
+    const c = curCls();
+    if (!c) return;
+    if (!c.head && !c.subs) { teacherTeamSheet(); return; }
+    const cur = P.d.teacher || {};
+    const opts = [];
+    if (c.head) opts.push({ k: 'head', n: '班主任 · ' + c.head });
+    SUBJ_LIST.forEach((s) => { if (c.subs[s.k]) opts.push({ k: s.k, n: s.n + '老师 · ' + c.subs[s.k] }); });
+    const body = '<div class="tiny">选择你现在的身份。学科老师的加分只进入该学科宠物，班主任可加全科。</div>' +
+      '<div class="tr-list">' + opts.map((o) => {
+        const on = (cur.role || 'head') === o.k;
+        return '<button class="tr-it' + (on ? ' on' : '') + '" data-r="' + o.k + '">' + o.n + (on ? '<i>当前</i>' : '') + '</button>';
+      }).join('') + '</div>' +
+      '<div class="btn-row" style="margin-top:12px"><button class="btn ghost" id="trTeam">👩‍🏫 管理教师团队</button></div>';
+    openSheet('<div class="sheet-h">🙋 我的身份</div>' + body, (m) => {
+      m.querySelectorAll('[data-r]').forEach((b) => (b.onclick = () => {
+        P.d.teacher = { role: b.dataset.r };
+        P.save();
+        toast('身份已切换：' + (b.dataset.r === 'head' ? '班主任' : SUBJ_NAME[b.dataset.r] + '老师'));
+        teacherRoleSheet(); render();
+      }));
+      m.querySelector('#trTeam').onclick = () => teacherTeamSheet();
+    });
+  }
+  /* 当前身份文字 */
+  function myRoleLabel() {
+    const t = P.d.teacher || {};
+    if (!isClass()) return '家长';
+    if (!t.role || t.role === 'head') return '班主任';
+    return (SUBJ_NAME[t.role] || '学科') + '老师';
+  }
+  /* 加分学科选择条：班主任可选全科/单科，学科老师锁定本科 */
+  function subjChipsHTML(sel, id) {
+    const scope = mySubjScope();
+    const pool = scope === 'all' ? [{ k: 'all', n: '全科', ic: '🌈' }].concat(SUBJ_LIST) : SUBJ_LIST.filter((s) => s.k === scope);
+    return '<div class="subj-chips" id="' + (id || 'shSubj') + '">' + pool.map((x) =>
+      '<button data-sub="' + x.k + '"' + (x.k === sel ? ' class="on"' : '') + '>' + (x.ic || '📘') + ' ' + x.n + '</button>').join('') + '</div>';
+  }
+
+  /* 当前老师可加分的学科：班主任 = 全科；学科老师 = 本科 */
+  function mySubjScope() {
+    const t = P.d.teacher || {};
+    if (!P.d.classes || !isClass()) return 'all';
+    if (!t.role || t.role === 'head') return 'all';
+    return SUBJ_LIST.some((s) => s.k === t.role) ? t.role : 'all';
+  }
+
   window.BP = { P, esc, toast, openSheet, $view, render, addExp, grantPoints, addLog,
-    kid, todayStr, isClass, petImg, petMeta, imgFor, stageIdxOf, stageOf, expNeed, evoFX, PETS, displayName };
+    kid, todayStr, isClass, petImg, petMeta, imgFor, stageIdxOf, stageOf, expNeed, evoFX, PETS, displayName,
+    SUBJ_LIST, SUBJ_NAME, ACCS, ensurePetSys, addSubjExp, subjPetOf, petBand, petAv, subjPetAv,
+    dressSheet, subjPetSheet, subjAvgLv, mySubjScope, teacherTeamSheet, teacherRoleSheet, curCls, isStudent };
   window.BPHook = { routes, ROUTES_ALL };
 
   /* ================= v3.29 账号中心 ================= */
@@ -4222,7 +4566,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3300', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3310', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

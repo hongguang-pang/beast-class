@@ -787,6 +787,7 @@
     SSR: { name: '传说', c: '#ffb300', w: 5 }
   };
   const rarOf = (t) => {
+    if (BP.PETS[t] && BP.PETS[t].rar) return BP.PETS[t].rar;
     const n = parseInt(String(t).replace(/\D/g, ''), 10) || 0;
     if (String(t)[0] === 'S' && n >= 101) return 'SSR';
     if (n >= 81) return 'SR';
@@ -839,6 +840,12 @@
     document.body.appendChild(el);
     const petSrc = petImg(k);
     const petName = BP.displayName(k);
+    /* v3.32: 武器 + 宠物稀有度 → 助战协力概率加成 */
+    const hitBonus = (function () {
+      ensurePetSys(k);
+      const w = k.wardrobe && k.wardrobe.hand && BP.WEAPONS[k.wardrobe.hand];
+      return ((w && w.fx && w.fx.hit) || 0) + (BP.rarFx(k.pet.type).hit || 0);
+    })();
 
     function headHTML() {
       return '<div class="qz-top"><button class="qz-x" id="qzX">✕</button>' +
@@ -878,6 +885,7 @@
       el.querySelectorAll('.qz-opt').forEach((b) => (b.disabled = true));
       btn.classList.add(right ? 'good' : 'bad');
       if (!right) {
+        BP.SND.play('wrong'); BP.SND.play('hurt');
         el.querySelectorAll('.qz-opt')[q.a].classList.add('good');
         wrongQs.push(q);
         petHp--;
@@ -888,6 +896,7 @@
         fb.className = 'qz-fb no';
       } else {
         eHp--;
+        BP.SND.play('right', !!cfg.enemy);
         const pet = el.querySelector('#qzPet');
         if (pet) { pet.classList.add('atk'); setTimeout(() => pet.classList.remove('atk'), 500); }
         const foe = el.querySelector('#foeCard');
@@ -895,7 +904,7 @@
         /* 助战宠物协战：每只 22% 概率追加 1 点伤害 */
         let extra = 0;
         if (cfg.enemy && cfg.aid) cfg.aid.forEach((a, i) => {
-          if (Math.random() < 0.22) {
+          if (Math.random() < 0.22 + hitBonus) {
             extra++;
             const chip = el.querySelector('.qz-aid[data-i="' + i + '"]');
             if (chip) { chip.classList.add('go'); setTimeout(() => chip.classList.remove('go'), 600); }
@@ -923,6 +932,7 @@
     }
     function finish() {
       const win = cfg.enemy ? eHp <= 0 : (cfg.mode === 'drill' ? wrongQs.length === 0 : true);
+      BP.SND.play(win ? 'victory' : 'lose');
       const total = cfg.qs.length;
       const right = total - wrongQs.length;
       let stars = 0;
@@ -1028,11 +1038,13 @@
   function petDropFX(card, k, cb) {
     const meta = BP.PETS[card] || { name: card, emoji: '🐾' };
     const rar = rarOf(card), R = RAR[rar];
+    BP.SND.play(rar === 'SSR' ? 'dropSSR' : 'drop');
     const m = document.createElement('div');
     m.className = 'evo-mask';
     m.innerHTML = '<div class="evo-box drop-box" style="border-color:' + R.c + ';box-shadow:0 0 40px ' + R.c + '66">' +
+      '<i class="drop-rays" style="--rc:' + R.c + '"></i>' +
       '<div class="rar-chip" style="background:' + R.c + '">' + rar + ' · ' + R.name + '</div>' +
-      '<div class="big img"><img src="images/gif/' + card + '-growth.gif" alt=""></div>' +
+      '<div class="big img"><img src="' + BP.imgFor(card, 2) + '" alt=""></div>' +
       '<h2>🐾 获得' + (rar === 'SSR' ? '传说' : '') + '宠物！</h2>' +
       '<p>' + meta.emoji + ' <b>' + esc(meta.name) + '</b><br>已收入图鉴 · 可在收集页设为助战</p>' +
       '<button class="btn sm" style="margin-top:14px;background:#ffd76e;color:#5b3a00" id="pdOk">收下啦</button></div>';
@@ -1048,6 +1060,59 @@
     requestAnimationFrame(() => m.classList.add('in'));
     const close = () => { m.classList.remove('in'); setTimeout(() => { m.remove(); if (cb) cb(); }, 320); };
     m.querySelector('#pdOk').onclick = close;
+    m.onclick = (e) => { if (e.target === m) close(); };
+  }
+
+  /* ================= v3.32 Boss 掉落饰品/武器（带光柱特效 + 音效） ================= */
+  function rollItemDrop(tier) {
+    /* tier: 'boss' | 'final' —— 决战稀有度更高 */
+    let rar;
+    if (tier === 'final') rar = Math.random() < .6 ? 'SSR' : 'SR';
+    else rar = Math.random() < .12 ? 'SSR' : (Math.random() < .5 ? 'SR' : 'R');
+    const isAcc = Math.random() < .5;
+    const pool = isAcc
+      ? Object.keys(BP.ACCS).filter((id) => (BP.ACCS[id].rar || 'R') === rar)
+      : Object.keys(BP.WEAPONS).filter((id) => BP.WEAPONS[id].rar === rar);
+    if (!pool.length) return null;
+    return { kind: isAcc ? 'acc' : 'wpn', id: pick(pool), rar };
+  }
+  function giveItemDrop(k, d) {
+    if (!d) return;
+    if (d.kind === 'acc') {
+      if (!k.owned.includes(d.id)) k.owned.push(d.id);
+    } else {
+      if (!k.weapons) k.weapons = [];
+      if (!k.weapons.includes(d.id)) k.weapons.push(d.id);
+      if (!k.wardrobe || typeof k.wardrobe !== 'object') k.wardrobe = {};
+      if (!k.wardrobe.hand) k.wardrobe.hand = d.id; /* 首件自动装备 */
+    }
+  }
+  function itemDropFX(d, k, cb) {
+    if (!d) { if (cb) cb(); return; }
+    const def = d.kind === 'acc' ? BP.ACCS[d.id] : BP.WEAPONS[d.id];
+    const R = RAR[d.rar] || RAR.R;
+    BP.SND.play(d.rar === 'SSR' ? 'dropSSR' : 'drop');
+    const m = document.createElement('div');
+    m.className = 'evo-mask';
+    m.innerHTML = '<div class="evo-box drop-box" style="border-color:' + R.c + ';box-shadow:0 0 40px ' + R.c + '66">' +
+      '<i class="drop-rays" style="--rc:' + R.c + '"></i>' +
+      '<div class="rar-chip" style="background:' + R.c + '">' + d.rar + ' · ' + R.name + (d.kind === 'wpn' ? ' 武器' : ' 饰品') + '</div>' +
+      '<div class="big img idrop" style="font-size:76px;color:' + R.c + '">' + def.e + '</div>' +
+      '<h2>' + (d.kind === 'wpn' ? '⚔️ Boss 掉落武器！' : '🎀 Boss 掉落饰品！') + '</h2>' +
+      '<p><b>' + esc(def.n) + '</b><br>' + esc(def.d || '装扮后宠物形象同步更新') + '</p>' +
+      '<button class="btn sm" style="margin-top:14px;background:#ffd76e;color:#5b3a00" id="idOk">收下啦</button></div>';
+    for (let i = 0; i < 14; i++) {
+      const s = document.createElement('i');
+      s.className = 'sparkle';
+      s.style.left = (30 + Math.random() * 40) + '%';
+      s.style.top = (30 + Math.random() * 30) + '%';
+      s.style.animationDelay = (Math.random() * .5) + 's';
+      m.querySelector('.evo-box').appendChild(s);
+    }
+    document.body.appendChild(m);
+    requestAnimationFrame(() => m.classList.add('in'));
+    const close = () => { m.classList.remove('in'); setTimeout(() => { m.remove(); if (cb) cb(); }, 320); };
+    m.querySelector('#idOk').onclick = close;
     m.onclick = (e) => { if (e.target === m) close(); };
   }
 
@@ -1496,6 +1561,7 @@
         /* 知识点掌握累计（kn 关精确到知识点，混科关按学科） */
         (r.results || []).forEach((x) => mastAdd(k, n.t === 'kn' ? n.subj : x.q.type, n.t === 'kn' ? n.kn : null, x.ok));
         let dropMsg = '';
+        let dropItem = null;
         const bonus = n.lv || 0; /* 难度加成：关卡越靠后奖励越高 */
         if (n.t === 'chall') {
           const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
@@ -1526,14 +1592,20 @@
         if (n.t === 'boss') {
           if (!q.badges.includes(n.u)) q.badges.push(n.u);
           const card = dropPetOf(k, q, rarityByScore(r.right, r.total, ['R', 'SR', 'SSR']));
-          reward(k, 5 + bonus, 25 + bonus * 5, '击败' + (bossS ? bossS.name : '单元') + ' Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '👑', (n.subj || 'mix'));
-          dropMsg = card;
+          /* v3.32: Boss 额外概率掉饰品/武器 */
+          const item = Math.random() < .55 ? rollItemDrop('boss') : null;
+          giveItemDrop(k, item);
+          reward(k, 5 + bonus, 25 + bonus * 5, '击败' + (bossS ? bossS.name : '单元') + ' Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」' + (item ? ' · 掉落' + (item.kind === 'wpn' ? '武器' : '饰品') + '「' + (item.kind === 'wpn' ? BP.WEAPONS[item.id].n : BP.ACCS[item.id].n) + '」' : ''), '👑', (n.subj || 'mix'));
+          dropMsg = card; dropItem = item;
         }
         if (n.t === 'final') {
           q.trophy = true;
           const card = dropPetOf(k, q, 'SSR');
-          reward(k, 20, 60, '🏆 击败知识魔王，通关' + gradeName(g) + '冒险 · 获得传说宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」', '🏆', 'mix');
-          dropMsg = card;
+          /* v3.32: 决战必掉饰品/武器（稀有度更高） */
+          const item = rollItemDrop('final');
+          giveItemDrop(k, item);
+          reward(k, 20, 60, '🏆 击败知识魔王，通关' + gradeName(g) + '冒险 · 获得传说宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」' + (item ? ' · 掉落' + (item.kind === 'wpn' ? '武器' : '饰品') + '「' + (item.kind === 'wpn' ? BP.WEAPONS[item.id].n : BP.ACCS[item.id].n) + '」' : ''), '🏆', 'mix');
+          dropMsg = card; dropItem = item;
         }
         P.save();
         syncClassData(k); /* 班级学员：答题数据合入班级 */
@@ -1542,7 +1614,7 @@
           const isFinal = n.t === 'final';
           victoryFX(isFinal ? '🏆 通关啦！' : '👑 Boss 击败！',
             isFinal ? gradeName(g) + '全部知识掌握！' : '获得「' + DB[g].units[n.u].em + '」单元徽章',
-            () => petDropFX(dropMsg, k, refresh));
+            () => petDropFX(dropMsg, k, () => itemDropFX(dropItem, k, refresh)));
         } else toast((n.t === 'kn' ? '知识点掌握 +' : '战斗胜利 +') + (n.t === 'review' ? 1 + bonus : n.t === 'kn' ? 1 + bonus : 2 + bonus) + ' 积分' + (dropMsg ? ' · ' + dropMsg : ''));
       }
     });
@@ -1554,13 +1626,22 @@
     const pool = Object.keys(BP.PETS).filter((t) => !owned.includes(t));
     const card = pool.length ? pick(pool) : pick(Object.keys(BP.PETS));
     owned.push(card);
+    /* v3.32: 宝箱 40% 额外开出饰品 */
+    let item = null;
+    if (Math.random() < .4) {
+      item = rollItemDrop('boss');
+      if (item && item.kind === 'wpn') { /* 宝箱只出饰品，武器留给 Boss */ item = null; }
+      giveItemDrop(k, item);
+    }
     if (n.i >= 0) { n.done = true; n.stars = 3; }
     P.save();
     const meta = BP.PETS[card];
+    BP.SND.play('chest');
     const m = document.createElement('div');
     m.className = 'evo-mask';
-    m.innerHTML = '<div class="evo-box"><div class="big img"><img src="images/gif/' + card + '-baby.gif" alt=""></div>' +
+    m.innerHTML = '<div class="evo-box"><div class="big img"><img src="' + BP.imgFor(card, 1) + '" alt=""></div>' +
       '<h2>🧸 收集到宠物卡！</h2><p>' + meta.emoji + ' <b>' + meta.name + '</b><br>已收集 ' + owned.length + ' 张，继续冒险集齐图鉴！</p>' +
+      (item ? '<p class="tk-item">✨ 额外开出饰品「' + BP.ACCS[item.id].n + '」！可在宠物装扮里穿戴</p>' : '') +
       '<button class="btn sm" style="margin-top:14px;background:#ffd76e;color:#5b3a00" id="tcOk">放进图鉴</button></div>';
     for (let i = 0; i < 12; i++) {
       const s = document.createElement('i');
@@ -1725,7 +1806,8 @@
 
   /* ================= 导出给 app.js 调用 ================= */
   window.BPGames = { petInteract, aidSlots, rarOf, RAR, SUBJ, mastStats, mastAdd,
-    genPlacement, rollPlacementPet, studentDaily, joinClassSheet, syncClassData };
+    genPlacement, rollPlacementPet, studentDaily, joinClassSheet, syncClassData,
+    rollItemDrop, giveItemDrop, itemDropFX, petDropFX };
 
   /* ================= 注册路由 ================= */
   const hook = window.BPHook;

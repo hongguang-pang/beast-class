@@ -115,7 +115,39 @@
     S107: { name: '奇妙探险猫·妙妙', emoji: '🐱', hue: 330, glow: 'rgba(255,150,210,.6)' },
     S108: { name: '闪电飞侠·速递', emoji: '🚀', hue: 5, glow: 'rgba(255,160,140,.6)' },
     S109: { name: '泡泡粉猪·琪琪', emoji: '🐷', hue: 340, glow: 'rgba(255,160,190,.6)' },
-    S110: { name: '雪绒精灵·冰冰', emoji: '❄️', hue: 190, glow: 'rgba(150,235,255,.6)' }
+    S110: { name: '雪绒精灵·冰冰', emoji: '❄️', hue: 190, glow: 'rgba(150,235,255,.6)' },
+    /* v3.32: 数码兽图鉴拆图入库 · rar 显式稀有度（按效果强度定档），jpg 四阶段立绘 */
+    D201: { name: '星羽兽', emoji: '🦅', hue: 210, glow: 'rgba(160,215,255,.6)', rar: 'SSR', jpg: 1 },
+    D202: { name: '岩甲兽', emoji: '🪨', hue: 30, glow: 'rgba(230,190,140,.55)', rar: 'SR', jpg: 1 },
+    D203: { name: '焰鳞兽', emoji: '🐉', hue: 8, glow: 'rgba(255,160,140,.6)', rar: 'SSR', jpg: 1 },
+    D204: { name: '潮鳞兽', emoji: '🐬', hue: 195, glow: 'rgba(140,220,255,.55)', rar: 'SR', jpg: 1 },
+    D205: { name: '森晶兽', emoji: '🌿', hue: 95, glow: 'rgba(190,255,160,.55)', rar: 'R', jpg: 1 },
+    D206: { name: '雷纹兽', emoji: '⚡', hue: 50, glow: 'rgba(255,230,140,.55)', rar: 'R', jpg: 1 },
+    D207: { name: '月影兽', emoji: '🌙', hue: 265, glow: 'rgba(200,150,255,.6)', rar: 'SSR', jpg: 1 },
+    D208: { name: '风翼兽', emoji: '🪽', hue: 190, glow: 'rgba(150,240,255,.55)', rar: 'SR', jpg: 1 },
+    D209: { name: '钢核兽', emoji: '🤖', hue: 215, glow: 'rgba(150,190,255,.55)', rar: 'SR', jpg: 1 },
+    D210: { name: '时砂兽', emoji: '⏳', hue: 45, glow: 'rgba(255,220,140,.55)', rar: 'R', jpg: 1 },
+    D211: { name: '星芽兽', emoji: '🌱', hue: 100, glow: 'rgba(200,255,160,.55)', rar: 'R', jpg: 1 },
+    D212: { name: '岩晶兽', emoji: '💎', hue: 205, glow: 'rgba(150,205,255,.55)', rar: 'SR', jpg: 1 },
+    D213: { name: '雾羽兽', emoji: '☁️', hue: 200, glow: 'rgba(170,220,255,.55)', rar: 'R', jpg: 1 },
+    D214: { name: '焰芯兽', emoji: '🔥', hue: 20, glow: 'rgba(255,175,140,.6)', rar: 'SSR', jpg: 1 },
+    D215: { name: '潮鳍兽', emoji: '💧', hue: 195, glow: 'rgba(140,225,255,.55)', rar: 'SR', jpg: 1 },
+    D216: { name: '风载兽', emoji: '🌀', hue: 210, glow: 'rgba(160,225,255,.55)', rar: 'R', jpg: 1 },
+    D217: { name: '疾风兽', emoji: '🌪️', hue: 55, glow: 'rgba(255,235,150,.55)', rar: 'R', jpg: 1 },
+    D218: { name: '林菇兽', emoji: '🍄', hue: 0, glow: 'rgba(255,160,160,.55)', rar: 'R', jpg: 1 },
+    D219: { name: '雷印兽', emoji: '🌩️', hue: 270, glow: 'rgba(205,160,255,.55)', rar: 'SR', jpg: 1 },
+    D220: { name: '月烛兽', emoji: '🕯️', hue: 225, glow: 'rgba(160,190,255,.55)', rar: 'SR', jpg: 1 },
+    /* v3.32: 机甲英雄/机械龙单图宠物（SSR 掉落池扩充） */
+    M301: { name: '烈焰机甲·英雄', emoji: '🦸', hue: 10, glow: 'rgba(255,160,150,.6)', rar: 'SR', single: 1 },
+    M302: { name: '苍蓝机甲·英雄', emoji: '🦸', hue: 215, glow: 'rgba(150,195,255,.6)', rar: 'R', single: 1 },
+    M303: { name: '翠光机甲·英雄', emoji: '🦸', hue: 150, glow: 'rgba(150,255,205,.6)', rar: 'R', single: 1 },
+    M304: { name: '圣金机甲·英雄', emoji: '🦸', hue: 45, glow: 'rgba(255,225,150,.65)', rar: 'SSR', single: 1 },
+    M305: { name: '星紫机甲·英雄', emoji: '🦸', hue: 275, glow: 'rgba(210,160,255,.6)', rar: 'SR', single: 1 },
+    M306: { name: '赤焰机械龙', emoji: '🐲', hue: 5, glow: 'rgba(255,155,145,.65)', rar: 'SSR', single: 1 },
+    M307: { name: '苍海机械龙', emoji: '🐲', hue: 195, glow: 'rgba(145,225,255,.6)', rar: 'SR', single: 1 },
+    M308: { name: '丛林机械龙', emoji: '🐲', hue: 120, glow: 'rgba(160,255,170,.6)', rar: 'R', single: 1 },
+    M309: { name: '樱雪机械龙', emoji: '🐲', hue: 330, glow: 'rgba(255,160,205,.6)', rar: 'R', single: 1 },
+    M310: { name: '暗影机械龙', emoji: '🐲', hue: 280, glow: 'rgba(215,150,255,.6)', rar: 'SR', single: 1 }
   };
 
   const CREATURES = Object.keys(PETS).map((id) =>
@@ -236,7 +268,14 @@
   const expNeed = (lv) => 20 + (lv - 1) * 12;
   const stageIdxOf = (lv) => { let i = 0; STAGES.forEach((s, j) => { if (lv >= s.min) i = j; }); return i; };
   /* 全部 50 只宠物都有图片立绘（经典五系为原立绘，c 系为 AI 立绘 + 四阶段合成图） */
-  const imgFor = (el, si) => si === 0 ? 'images/egg.jpg' : 'images/gif/' + el + '-' + STAGES[si].suffix + '.gif';
+  /* v3.32: jpg 单图 / 四阶段 jpg 宠物 → images/m/；老宠物仍走 gif */
+  const imgFor = (el, si) => {
+    if (si === 0 && !(PETS[el] && PETS[el].single)) return 'images/egg.jpg';
+    const p = PETS[el];
+    if (p && p.single) return 'images/m/' + el + '.jpg';
+    if (p && p.jpg) return 'images/m/' + el + '-' + STAGES[si].suffix + '.jpg';
+    return 'images/gif/' + el + '-' + STAGES[si].suffix + '.gif';
+  };
   const petImg = (k) => imgFor(k.skin || k.pet.type, stageIdxOf(k.pet.lv));
   const petEmoji = (k) => stageOf(k.pet.lv).emoji || petMeta(k.pet.type).emoji;
 
@@ -642,7 +681,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.31 · 五科宠物 · 装扮饰品 · 班主任与学科老师<br>' +
+      '<div class="w-ver">版本 v3.32 · 图鉴新宠 + Boss 掉宝 + 武器音效<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -4149,20 +4188,151 @@
   const SUBJ_NAME = { math: '数学', cn: '语文', en: '英语', sci: '科学', eth: '常识', mix: '综合' };
   /* 饰品：slot 决定叠在哪个部位；top/left 是相对宠物框的百分比 */
   const ACCS = {
-    crown:  { n: '黄金王冠', slot: 'head', e: '👑', f: 30, top: 4,  l: 50, price: 60 },
-    cap:    { n: '棒球帽',   slot: 'head', e: '🧢', f: 28, top: 6,  l: 50, price: 40 },
-    bow:    { n: '蝴蝶结',   slot: 'head', e: '🎀', f: 20, top: 10, l: 64, price: 30 },
-    star:   { n: '星星光环', slot: 'head', e: '⭐', f: 18, top: -2, l: 36, price: 45 },
-    flower: { n: '小雏菊',   slot: 'head', e: '🌸', f: 18, top: 8,  l: 68, price: 22 },
-    glasses:{ n: '学霸眼镜', slot: 'face', e: '🕶️', f: 20, top: 30, l: 50, price: 50 },
-    mask:   { n: '小口罩',   slot: 'face', e: '😷', f: 17, top: 34, l: 50, price: 25 },
-    scarf:  { n: '暖围巾',   slot: 'neck', e: '🧣', f: 22, top: 50, l: 50, price: 35 },
-    bell:   { n: '铃铛项圈', slot: 'neck', e: '🔔', f: 15, top: 52, l: 50, price: 28 },
-    wings:  { n: '天使翅膀', slot: 'back', e: '🪽', f: 34, top: 40, l: 24, price: 80 },
-    cape:   { n: '英雄披风', slot: 'back', e: '🧥', f: 30, top: 42, l: 74, price: 70 },
-    mic:    { n: '小话筒',   slot: 'back', e: '🎤', f: 22, top: 48, l: 76, price: 36 }
+    crown:  { n: '黄金王冠', slot: 'head', e: '👑', f: 30, top: 4,  l: 50, price: 60, rar: 'SSR' },
+    cap:    { n: '棒球帽',   slot: 'head', e: '🧢', f: 28, top: 6,  l: 50, price: 40, rar: 'SR' },
+    bow:    { n: '蝴蝶结',   slot: 'head', e: '🎀', f: 20, top: 10, l: 64, price: 30, rar: 'R' },
+    star:   { n: '星星光环', slot: 'head', e: '⭐', f: 18, top: -2, l: 36, price: 45, rar: 'SR' },
+    flower: { n: '小雏菊',   slot: 'head', e: '🌸', f: 18, top: 8,  l: 68, price: 22, rar: 'N' },
+    glasses:{ n: '学霸眼镜', slot: 'face', e: '🕶️', f: 20, top: 30, l: 50, price: 50, rar: 'SR' },
+    mask:   { n: '小口罩',   slot: 'face', e: '😷', f: 17, top: 34, l: 50, price: 25, rar: 'N' },
+    scarf:  { n: '暖围巾',   slot: 'neck', e: '🧣', f: 22, top: 50, l: 50, price: 35, rar: 'R' },
+    bell:   { n: '铃铛项圈', slot: 'neck', e: '🔔', f: 15, top: 52, l: 50, price: 28, rar: 'N' },
+    wings:  { n: '天使翅膀', slot: 'back', e: '🪽', f: 34, top: 40, l: 24, price: 80, rar: 'SSR' },
+    cape:   { n: '英雄披风', slot: 'back', e: '🧥', f: 30, top: 42, l: 74, price: 70, rar: 'SR' },
+    mic:    { n: '小话筒',   slot: 'back', e: '🎤', f: 22, top: 48, l: 76, price: 36, rar: 'R' }
   };
-  const ACC_SLOTS = [{ k: 'head', n: '头部' }, { k: 'face', n: '脸部' }, { k: 'neck', n: '颈部' }, { k: 'back', n: '背部' }];
+  const ACC_SLOTS = [{ k: 'head', n: '头部' }, { k: 'face', n: '脸部' }, { k: 'neck', n: '颈部' }, { k: 'back', n: '背部' }, { k: 'hand', n: '武器' }];
+
+  /* v3.32: 武器库（Boss/决战掉落，装备到「武器」槽位，战斗协力 & 经验加成） */
+  const WEAPONS = {
+    w1:  { n: '圣剑·曙光',   e: '⚔️', rar: 'SSR', fx: { hit: .15 }, top: 52, l: 70, f: 32, d: '圣光加持，助战协力概率 +15%' },
+    w2:  { n: '晨曦神弓',    e: '🏹', rar: 'SSR', fx: { hit: .10 }, top: 50, l: 72, f: 30, d: '百步穿杨，助战协力概率 +10%' },
+    w3:  { n: '秘银长枪',    e: '🔱', rar: 'SR',  fx: { hit: .08 }, top: 54, l: 72, f: 30, d: '助战协力概率 +8%' },
+    w4:  { n: '学者法杖',    e: '🪄', rar: 'SR',  fx: { exp: .10 }, top: 52, l: 72, f: 30, d: '智慧涌动，经验获取 +10%' },
+    w5:  { n: '雷霆战锤',    e: '🔨', rar: 'SR',  fx: { hit: .06 }, top: 54, l: 70, f: 30, d: '助战协力概率 +6%' },
+    w6:  { n: '疾风双刃',    e: '🗡️', rar: 'SR',  fx: { hit: .05 }, top: 54, l: 74, f: 28, d: '助战协力概率 +5%' },
+    w7:  { n: '铁木短剑',    e: '🔪', rar: 'R',   fx: { hit: .03 }, top: 56, l: 74, f: 26, d: '助战协力概率 +3%' },
+    w8:  { n: '猎风轻弓',    e: '🏹', rar: 'R',   fx: { hit: .03 }, top: 54, l: 74, f: 26, d: '助战协力概率 +3%' },
+    w9:  { n: '学徒魔杖',    e: '✨', rar: 'R',   fx: { exp: .04 }, top: 54, l: 76, f: 26, d: '经验获取 +4%' },
+    w10: { n: '青铜小盾',    e: '🛡️', rar: 'R',   fx: { hit: .02 }, top: 56, l: 72, f: 28, d: '助战协力概率 +2%' }
+  };
+
+  /* v3.32: 稀有度即效果 —— SSR 效果最强，按稀有度给全科经验与战斗协力加成 */
+  const RARFX = {
+    SSR: { exp: .15, hit: .08, label: '✨ 经验 +15% · 战斗协力 +8%' },
+    SR:  { exp: .08, hit: .05, label: '✨ 经验 +8% · 战斗协力 +5%' },
+    R:   { exp: .04, hit: .03, label: '✨ 经验 +4% · 战斗协力 +3%' },
+    N:   { exp: 0,   hit: 0,   label: '' }
+  };
+  const rarFx = (t) => RARFX[(PETS[t] && PETS[t].rar) || 'N'] || RARFX.N;
+
+  /* ================= v3.32 音效 & 休闲治愈 BGM（Web Audio 实时合成，零音频文件） ================= */
+  const SND = {
+    ctx: null, master: null, on: true, bgmTimer: null, bar: 0, nextBar: 0,
+    CH: [[261.6, 329.6, 392.0], [220.0, 261.6, 329.6], [174.6, 220.0, 261.6], [196.0, 246.9, 293.7]], /* C Am F G */
+    PENT: [523.3, 587.3, 659.3, 784.0, 880.0, 1046.5],
+    ready() {
+      if (!this.ctx) {
+        const C = window.AudioContext || window.webkitAudioContext;
+        if (!C) return null;
+        try { this.ctx = new C(); } catch (e) { return null; }
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 1;
+        this.master.connect(this.ctx.destination);
+      }
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      return this.ctx;
+    },
+    tone(f, t, d, type, v, f2) {
+      const c = this.ctx; if (!c) return;
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(Math.max(30, f), t);
+      if (f2) o.frequency.exponentialRampToValueAtTime(Math.max(30, f2), t + d);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(v || 0.1, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g); g.connect(this.master);
+      o.start(t); o.stop(t + d + 0.05);
+    },
+    noise(t, d, v) {
+      const c = this.ctx; if (!c) return;
+      const n = Math.floor(c.sampleRate * d);
+      const buf = c.createBuffer(1, n, c.sampleRate);
+      const ch = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const src = c.createBufferSource(); src.buffer = buf;
+      const g = c.createGain(); g.gain.value = v || 0.06;
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1200;
+      src.connect(f); f.connect(g); g.connect(this.master);
+      src.start(t);
+    },
+    play(name) {
+      if (!this.on) return;
+      const c = this.ready(); if (!c) return;
+      const t = c.currentTime + 0.01, S = (a) => this.tone(a[0], t + (a[4] || 0) * 0.001 + (a[5] || 0), a[2], a[3], a[1]);
+      switch (name) {
+        case 'right': this.tone(659.3, t, .12, 'sine', .12); this.tone(987.8, t + .09, .2, 'sine', .1); if (arguments[1]) { this.noise(t + .05, .1, .05); this.tone(180, t + .05, .12, 'square', .05, 90); } break;
+        case 'wrong': this.tone(233, t, .28, 'triangle', .09, 155); break;
+        case 'hurt': this.tone(320, t, .3, 'sawtooth', .045, 120); break;
+        case 'victory': [523.3, 659.3, 784.0, 1046.5].forEach((f, i) => this.tone(f, t + i * .12, .22, 'sine', .11)); this.tone(1318.5, t + .5, .5, 'sine', .09); break;
+        case 'lose': [392, 329.6, 261.6].forEach((f, i) => this.tone(f, t + i * .16, .3, 'triangle', .06)); break;
+        case 'chest': this.tone(180, t, .1, 'square', .06, 320); this.tone(1046.5, t + .12, .3, 'sine', .1); this.tone(1318.5, t + .2, .35, 'sine', .08); break;
+        case 'levelup': [523.3, 587.3, 659.3, 784, 880, 1046.5].forEach((f, i) => this.tone(f, t + i * .06, .15, 'sine', .08)); break;
+        case 'drop': [659.3, 830.6, 987.8, 1318.5].forEach((f, i) => this.tone(f, t + i * .07, .2, 'sine', .1)); break;
+        case 'dropSSR': [523.3, 659.3, 784, 1046.5, 1318.5, 1568].forEach((f, i) => this.tone(f, t + i * .09, .3, 'sine', .11));
+          [2093, 2637].forEach((f, i) => this.tone(f, t + .7 + i * .12, .4, 'sine', .06)); break;
+        case 'tap': this.tone(880, t, .05, 'sine', .05); break;
+      }
+    },
+    bgmBar(t) {
+      const ch = this.CH[this.bar % 4];
+      /* 柔和铺底和弦 */
+      ch.forEach((f, i) => {
+        const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.016, t + 1.2);
+        g.gain.linearRampToValueAtTime(0.0001, t + 4.2);
+        o.connect(g); g.connect(this.master);
+        o.start(t); o.stop(t + 4.4);
+      });
+      /* 低音 */
+      this.tone(ch[0] / 2, t, 3.4, 'sine', 0.028);
+      /* 五声音阶随机漫步旋律（治愈感） */
+      let idx = this.melIdx || 2;
+      [0.6, 2.1, 3.3].forEach((off, i) => {
+        if (Math.random() < (i === 2 ? 0.5 : 0.8)) {
+          idx = Math.max(0, Math.min(this.PENT.length - 1, idx + [(-2), -1, 1, 2][Math.floor(Math.random() * 4)]));
+          this.tone(this.PENT[idx], t + off, 0.9, 'triangle', 0.038);
+        }
+      });
+      this.melIdx = idx;
+      this.bar++;
+    },
+    bgmStart() {
+      if (!this.on || this.bgmTimer) return;
+      const c = this.ready(); if (!c) return;
+      this.bar = 0; this.nextBar = c.currentTime + 0.15;
+      this.bgmTimer = setInterval(() => {
+        if (!this.on) return this.bgmStop();
+        while (this.nextBar < c.currentTime + 6) { this.bgmBar(this.nextBar); this.nextBar += 4; }
+      }, 1500);
+    },
+    bgmStop() { if (this.bgmTimer) { clearInterval(this.bgmTimer); this.bgmTimer = null; } },
+    toggle() {
+      this.on = !this.on;
+      try { localStorage.setItem('beast.snd', this.on ? '1' : '0'); } catch (e) {}
+      if (!this.on) this.bgmStop(); else this.bgmStart();
+      return this.on;
+    }
+  };
+  try { SND.on = localStorage.getItem('beast.snd') !== '0'; } catch (e) {}
+  /* 首次交互后自动开播（浏览器自动播放策略） */
+  (function () {
+    const kick = () => { if (SND.on) SND.bgmStart(); document.removeEventListener('pointerdown', kick); };
+    document.addEventListener('pointerdown', kick, { once: true });
+  })();
 
   /* 补齐字段：老档案也能直接用（学科宠物默认继承主宠物的种类） */
   function ensurePetSys(k) {
@@ -4180,6 +4350,7 @@
     });
     if (!k.wardrobe || typeof k.wardrobe !== 'object') k.wardrobe = {};
     if (!Array.isArray(k.owned)) k.owned = ['bow'];
+    if (!Array.isArray(k.weapons)) k.weapons = [];
   }
   function subjPetOf(k, subj) { ensurePetSys(k); return (k.subjPets && k.subjPets[subj]) || null; }
 
@@ -4193,7 +4364,8 @@
       const p = k.subjPets[sk];
       if (!p) return;
       const before = p.lv;
-      p.exp += n;
+      /* v3.32: 宠物稀有度即效果 —— 稀有度越高，经验获取越快 */
+      p.exp += Math.round(n * (1 + (rarFx(p.type).exp || 0)));
       while (p.exp >= expNeed(p.lv) && p.lv < 60) { p.exp -= expNeed(p.lv); p.lv += 1; }
       if (p.lv > before) ups.push({ subj: sk, lv: p.lv });
     });
@@ -4215,9 +4387,10 @@
     let layer = '';
     if (!noAcc && wardrobe) {
       Object.keys(wardrobe).forEach((slot) => {
-        const a = ACCS[wardrobe[slot]];
+        const a = ACCS[wardrobe[slot]] || WEAPONS[wardrobe[slot]];
         if (!a) return;
-        layer += '<i class="pav-acc ' + a.slot + '" style="left:' + a.l + '%;top:' + a.top + '%;font-size:' + Math.max(10, Math.round(w * a.f / 100)) + 'px">' + a.e + '</i>';
+        const sl = a.slot || 'hand';
+        layer += '<i class="pav-acc ' + sl + '" style="left:' + a.l + '%;top:' + a.top + '%;font-size:' + Math.max(10, Math.round(w * a.f / 100)) + 'px">' + a.e + '</i>';
       });
     }
     return '<span class="pav" style="width:' + w + 'px;height:' + w + 'px"><img src="' + src + '" alt="">' + layer + '</span>';
@@ -4237,12 +4410,14 @@
     openSheet('<div class="sheet-h">🎀 宠物装扮</div><div class="dress-body"></div>', (m) => {
     const render_ = () => {
       const body = m.querySelector('.dress-body');
+      const itemOf = (id) => ACCS[id] || WEAPONS[id];
       const slotHTML = ACC_SLOTS.map((sl) => {
-        const cur = k.wardrobe[sl.k] ? ACCS[k.wardrobe[sl.k]] : null;
+        const cur = k.wardrobe[sl.k] ? itemOf(k.wardrobe[sl.k]) : null;
         return '<div class="ds-slot"><span class="ds-l">' + sl.n + '</span>' +
           '<span class="ds-v">' + (cur ? cur.e + ' ' + cur.n + '<button class="ds-x" data-off="' + sl.k + '">取下</button>' : '未装扮') + '</span></div>';
       }).join('');
       const owned = k.owned.filter((id) => ACCS[id]);
+      const wpns = (k.weapons || []).filter((id) => WEAPONS[id]);
       const shop = Object.keys(ACCS).filter((id) => !k.owned.includes(id));
       body.innerHTML =
         '<div class="ds-preview">' + petAv(k, 120) + '<div class="ds-pt"><b>' + esc(k.pet.name) + '</b><small>Lv.' + k.pet.lv + ' · 试穿效果实时更新</small></div></div>' +
@@ -4254,6 +4429,13 @@
           return '<button class="ds-it' + (on ? ' on' : '') + '" data-wear="' + id + '">' +
             '<span class="ds-e">' + a.e + '</span><b>' + a.n + '</b><small>' + (on ? '已穿戴' : '点我戴上') + '</small></button>';
         }).join('') : '<div class="tiny">还没有饰品，去商店看看</div>') + '</div>' +
+        '<div class="section-h" style="margin-top:14px"><h2>⚔️ 我的武器</h2><span class="sub">' + wpns.length + ' 件 · Boss 掉落</span></div>' +
+        '<div class="ds-grid">' + (wpns.length ? wpns.map((id) => {
+          const w = WEAPONS[id];
+          const on = k.wardrobe.hand === id;
+          return '<button class="ds-it' + (on ? ' on' : '') + '" data-wp="' + id + '">' +
+            '<span class="ds-e">' + w.e + '</span><b>' + w.n + '</b><small>' + (on ? '已装备' : w.d) + '</small></button>';
+        }).join('') : '<div class="tiny">还没有武器 · 挑战 Boss 有概率掉落</div>') + '</div>' +
         (shop.length ? '<div class="section-h" style="margin-top:14px"><h2>饰品商店</h2><span class="sub">积分兑换 · 余额 ' + k.points + '</span></div>' +
           '<div class="ds-grid">' + shop.map((id) => {
             const a = ACCS[id];
@@ -4266,6 +4448,14 @@
         if (!k.wardrobe[a.slot]) delete k.wardrobe[a.slot];
         P.save(); render_();
         toast(a.slot === 'head' ? '戴上啦，宠物形象已同步' : '已装扮 · 形象已同步');
+        if (typeof render === 'function') render();
+      }));
+      body.querySelectorAll('[data-wp]').forEach((b) => (b.onclick = () => {
+        const id = b.dataset.wp, w = WEAPONS[id];
+        k.wardrobe.hand = k.wardrobe.hand === id ? null : id;
+        if (!k.wardrobe.hand) delete k.wardrobe.hand;
+        P.save(); render_();
+        toast(k.wardrobe.hand ? '⚔️ 已装备「' + w.n + '」，战斗协力更强' : '已收起武器');
         if (typeof render === 'function') render();
       }));
       body.querySelectorAll('[data-off]').forEach((b) => (b.onclick = () => {
@@ -4296,7 +4486,8 @@
       '<div class="sp-hero" style="--c:' + s.c + '"><div class="sp-av">' + subjPetAv(k, s.k, 96) + '</div>' +
       '<div class="sp-t"><b>' + PETS[p.type].name + '</b><small>' + s.ic + ' ' + s.n + '专属宠物 · Lv.' + p.lv + '</small>' +
       '<div class="sp-bar"><i style="width:' + Math.round(p.exp / need * 100) + '%"></i></div>' +
-      '<span class="sp-exp">' + p.exp + ' / ' + need + ' 经验</span></div></div>' +
+      '<span class="sp-exp">' + p.exp + ' / ' + need + ' 经验</span>' +
+      (rarFx(p.type).label ? '<span class="sp-fx">' + rarFx(p.type).label + (PETS[p.type].rar ? ' · ' + PETS[p.type].rar : '') + '</span>' : '') + '</div></div>' +
       '<div class="tiny" style="margin:8px 2px">这只宠物只吃<b>' + s.n + '</b>的经验：' + s.n + '老师加分、' + s.n + '知识点通关、每日答题里的' + s.n + '题都会喂它。其他学科的经验不会分给它。</div>' +
       '<div class="section-h" style="margin-top:12px"><h2>换一只' + s.n + '宠物</h2><span class="sub">从已解锁图鉴里选</span></div>' +
       '<div class="sp-grid">' + pool.slice(0, 60).map((t) => {
@@ -4399,7 +4590,7 @@
 
   window.BP = { P, esc, toast, openSheet, $view, render, addExp, grantPoints, addLog,
     kid, todayStr, isClass, petImg, petMeta, imgFor, stageIdxOf, stageOf, expNeed, evoFX, PETS, displayName,
-    SUBJ_LIST, SUBJ_NAME, ACCS, ensurePetSys, addSubjExp, subjPetOf, petBand, petAv, subjPetAv,
+    SUBJ_LIST, SUBJ_NAME, ACCS, ACC_SLOTS, WEAPONS, RARFX, rarFx, SND, ensurePetSys, addSubjExp, subjPetOf, petBand, petAv, subjPetAv,
     dressSheet, subjPetSheet, subjAvgLv, mySubjScope, teacherTeamSheet, teacherRoleSheet, curCls, isStudent };
   window.BPHook = { routes, ROUTES_ALL };
 
@@ -4559,6 +4750,12 @@
     document.getElementById('classBtn').onclick = () => { location.hash = '#/class'; };
     const acctBtn = document.getElementById('acctBtn');
     if (acctBtn) acctBtn.onclick = () => acctSheet();
+    /* v3.32 音效/音乐开关 */
+    const sndBtn = document.getElementById('sndBtn');
+    if (sndBtn) {
+      sndBtn.textContent = SND.on ? '🔊' : '🔇';
+      sndBtn.onclick = () => { sndBtn.textContent = SND.toggle() ? '🔊' : '🔇'; toast(SND.on ? '🎵 音效与治愈 BGM 已开启' : '🔇 已静音'); };
+    }
     /* 联网后自动回传：网络恢复 / 页面可见 / 每分钟各触发一次 */
     window.addEventListener('online', () => { const C = window.BEAST_CLOUD; if (C) C.flush().catch(() => {}); maybeSnapshot(true); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) maybeSnapshot(); });
@@ -4566,7 +4763,7 @@
     render();
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3310', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3320', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

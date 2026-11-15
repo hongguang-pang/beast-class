@@ -375,3 +375,25 @@
 .knm-it.ok small { color: #4c9a3f; }
 .knm-it.weak small { color: #e5484d; }
 .knm-it.ok .knm-n { color: #3f7a34; }
+
+/* ================= v3.32 掉落光柱特效 + 物品浮动 ================= */
+.drop-box { position: relative; overflow: hidden; }
+.drop-rays {
+  position: absolute; inset: -45%; pointer-events: none; opacity: .16;
+  background: conic-gradient(from 0deg,
+    transparent 0deg 12deg, var(--rc, #ffb300) 14deg 24deg,
+    transparent 26deg 42deg, var(--rc, #ffb300) 44deg 54deg,
+    transparent 56deg 78deg, var(--rc, #ffb300) 80deg 90deg,
+    transparent 92deg 360deg);
+  animation: raySpin 7s linear infinite;
+}
+@keyframes raySpin { to { transform: rotate(360deg); } }
+.idrop {
+  text-shadow: 0 0 26px currentColor;
+  animation: ifloat 1.6s ease-in-out infinite;
+}
+@keyframes ifloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.07); }
+}
+.tk-item { color: #b46bff; font-weight: 700; }

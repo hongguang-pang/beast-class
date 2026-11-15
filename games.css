@@ -446,3 +446,74 @@
 .fd-img .rar-tag { top: -6px; right: -10px; }
 .fd-t b { display: block; font-size: 14px; color: #3c3454; }
 .fd-t small { color: #8a83a5; font-size: 12px; }
+
+/* ================= v3.41 冒险小说：首页卡片 / 封面 / 目录 / 阅读器 ================= */
+.gc-novel { grid-column: span 2; background: linear-gradient(135deg, #5b8cff, #8b5cf6); }
+.gc-novel .gc-em { filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .25)); }
+
+.novel-page { padding-bottom: 20px; }
+.nv-hero { display: flex; gap: 14px; align-items: stretch; margin: 12px 0 4px; }
+.nv-cover { flex: 0 0 116px; border-radius: 8px 14px 14px 8px; padding: 14px 12px; color: #fff8e6;
+  background: linear-gradient(160deg, #4c3a86, #7b5fb8 60%, #a97fe0);
+  box-shadow: 0 10px 24px rgba(70, 50, 130, .35), inset 3px 0 0 rgba(255, 255, 255, .35);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.nv-cover .nvc-em { font-size: 34px; line-height: 1.1; }
+.nv-cover b { font-size: 17px; letter-spacing: 2px; margin-top: 4px; }
+.nv-cover small { font-size: 10px; opacity: .85; margin-top: 2px; }
+.nv-cover .nvc-line { width: 34px; height: 1px; background: rgba(255, 255, 255, .5); margin: 8px 0; }
+.nv-cover em { font-size: 9px; opacity: .8; font-style: normal; line-height: 1.4; }
+.nv-hr { flex: 1; background: #fff; border-radius: 16px; padding: 14px; box-shadow: 0 4px 14px rgba(80, 70, 140, .10); }
+.nv-hr b { display: block; font-size: 15px; color: #3b2f7a; }
+.nv-hr small { display: block; font-size: 12px; color: #8a83a5; margin: 4px 0 8px; }
+.nv-hbar { height: 7px; border-radius: 99px; background: #eee9fb; overflow: hidden; margin-bottom: 10px; }
+.nv-hbar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #8b5cf6, #f59e0b); }
+.nv-hr .btn { width: 100%; padding: 9px 0; font-size: 14px; }
+
+.nv-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.nv-row { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%;
+  background: #fff; border: 1px solid #eeeaf8; border-radius: 14px; padding: 11px 13px;
+  box-shadow: 0 2px 8px rgba(90, 80, 160, .06); cursor: pointer; }
+.nv-row.done { border-color: #d9f2d5; background: #fbfff9; }
+.nv-row.lock { opacity: .62; }
+.nvr-em { font-size: 24px; flex: 0 0 30px; text-align: center; }
+.nvr-t { flex: 1; min-width: 0; }
+.nvr-t b { display: block; font-size: 14px; color: #38314f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nvr-t small { font-size: 11.5px; color: #8f88a8; }
+.nvr-go { flex: 0 0 auto; font-size: 12px; color: #7c6cf0; border: 1px solid #dcd4ff;
+  background: #f6f3ff; border-radius: 99px; padding: 4px 10px; }
+
+/* 阅读器 */
+.novel-mask { position: fixed; inset: 0; z-index: 1300; display: flex; flex-direction: column;
+  background: #f6efe0; opacity: 0; transition: opacity .22s; }
+.novel-mask.in { opacity: 1; }
+.novel-mask::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(160, 140, 100, .10) 1px, transparent 1px);
+  background-size: 5px 5px; }
+.nv-top { position: relative; display: flex; align-items: center; gap: 10px; padding: 14px 14px 8px; }
+.nv-back { border: 1px solid #e2d7c0; background: rgba(255, 255, 255, .7); border-radius: 99px;
+  padding: 5px 11px; font-size: 12px; color: #6c5b3c; cursor: pointer; }
+.nv-ch { flex: 1; font-size: 13px; color: #6c5b3c; font-weight: 700; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-num { font-size: 12px; color: #b0a184; }
+.nv-page { position: relative; flex: 1; overflow-y: auto; margin: 4px 14px; padding: 22px 20px 16px;
+  background: #fffdf7; border-radius: 14px; box-shadow: 0 8px 28px rgba(120, 100, 60, .16);
+  animation: nvFade .32s ease; }
+@keyframes nvFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.nv-em { font-size: 40px; text-align: center; line-height: 1.2; }
+.nv-t { text-align: center; font-size: 18px; color: #4a3b22; margin: 6px 0 2px; letter-spacing: 1px; }
+.nv-sub { text-align: center; font-size: 11.5px; color: #b3a184; margin-bottom: 12px; letter-spacing: 3px; }
+.nv-page p { font-size: 15.5px; line-height: 2; color: #453a2b; margin: 12px 0; text-indent: 2em; }
+.nv-kn { margin-top: 16px; padding: 12px; border-radius: 12px; background: #fbf5e6; border: 1px dashed #ddc9a0; }
+.nv-kn b { display: block; font-size: 13px; color: #8a6d3b; margin-bottom: 8px; }
+.nv-kn span { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #5d4a2e; margin: 6px 0; }
+.nv-kn span i { font-style: normal; }
+.nv-go { width: 100%; margin-top: 12px; }
+.nv-bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px 4px; }
+.nv-arrow { flex: 0 0 auto; border: 1px solid #e2d7c0; background: #fffdf7; border-radius: 99px;
+  padding: 7px 14px; font-size: 13px; color: #6c5b3c; cursor: pointer; }
+.nv-arrow[disabled] { opacity: .35; }
+.nv-dots { flex: 1; display: flex; gap: 5px; justify-content: center; }
+.nv-dots i { width: 6px; height: 6px; border-radius: 99px; background: #ded2ba; }
+.nv-dots i.rd { background: #c7b48e; }
+.nv-dots i.on { width: 16px; background: #a8843f; }
+.nv-hint { text-align: center; font-size: 11px; color: #b0a184; padding: 4px 0 14px; }

@@ -764,6 +764,252 @@
       go();
     };
   }
+  /* ================= v3.41 知识大陆 · 完整冒险小说 =================
+     每个年级一本书：序章 + 5 章（对应 5 个单元）+ 终章。
+     正文按年级单元名与本章知识点动态生成，主角用孩子自己的名字。
+     阅读进度存在 kid.novel = { g, c, p, read:{章:页}, done:{章:1} } */
+  function novelCtx(k) {
+    const g = gradeOf(k);
+    const G = DB[g];
+    const name = esc(k.name || '小探险家');
+    const pet = esc((k.pet && k.pet.name) || '宠物');
+    const knsOf = (c) => {
+      const list = buildChapterKn(g, c);
+      const seen = {}, out = [];
+      list.forEach((x) => { if (out.length >= 3 || seen[x.s] || x.s === 'mix') return; seen[x.s] = 1; out.push(x.n); });
+      list.forEach((x) => { if (out.length >= 3 && out.indexOf(x.n) < 0) out.push(x.n); });
+      return out;
+    };
+    return { g, G, name, pet, gn: gradeName(g), units: G.units.map((u) => u.t), knsOf };
+  }
+  const NOVEL = [
+    /* 0 序章 */
+    { t: '序章 · 抽屉里的金纸片', sub: '一封邀请', em: '✉️', locked: false,
+      pages: (c) => [
+        ['雨停的那个傍晚，天边烧着一层橘红。' + c.name + '写完最后一页作业，伸手去抽屉里摸橡皮，指尖却碰到一张硬硬的纸片——它不属于这个抽屉。',
+          '纸片上只有一个字：「来。」字是烫金的，摸上去微微发烫。翻过来，背面画着一条石板路，路的尽头立着一扇门。'],
+        ['就在这时，' + c.pet + '从书包里探出头，鼻尖抽动了两下，忽然跳到桌上，冲着纸片叫了一声。纸片「嗡」地亮了，金光从字缝里漫出来，把整个房间都照成了蜂蜜的颜色。',
+          '「……你要带我去哪儿？」' + c.name + '话音未落，脚下一空——书桌、台灯、窗外的路灯，全都化成了一片流动的光。'],
+        ['光散开的时候，' + c.name + '站在一条会发光的石板路上。两边是望不到边的原野，天上悬着五个发亮的符号：📖 🧮 🌏 🔬 🌱。',
+          '「这里是知识大陆。」一个声音从背后传来，「欢迎你，' + c.gn + '的挑战者。」']
+      ] },
+    /* 1-5 章 */
+    { t: (c) => '第一章 · ' + c.units[0], sub: '石板路的邀请', em: '🌅', u: 0,
+      pages: (c) => [
+        ['声音的主人是个扎着两条小辫子的女孩，怀里抱着一本大得离谱的书。「我叫米娅，」她喘着气说，「这本书里所有的问题，我都想问一遍。」书页自己翻动起来，像被风吹过。',
+          '旁边还站着个胖胖的男孩，正把最后一口面包塞进嘴里：「我叫小胖。别看我这样，我跑得快……虽然主要是逃跑快。」'],
+        ['石板路在脚下延伸。每走一步，脚下的石板就亮起一层薄薄的金光，等走远了又暗下去。米娅蹲下摸了摸：「它在记住我们走过的路。」',
+          '「' + c.gn + '的第一课，」她翻开书，指着上面跳动的三个词：「' + c.knsOf(0)[0] + '」「' + c.knsOf(0)[1] + '」「' + c.knsOf(0)[2] + '」，「这些就是这一章的钥匙。凑齐它们，石板路才会继续往前。」'],
+        ['第一次考验来得比想象中快。路中央的石碑忽然立起，碑面浮出一行字——正是「' + c.knsOf(0)[0] + '」。',
+          '「我来。」' + c.name + '深吸一口气。' + c.pet + '跳到肩头，尾巴绷得笔直。答案说出口的瞬间，石碑「咔」地裂开一道缝，金光从缝里涌出来，铺成新的一段路。'],
+        ['米娅在书上打了个勾，小胖兴奋得原地跳了两下。',
+          '「这只是开始。」米娅抬头望向远处——那里有一片灰白色的雾，正慢慢往这边涌。「雾里的东西，可不会像石碑这么客气。」']
+      ] },
+    { t: (c) => '第二章 · ' + c.units[1], sub: '雾里的灯', em: '🌫️', u: 1,
+      pages: (c) => [
+        ['雾比看上去要冷。踏进去的第一秒，' + c.name + '就看不见自己的手了。小胖在后面小声说：「我数三下，谁也别松手……一、二——」',
+          '「三」还没出口，雾里传来「啪」的一声轻响。头顶亮起一盏小小的灯，暖黄色的光晕把三个人兜在里面。'],
+        ['「每答对一个，就会亮一盏。」米娅的声音有点发抖，但很稳，「灯多了，路就出来了。」',
+          '第一盏灯的光里，浮着一行字：「' + c.knsOf(1)[0] + '」。'],
+        [c.pet + '忽然朝雾里叫了一声。雾动了一下，一个毛茸茸的影子缩回树后——那是只和' + c.pet + '差不多大的小家伙，浑身发抖，眼睛却亮得像两颗星。',
+          '「它也怕黑。」' + c.name + '蹲下去，把手伸过去，「跟我们一起走吧，灯会越来越多。」'],
+        ['第二盏、第三盏灯接连亮起。雾被光一点点推开，露出森林本来的样子：树上挂着写满字的叶子，叶子一碰就念出声——「' + c.knsOf(1)[1] + '」「' + c.knsOf(1)[2] + '」。',
+          '米娅笑得眼睛都弯了：「原来雾里的知识，全都是活的。」小胖突然指着前面：「你们看！雾的尽头有光。」'],
+        ['那是森林的出口，也是问答桥的桥头。回头望去，身后已经是一条亮堂堂的灯河。',
+          '小家伙蹲在' + c.name + '脚边，蹭了蹭裤腿，不打算走了。「带上它吧。」米娅说，「它现在也是队伍的一员了。」']
+      ] },
+    { t: (c) => '第三章 · ' + c.units[2], sub: '问答桥', em: '🌉', u: 2,
+      pages: (c) => [
+        ['问答桥比传说中更长。桥板一块接一块，每块上都刻着字，桥下是白茫茫的云。',
+          '桥中央坐着一位老人，眉毛长得垂到膝盖。「想过桥？」他慢悠悠地说，「一次只问一个问题。答对了，桥往前走一格。」'],
+        ['第一块桥板亮了：「' + c.knsOf(2)[0] + '」。',
+          c.name + '答得很快，桥「咔嗒」往前挪了一格。第二块、第三块……节奏慢慢稳下来，像心跳。走到一半，老人忽然换了语气：「这一题，我要问得难一点。」'],
+        [c.name + '停住了。脑子里像有一团乱麻。',
+          '「别急。」米娅把书翻到那一页，推过来，「你看，这里我们学过。」小胖在旁边大声数着呼吸：「一——二——三——」' + c.pet + '把爪子搭在' + c.name + '手背上，温温的。',
+          '答案终于说出口的时候，整座桥「轰」地亮了起来，一直亮到对岸。'],
+        ['老人站起来，深深鞠了一躬：「过了。这一路，你们不是一个人在答题。」',
+          '对岸的城门已经能看见，城墙上飘着一面画着章鱼的旗子。风把旗子吹得猎猎作响。',
+          '「下一关，」米娅合上书，「是守门人。」']
+      ] },
+    { t: (c) => '第四章 · ' + c.units[3], sub: '城下的赌局', em: '🏰', u: 3,
+      pages: (c) => [
+        ['守门人是个高个子，戴着单边眼镜，手里转着一支羽毛笔。「想进城？」他笑了笑，「先赢我一局。赢一半，我放你们一个人进去；全赢，吊桥放下。」',
+          '小胖咽了口唾沫：「赢一半……是什么意思？」「意思是，」守门人敲了敲城门，「你们得先弄清楚，自己到底会什么。」'],
+        ['第一轮，题目像雨点落下来。' + c.name + '答得快，米娅答得细，小胖把「' + c.knsOf(3)[0] + '」答成了笑话，三个人笑得直不起腰，守门人也笑了。',
+          '笑完，他收起笑容：「轻松是好事。但知识不能只靠运气。」'],
+        ['第二轮，题目陡然变难。' + c.name + '卡在「' + c.knsOf(3)[1] + '」上，米娅皱眉，小胖抓头发。',
+          '「我们分开想。」' + c.name + '说，「你算这一步，我理这一层，小胖——你负责把我们的答案对一遍。」三个脑袋凑在一起，声音越来越小，最后同时抬起头。'],
+        ['答案是对的。守门人的羽毛笔停在半空，好一会儿才落下，在名册上写下一行字。',
+          '吊桥「吱呀」一声放下来，重重砸在地上，扬起一片尘土。「进去吧。」他说，「城堡里那位，可比我难缠多了。」',
+          '城墙上的章鱼旗被风吹得翻卷，露出背面一行小字：「所有没弄懂的问题，最后都会回来找你。」']
+      ] },
+    { t: (c) => '第五章 · ' + c.units[4], sub: '王座之巅', em: '👑', u: 4,
+      pages: (c) => [
+        ['城堡里没有楼梯，只有一级级浮在空中的书堆。踩上去，书页会沙沙地翻，像在小声说话。',
+          '最高处是一张书山堆成的王座。知识魔王坐在那里，身体由无数半透明的题目组成，随着呼吸一明一暗。「你们答对的每一道题，」它开口，声音像雷滚过山谷，「都是从我这里抢走的。」'],
+        ['战斗开始得毫无预兆。题目像潮水一样涌来，一道比一道刁钻。',
+          c.name + '答对一道，魔王就少一块；答错一道，它就长大一分。「它在吃我们的犹豫！」米娅喊，「别停！」'],
+        ['最艰难的一题出现了：「' + c.knsOf(4)[0] + '」。',
+          c.name + '的手心在出汗。就在这时，肩上的' + c.pet + '叫了一声，声音不大，却像一根线，把散开的思绪重新串起来。',
+          '石板路、雾里的灯、问答桥、城下的赌局——一路走来的每一步，都在心里。答案说出口。'],
+        ['魔王僵住了。它低头看着自己正在碎掉的身体，忽然笑了一下，那笑声竟然有点疲惫：「原来……你们真的学会了。」',
+          '书山塌下来，化成漫天飞舞的书页。每一页上都写着一道题，题目的下面，是三个孩子歪歪扭扭的答案。']
+      ] },
+    /* 6 终章 */
+    { t: '终章 · 回到教室的那天', sub: '全书完', em: '🏫', locked: true,
+      pages: (c) => [
+        ['再睁眼时，' + c.name + '趴在书桌上，台灯还亮着，窗外天已经黑透了。抽屉里那张纸片还在，只是上面的金字淡了，变成一行小字：「下次考试前，我再来找你。」',
+          c.pet + '打了个哈欠，缩回书包。'],
+        ['第二天上课，老师在黑板上写下一道题。' + c.name + '举起手，答案几乎脱口而出。',
+          '米娅在教室另一头冲' + c.name + '眨眼——她的桌上，摊着一本大得离谱的书。'],
+        ['知识大陆没有消失。它只是变成了教室里的一次举手、作业本上的一个对勾，和某个忽然想通的瞬间。',
+          '——全书完。']
+      ] }
+  ];
+  /* 本章「知识咒语」：最后一句提示这一章真正要掌握的东西 */
+  function novelKnChips(g, c) {
+    const list = buildChapterKn(g, c);
+    const seen = {}, out = [];
+    list.forEach((x) => { if (out.length >= 3 || seen[x.s] || x.s === 'mix') return; seen[x.s] = 1; out.push(x); });
+    return out;
+  }
+  function ensureNovel(k) {
+    const g = gradeOf(k);
+    if (!k.novel || k.novel.g !== g || typeof k.novel.read !== 'object') {
+      k.novel = { g, c: 0, p: 0, read: {}, done: {} };
+    }
+    return k.novel;
+  }
+  /* 阅读器：一页一页翻，进度自动记 */
+  function novelReader(k, ci, page) {
+    const nv = ensureNovel(k);
+    const ctx = novelCtx(k);
+    const ch = NOVEL[ci];
+    if (!ch) return;
+    const pages = ch.pages(ctx);
+    let p = Math.max(0, Math.min(pages.length - 1, page == null ? 0 : page));
+    const title = typeof ch.t === 'function' ? ch.t(ctx) : ch.t;
+    const m = document.createElement('div');
+    m.className = 'novel-mask';
+    document.body.appendChild(m);
+    const save = () => {
+      nv.c = ci; nv.p = p;
+      nv.read[ci] = Math.max(nv.read[ci] || 0, p + 1);
+      if (p >= pages.length - 1) nv.done[ci] = 1;
+      P.save();
+    };
+    const paint = (dir) => {
+      save();
+      const last = p >= pages.length - 1;
+      const kns = (ch.u != null) ? novelKnChips(ctx.g, ch.u) : null;
+      m.innerHTML = '<div class="nv-top"><button class="nv-back" id="nvBack">☰ 目录</button>' +
+        '<span class="nv-ch">' + esc(title) + '</span>' +
+        '<span class="nv-num">' + (p + 1) + ' / ' + pages.length + '</span></div>' +
+        '<div class="nv-page' + (dir ? ' turn' : '') + '">' +
+        (p === 0 ? '<div class="nv-em">' + ch.em + '</div><h2 class="nv-t">' + esc(title) + '</h2><div class="nv-sub">' + esc(ch.sub || '') + '</div>' : '') +
+        pages[p].map((t) => '<p>' + t + '</p>').join('') +
+        (last && kns ? '<div class="nv-kn"><b>📖 本章知识咒语</b>' +
+          kns.map((x) => '<span><i>' + (SUBJ[x.s] ? SUBJ[x.s].icon : '📘') + '</i>' + esc(x.n) + '</span>').join('') + '</div>' +
+          (ch.u != null ? '<button class="btn nv-go" id="nvGo">⚔️ 去闯这一章</button>' : '') +
+          (ci === NOVEL.length - 1 ? '<button class="btn ghost nv-go" id="nvAgain">🔁 再读一遍</button>' : '') : '') +
+        '</div>' +
+        '<div class="nv-bar"><button class="nv-arrow" id="nvPrev"' + (p === 0 ? ' disabled' : '') + '>‹ 上一页</button>' +
+        '<div class="nv-dots">' + pages.map((_, i) => '<i class="' + (i === p ? 'on' : i < p ? 'rd' : '') + '"></i>').join('') + '</div>' +
+        '<button class="nv-arrow" id="nvNext"' + (last ? ' disabled' : '') + '>下一页 ›</button></div>' +
+        '<div class="nv-hint">' + (last ? '本章读完啦 · 去闯关检验一下' : '左右滑动也可以翻页') + '</div>';
+      m.querySelector('#nvBack').onclick = () => { close(); };
+      m.querySelector('#nvPrev').onclick = () => { if (p > 0) { p--; paint('prev'); } };
+      m.querySelector('#nvNext').onclick = () => { if (p < pages.length - 1) { p++; paint('next'); } };
+      const go = m.querySelector('#nvGo');
+      if (go) go.onclick = () => {
+        close();
+        const q = questState(k);
+        if (q.vis && ch.u != null) { q.vis[ch.u] = q.vis[ch.u] || {}; q.vis[ch.u].open = true; }
+        P.save();
+        location.hash = '#/quest';
+        render();
+        toast('⚔️ 已打开第' + ['一', '二', '三', '四', '五'][ch.u] + '章关卡');
+      };
+      const ag = m.querySelector('#nvAgain');
+      if (ag) ag.onclick = () => { p = 0; paint('next'); };
+      BP.SND.play('page');
+    };
+    const close = () => { m.classList.remove('in'); setTimeout(() => m.remove(), 240); };
+    paint();
+    requestAnimationFrame(() => m.classList.add('in'));
+    /* 滑动翻页 */
+    let sx = 0, sy = 0;
+    m.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+    m.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+      if (dx < 0 && p < pages.length - 1) { p++; paint('next'); }
+      if (dx > 0 && p > 0) { p--; paint('prev'); }
+    });
+  }
+  /* 小说页：封面 + 目录 + 继续阅读 */
+  /* 小说摘要：首页卡片用一行字说明读到哪儿 */
+  function novelBrief(k) {
+    if (!k.novel || !k.novel.read) return '每个年级一本书 · 主角就是你';
+    const nv = ensureNovel(k);
+    let d = 0;
+    NOVEL.forEach((_, i) => { if (nv.done[i]) d++; });
+    if (d >= NOVEL.length) return '已读完 ' + NOVEL.length + '/' + NOVEL.length + ' 章 · 可以重读';
+    return '已读 ' + d + '/' + NOVEL.length + ' 章 · 继续读第 ' + ((nv.c || 0) + 1) + ' 章';
+  }
+
+  function viewNovel() {
+    const k = kid(); if (!k) return;
+    ensureKid(k);
+    const nv = ensureNovel(k);
+    const ctx = novelCtx(k);
+    const q = questState(k);
+    const total = NOVEL.length;
+    let readN = 0, doneN = 0;
+    NOVEL.forEach((_, i) => { if (nv.read[i]) readN++; if (nv.done[i]) doneN++; });
+    /* 继续阅读：第一本没读完的章 */
+    let cont = 0;
+    for (let i = 0; i < total; i++) { if (!nv.done[i]) { cont = i; break; } if (i === total - 1) cont = total - 1; }
+    const pct = Math.round(doneN / total * 100);
+    const cover =
+      '<div class="nv-hero">' +
+      '<div class="nv-cover"><span class="nvc-em">📖</span><b>知识大陆</b><small>' + ctx.gn + ' · 冒险小说</small>' +
+      '<i class="nvc-line"></i><em>著 · ' + ctx.name + ' 与 ' + ctx.pet + '</em></div>' +
+      '<div class="nv-hr"><b>一本书，五段旅程</b><small>' + doneN + '/' + total + ' 章读完 · ' + pct + '%</small>' +
+      '<div class="nv-hbar"><i style="width:' + pct + '%"></i></div>' +
+      '<button class="btn" id="nvCont">' + (readN ? '📖 继续阅读' : '📖 从序章开始') + '</button></div></div>';
+    const rows = NOVEL.map((ch, i) => {
+      const title = typeof ch.t === 'function' ? ch.t(ctx) : ch.t;
+      const locked = ch.locked && !q.trophy;
+      const rd = nv.read[i] || 0;
+      const pages = ch.pages(ctx).length;
+      return '<button class="nv-row' + (nv.done[i] ? ' done' : '') + (locked ? ' lock' : '') + '" data-c="' + i + '">' +
+        '<span class="nvr-em">' + (locked ? '🔒' : ch.em) + '</span>' +
+        '<span class="nvr-t"><b>' + esc(title) + '</b><small>' +
+        (locked ? '通关最终决战后解锁' : nv.done[i] ? '已读完 · 点开重读' : rd ? '读到第 ' + rd + '/' + pages + ' 页' : (ch.sub || '待阅读')) + '</small></span>' +
+        '<span class="nvr-go">' + (locked ? '🔒' : rd ? '继续' : '阅读') + '</span></button>';
+    }).join('');
+    BP.$view.innerHTML = '<div class="page novel-page">' + cover +
+      '<div class="section-h" style="margin-top:14px"><h2>📚 目录</h2><span class="sub">每章末尾可直达关卡</span></div>' +
+      '<div class="nv-list">' + rows + '</div>' +
+      '<div class="tiny" style="margin:12px 4px;line-height:1.7">读小说不占时间也不掉分：剧情里的知识咒语就是这一章要掌握的知识点，读完再去闯关，题目会眼熟很多。</div>' +
+      '</div>';
+    const open = (i, p) => {
+      const ch = NOVEL[i];
+      if (ch.locked && !q.trophy) return toast('🔒 先把知识魔王打赢，终章才解锁');
+      novelReader(k, i, p == null ? 0 : p);
+    };
+    document.getElementById('nvCont').onclick = () => {
+      const ch = NOVEL[cont];
+      if (ch.locked && !q.trophy) return open(0, 0);
+      novelReader(k, cont, Math.max(0, (nv.read[cont] || 1) - 1));
+    };
+    document.querySelectorAll('.nv-row').forEach((b) => (b.onclick = () => {
+      const i = +b.dataset.c;
+      open(i, Math.max(0, (nv.read[i] || 1) - 1));
+    }));
+  }
+
   /* ================= v3.30 知识图谱关卡引擎 =================
      每章 30 个知识点：英语 8（6 单词 + 2 句型）· 数学 8 · 语文 8 · 科学 4 · 道法 2
      每个知识点 3 级关卡（识记 / 练习 / 精通）→ 90 关 + 章 Boss
@@ -1447,6 +1693,7 @@
       (k.className ? esc(k.className) + ' · ' : '') +
       (q.trophy ? '🏆 已通关，可重刷拿满星' : '进度 ' + doneN + '/' + total + ' 关 · 5 大学科 150 个知识点') + '</small></div>' +
       '<div class="qh-btns"><button id="qKnMap" title="知识图谱">📚</button><button id="qColl" title="我的收集">🧸</button>' +
+      '<button id="qNovel" title="冒险小说">📜</button>' +
       '<button id="qStory" title="剧情引子开关">' + (storyEnabled() ? '📖' : '⚡') + '</button>' +
       '<button id="qWrong" title="错题本">📕' + (wrongOpen(k).length ? '<b class="wr-n">' + wrongOpen(k).length + '</b>' : '') + '</button><button id="qGrade" title="切换年级">🎓</button></div></div>' +
       '<div class="qbar-wrap"><div class="qbar"><i style="width:' + pct + '%"></i></div>' +
@@ -1465,6 +1712,7 @@
       P.save(); render(); toast('新的冒险：' + gradeName(gg) + ' · ' + mapSize(gg) + ' 关');
     });
     document.getElementById('qColl').onclick = () => collSheet(k, q);
+    document.getElementById('qNovel').onclick = () => { location.hash = '#/novel'; };
     document.getElementById('qStory').onclick = () => {
       const on = !storyEnabled();
       try { localStorage.setItem('beast.story', on ? 'on' : 'off'); } catch (e) {}
@@ -1969,18 +2217,19 @@
   /* ================= 导出给 app.js 调用 ================= */
   window.BPGames = { petInteract, aidSlots, rarOf, RAR, SUBJ, mastStats, mastAdd,
     genPlacement, rollPlacementPet, studentDaily, joinClassSheet, syncClassData,
-    rollItemDrop, giveItemDrop, itemDropFX, petDropFX };
+    rollItemDrop, giveItemDrop, itemDropFX, petDropFX, viewNovel, novelReader, novelBrief };
 
   /* ================= 注册路由 ================= */
   const hook = window.BPHook;
   if (hook) {
     hook.routes.daily = viewDaily;
     hook.routes.quest = viewQuest;
-    hook.ROUTES_ALL.push('daily', 'quest');
+    hook.routes.novel = viewNovel;
+    hook.ROUTES_ALL.push('daily', 'quest', 'novel');
     /* 知识图谱加载完毕：把学科名称/图标/颜色同步给 app.js 的全部界面 */
     if (window.BP && BP.refreshSubjList) BP.refreshSubjList();
     /* 若打开时 hash 已指向游戏页（首渲染早于本文件注册），补一次渲染 */
     const h = (location.hash || '').replace('#/', '').split('?')[0];
-    if (h === 'daily' || h === 'quest') BP.render();
+    if (h === 'daily' || h === 'quest' || h === 'novel') BP.render();
   }
 })();

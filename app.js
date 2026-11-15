@@ -1019,6 +1019,8 @@
       (doneToday ? '今天已完成，明天再来' : '10 道题 · 语数英科全科') + '</small></div><i class="gc-go">GO</i></a>' +
       '<a class="game-card gc-quest" href="#/quest"><span class="gc-em">🗺️</span><div><b>知识冒险闯关</b><small>' +
       (k.className ? esc(k.className) + ' · ' : '') + gname + (k.classCode ? ' · 年级随班级' : '') + '</small></div><i class="gc-go">GO</i></a>' +
+      '<a class="game-card gc-novel" href="#/novel"><span class="gc-em">📖</span><div><b>冒险小说</b><small>' +
+      esc((window.BPGames && window.BPGames.novelBrief) ? window.BPGames.novelBrief(k) : '每个年级一本书 · 主角就是你') + '</small></div><i class="gc-go">GO</i></a>' +
       '</div>' +
       subjPetsHTML(k) +
       mastIconsHTML(k) +
@@ -4314,7 +4316,7 @@
     }
     /* 老师端不参与学生玩法：答题/闯关/任务/抽奖一律拦回首页（避免老师替学生刷分） */
     const _hk = (location.hash || '').replace('#/', '').split('?')[0];
-    if (isClass() && ['daily', 'quest', 'tasks', 'lucky'].includes(_hk)) {
+    if (isClass() && ['daily', 'quest', 'tasks', 'lucky', 'novel'].includes(_hk)) {
       try { history.replaceState(null, '', '#/home'); } catch (e) { location.hash = '#/home'; }
       toast('👩‍🏫 老师端不参与答题闯关 · 请把「学生界面入口」链接发给学生');
     }
@@ -4511,6 +4513,7 @@
         case 'hurt': this.tone(440, t, .18, 'sine', .05, 294); this.tone(220, t + .08, .14, 'sine', .03, 180); break;
         case 'boing': this.tone(196, t, .16, 'sine', .06, 392); this.tone(392, t + .1, .12, 'sine', .04, 294); break;
         case 'frag': this.tone(1046.5, t, .09, 'sine', .06); this.tone(1318.5, t + .06, .12, 'sine', .05); break;
+        case 'page': this.noise(t, .09, .022); this.tone(760, t + .02, .07, 'sine', .028, 980); break;
         case 'victory': [523.3, 659.3, 784.0, 1046.5].forEach((f, i) => this.tone(f, t + i * .12, .22, 'sine', .11)); this.tone(1318.5, t + .5, .5, 'sine', .09); break;
         case 'lose': [392, 329.6, 261.6].forEach((f, i) => this.tone(f, t + i * .16, .3, 'triangle', .06)); break;
         case 'chest': this.tone(180, t, .1, 'square', .06, 320); this.tone(1046.5, t + .12, .3, 'sine', .1); this.tone(1318.5, t + .2, .35, 'sine', .08); break;

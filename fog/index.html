@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>知识大陆 · 雾灯</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <!-- 世界层 + 雾层（雾层 0.5 倍分辨率，CSS 拉伸） -->
+  <canvas id="world"></canvas>
+  <canvas id="fog"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="topbar">
+      <div id="lampbox"><span id="lampicon"></span><span id="lampnum">0/10</span></div>
+      <div id="segname">石板路</div>
+      <div id="notebox"><span id="noteicon"></span><span id="notenum">×2</span></div>
+    </div>
+    <button id="helpBtn" title="怎么玩">?</button>
+    <button id="miniRestart" title="重新开始">重开</button>
+    <button id="leaveBtn" class="hidden">离开</button>
+    <div id="hintline"></div>
+    <div id="tray"></div>
+  </div>
+
+  <!-- 怎么玩：进入游戏时的操作引导 -->
+  <div id="howto" class="hidden">
+    <div class="howto-card">
+      <h2>怎么玩</h2>
+      <p class="howto-lead">在雾里点亮 <b>10 盏灯</b>，走出三段地图。</p>
+      <ol class="howto-steps">
+        <li><span class="hn">1</span><div><b>走路</b>：点一下地面，米娅会自动走过去。</div></li>
+        <li><span class="hn">2</span><div><b>捡叶子</b>：走到发光的词片旁会自动收进底部托盘。</div></li>
+        <li><span class="hn">3</span><div><b>翻开</b>：点托盘里带「?」的词片，看到上面的知识点。</div></li>
+        <li><span class="hn">4</span><div><b>点灯</b>：走到石碑旁会打开碑台，把词片<b>拖进对应形状的缺口</b>（方/圆/长条/三角），4 个都放对，灯就亮了。</div></li>
+      </ol>
+      <p class="howto-tip">放错的片会被石头弹回托盘；卡住就点右上角 <b>✕2</b> 用米娅的笔记直接填一个。</p>
+      <button id="howtoGo">开始探索</button>
+    </div>
+  </div>
+
+  <!-- 拖动幽灵片 -->
+  <div id="dragGhost" class="hidden"></div>
+
+  <!-- 开场：金纸片 -->
+  <div id="intro">
+    <div id="paperWrap">
+      <div id="paper">
+        <span id="paperChar">来</span>
+        <svg id="pressRing" viewBox="0 0 120 120"><circle id="ringBg" cx="60" cy="60" r="52"/><circle id="ringFg" cx="60" cy="60" r="52"/></svg>
+      </div>
+    </div>
+    <div id="introLight"></div>
+    <div id="introTip">轻点纸片 · 开始旅程</div>
+    <div id="skipIntro">跳过开场</div>
+  </div>
+
+  <!-- 收束 -->
+  <div id="finale" class="hidden"><div id="finaleText"></div></div>
+
+  <!-- 结算面板 -->
+  <div id="results" class="hidden">
+    <div id="resLampRow"></div>
+    <div id="resTime">用时 00:00</div>
+    <div id="resStats"></div>
+    <div id="resBtns">
+      <button id="btnAgain">再走一次</button>
+      <button id="btnReset">重新开始</button>
+    </div>
+  </div>
+</div>
+<script src="data/knowledge.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

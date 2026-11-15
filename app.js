@@ -272,8 +272,8 @@
   const imgFor = (el, si) => {
     if (si === 0 && !(PETS[el] && PETS[el].single)) return 'images/egg.jpg';
     const p = PETS[el];
-    if (p && p.single) return 'images/m/' + el + '.jpg';
-    if (p && p.jpg) return 'images/m/' + el + '-' + STAGES[si].suffix + '.jpg';
+    if (p && p.single) return 'images/m/' + el + '.gif';
+    if (p && p.jpg) return 'images/m/' + el + '-' + STAGES[si].suffix + '.gif';
     return 'images/gif/' + el + '-' + STAGES[si].suffix + '.gif';
   };
   const petImg = (k) => imgFor(k.skin || k.pet.type, stageIdxOf(k.pet.lv));
@@ -708,7 +708,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.38 · 开局一只宠 · 明亮答题页 · 流畅BGM<br>' +
+      '<div class="w-ver">版本 v3.39 · 全宠物动图 · 稀有度边框 · 随时看说明<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -1000,7 +1000,9 @@
         }
         const need = expNeed(p.lv);
         const pc = Math.min(100, Math.round(p.exp / need * 100));
-        return '<button class="sp-card" data-subj="' + s.k + '" style="--c:' + s.c + '">' +
+        const rc = RARC[rarOf(p.type)];
+        return '<button class="sp-card" data-subj="' + s.k + '" style="--c:' + s.c + ';border-color:' + rc + ';border-width:2px">' +
+          rarChip(rarOf(p.type)) +
           '<span class="spc-av">' + subjPetAv(k, s.k, 44) + '</span>' +
           '<span class="spc-t"><b>' + s.ic + ' ' + s.n + '</b><small>Lv.' + p.lv + ' · ' + pc + '%</small>' +
           '<span class="spc-bar"><i style="width:' + pc + '%"></i></span></span></button>';
@@ -1631,9 +1633,10 @@
     const total = 1 + els.length * 4;   // 蛋 + 20
     const got = dexCount(k);
     const pct = Math.round((got / total) * 100);
-    const card = (key, img, name, sub, unlocked, extra) =>
-      '<div class="dex-card' + (unlocked ? '' : ' locked') + '" ' + (extra || '') + '>' +
-      '<div class="dx-img">' + (unlocked ? '<img src="' + img + '" alt="">' : '<span class="lk">🔒</span>') + '</div>' +
+    const card = (key, img, name, sub, unlocked, extra, rar) =>
+      '<div class="dex-card' + (unlocked ? '' : ' locked') + '"' + (rar ? ' style="border:2px solid ' + RARC[rar] + '"' : '') + (extra ? ' ' + extra : '') + '>' +
+      (rar ? rarChip(rar) : '') +
+      '<div class="dx-img">' + (unlocked ? '<img src="' + img + '" alt="" loading="lazy">' : '<span class="lk">🔒</span>') + '</div>' +
       '<div class="dx-nm">' + (unlocked ? name : '？？？') + '</div>' +
       '<div class="dx-sub">' + sub + '</div></div>';
 
@@ -1647,7 +1650,7 @@
         const un = !!k.dex[key];
         const companion = k.companions.some((c) => c.type === el) && s.suffix === 'baby';
         const extra = un && companion ? 'data-skin="' + el + '" data-tip="tap"' : '';
-        return card(key, 'images/gif/' + key + '.gif', PETS[el].name, s.name + (companion ? ' · 伙伴' : ''), un, extra);
+        return card(key, imgFor(el, STAGES.indexOf(s)), PETS[el].name, s.name + (companion ? ' · 伙伴' : ''), un, extra, rarOf(el));
       }).join('')).join('') +
       '</div>' +
       '<div class="tiny" style="margin:4px 2px">解锁条件：宠物进化填充本系形态；达到 Lv.5/10/15/20 会降临神秘伙伴，点伙伴卡片可让牠出战。</div>' +
@@ -4442,7 +4445,19 @@
     R:   { exp: .04, hit: .03, label: '✨ 经验 +4% · 战斗协力 +3%' },
     N:   { exp: 0,   hit: 0,   label: '' }
   };
-  const rarFx = (t) => RARFX[(PETS[t] && PETS[t].rar) || 'N'] || RARFX.N;
+  /* v3.39 稀有度：显式字段优先，老宠按编号推断（与知识图谱 rarOf 同规则） */
+  const RARC = { SSR: '#f5b301', SR: '#a855f7', R: '#3b82f6', N: '#9aa3b2' };
+  const rarOf = (t) => {
+    const c = PETS[t];
+    if (c && c.rar) return c.rar;
+    const n = parseInt(String(t).replace(/\D/g, ''), 10) || 0;
+    if (/^S/.test(t) && n >= 101) return 'SSR';
+    if (n >= 81) return 'SR';
+    if (n >= 41) return 'R';
+    return 'N';
+  };
+  const rarFx = (t) => RARFX[rarOf(t)] || RARFX.N;
+  const rarChip = (r) => '<i class="rar-tag"' + (r === 'SSR' ? ' data-r="SSR"' : '') + ' style="background:' + RARC[r] + '">' + r + '</i>';
 
   /* ================= v3.32 音效 & 休闲治愈 BGM（Web Audio 实时合成，零音频文件） ================= */
   const SND = {
@@ -4812,7 +4827,7 @@
       '<div class="sp-grid">' + pool.slice(0, 60).map((t) => {
         const on = t === p.type;
         const lv = Math.max(3, Math.min(12, p.lv));
-        return '<button class="sp-it' + (on ? ' on' : '') + '" data-t="' + t + '">' + petBand({ type: t, lv }, 56, null, true) +
+        return '<button class="sp-it' + (on ? ' on' : '') + '" data-t="' + t + '" style="border-color:' + RARC[rarOf(t)] + '">' + rarChip(rarOf(t)) + petBand({ type: t, lv }, 56, null, true) +
           '<b>' + PETS[t].name + '</b>' + (on ? '<small>当前</small>' : '') + '</button>';
       }).join('') + '</div>';
     openSheet('<div class="sheet-h">' + s.ic + ' ' + s.n + '宠物</div>' + body, (m) => {
@@ -4939,7 +4954,7 @@
 
   window.BP = { P, esc, toast, openSheet, $view, render, addExp, grantPoints, addLog,
     kid, todayStr, isClass, petImg, petMeta, imgFor, stageIdxOf, stageOf, expNeed, evoFX, PETS, displayName,
-    SUBJ_LIST, SUBJ_NAME, ACCS, ACC_SLOTS, WEAPONS, RARFX, rarFx, SND, ensurePetSys, addSubjExp, subjPetOf, petBand, petAv, subjPetAv,
+    SUBJ_LIST, SUBJ_NAME, ACCS, ACC_SLOTS, WEAPONS, RARFX, rarFx, rarOf, rarChip, RARC, SND, ensurePetSys, addSubjExp, subjPetOf, petBand, petAv, subjPetAv,
     grantSubjPet, petDropFXShow, SUBJ_GET_NEED, subjGetSheet,
     dressSheet, subjPetSheet, subjAvgLv, mySubjScope, teacherTeamSheet, teacherRoleSheet, curCls, isStudent, refreshSubjList };
   window.BPHook = { routes, ROUTES_ALL };
@@ -4979,6 +4994,8 @@
       (cs.pending ? ' · <b style="color:#ff8a00">待回传 ' + cs.pending + ' 条</b>' : '') + '</div>' +
       '<div class="btn-row"><button class="btn ghost" id="accSync">🔄 立即同步</button>' +
       '<button class="btn ghost" id="accPwd">🔑 改密码</button></div>' +
+      '<div class="btn-row" style="margin-top:8px"><button class="btn ghost" id="accHelp">📖 操作说明</button>' +
+      '<button class="btn ghost" id="accHome">🏠 退出到首页</button></div>' +
       '<div class="section-h"><h2>本机账号</h2><span class="sub">同一台设备可保存多个账号</span></div>' +
       (accRows || '<div class="tiny">暂无其他账号</div>') +
       '<div class="btn-row" style="margin-top:12px">' +
@@ -5014,6 +5031,12 @@
       m.querySelectorAll('.acc-sw').forEach((b) => (b.onclick = () => {
         if (A2.switchTo(b.dataset.id)) { location.reload(); }
       }));
+      m.querySelector('#accHelp') && (m.querySelector('#accHelp').onclick = () => { close(); location.href = 'help.html'; });
+      m.querySelector('#accHome') && (m.querySelector('#accHome').onclick = () => {
+        if (!confirm('回到首页选择入口？本机数据与账号都会保留，随时可以再进来。')) return;
+        try { localStorage.removeItem('beast.role'); } catch (e) {}
+        location.href = 'index.html';
+      });
       m.querySelector('#accOut') && (m.querySelector('#accOut').onclick = () => {
         if (!confirm('退出后需要「名字+密码」重新登录，本机数据保留。确定退出？')) return;
         A2.logout();
@@ -5115,6 +5138,9 @@
       sndBtn.textContent = SND.on ? '🔊' : '🔇';
       sndBtn.onclick = () => { sndBtn.textContent = SND.toggle() ? '🔊' : '🔇'; toast(SND.on ? '🎵 音效与治愈 BGM 已开启' : '🔇 已静音'); };
     }
+    /* v3.39 登录后随时可看操作说明 */
+    const helpBtn = document.getElementById('helpBtn');
+    if (helpBtn) helpBtn.onclick = () => { location.href = 'help.html'; };
     /* 联网后自动回传：网络恢复 / 页面可见 / 每分钟各触发一次 */
     window.addEventListener('online', () => { const C = window.BEAST_CLOUD; if (C) C.flush().catch(() => {}); maybeSnapshot(true); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) maybeSnapshot(); });
@@ -5132,7 +5158,7 @@
     }
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3380', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3390', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

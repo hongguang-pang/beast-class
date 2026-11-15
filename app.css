@@ -1013,3 +1013,14 @@ details.knm-chap[open]>summary{border-bottom:1px dashed #f0e8fc;padding-bottom:5
 }
 .w-backin button span { font-size: 11.5px; font-weight: 600; color: #8b7aa8; }
 .w-backin button:active { transform: scale(.985); }
+
+/* ================= v3.38 五科宠物空槽 + 获得途径面板 ================= */
+.sp-card.sp-empty { border: 1.5px dashed var(--c, #c9b8ef); background: repeating-linear-gradient(45deg, #faf8ff, #faf8ff 8px, #f3eefb 8px, #f3eefb 16px); }
+.sp-card.sp-empty .spc-av { display: grid; place-items: center; font-size: 19px; background: #fff; border-radius: 14px; color: var(--c, #8a6fe0); }
+.sp-card.sp-ready { border-style: solid; background: linear-gradient(135deg, #fff7e0, #ffecbd); box-shadow: 0 4px 14px rgba(255, 186, 0, .25); }
+.sp-av-empty { display: grid; place-items: center; font-size: 42px; background: #fff; border-radius: 24px; color: var(--c, #8a6fe0); }
+.sg-ways { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.sg-way { display: flex; gap: 10px; align-items: flex-start; background: #faf7ff; border: 1px solid #eee5fb; border-radius: 14px; padding: 11px 12px; text-align: left; }
+.sg-way i { font-style: normal; font-size: 18px; flex: none; }
+.sg-way b { display: block; font-size: 13.5px; color: #4a3364; }
+.sg-way small { display: block; margin-top: 2px; line-height: 1.55; color: #8b7aa8; }

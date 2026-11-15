@@ -708,7 +708,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.37 · 学生界面一键切换 · 道德与法治<br>' +
+      '<div class="w-ver">版本 v3.38 · 开局一只宠 · 明亮答题页 · 流畅BGM<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -894,6 +894,7 @@
       if (step >= qs.length) return finish();
       const q = qs[step];
       m.innerHTML = '<div class="evo-box plc-box"><div class="plc-top">📖 摸底测试 ' + (step + 1) + '/' + qs.length + ' · 难度 ' + '●'.repeat(Math.floor(step / 2) + 1) + '</div>' +
+        '<div class="plc-prog">' + qs.map((_, i) => '<i class="' + (i <= step ? 'on' : '') + '"></i>').join('') + '</div>' +
         '<div class="plc-q">' + esc(q.q) + '</div>' +
         '<div class="plc-opts">' + q.opts.map((o, i) => '<button data-i="' + i + '">' + esc(o) + '</button>').join('') + '</div></div>';
       m.querySelectorAll('.plc-opts button').forEach((b) => (b.onclick = () => {
@@ -989,6 +990,14 @@
       '<button class="sp-dress" id="spDress">🎀 装扮</button></div>' +
       '<div class="sp-row">' + SUBJ_LIST.map((s) => {
         const p = k.subjPets[s.k];
+        if (!p) {
+          const bank = (k.subjBank && k.subjBank[s.k]) || 0;
+          const ready = bank >= SUBJ_GET_NEED;
+          return '<button class="sp-card sp-empty' + (ready ? ' sp-ready' : '') + '" data-subj="' + s.k + '" style="--c:' + s.c + '">' +
+            '<span class="spc-av">' + (ready ? '🎁' : '➕') + '</span>' +
+            '<span class="spc-t"><b>' + s.ic + ' ' + s.n + '</b><small>' + (ready ? '可领取！' : '待获得') + (bank ? ' · ' + bank + '/' + SUBJ_GET_NEED : '') + '</small>' +
+            '<span class="spc-bar"><i style="width:' + Math.min(100, Math.round(bank / SUBJ_GET_NEED * 100)) + '%"></i></span></span></button>';
+        }
         const need = expNeed(p.lv);
         const pc = Math.min(100, Math.round(p.exp / need * 100));
         return '<button class="sp-card" data-subj="' + s.k + '" style="--c:' + s.c + '">' +
@@ -996,7 +1005,7 @@
           '<span class="spc-t"><b>' + s.ic + ' ' + s.n + '</b><small>Lv.' + p.lv + ' · ' + pc + '%</small>' +
           '<span class="spc-bar"><i style="width:' + pc + '%"></i></span></span></button>';
       }).join('') + '</div>' +
-      '<div class="tiny sp-note">只吃本科经验：本科老师加分 · 本科知识点通关 · 每日答题里的本科题</div></div>';
+      '<div class="tiny sp-note">开局一只初始宠物 · 其他四科靠获得：老师加分攒经验 / 每日答题全勤 / Boss 掉落（点空槽看详情）</div></div>';
   }
 
   function studentHomeHTML(k) {
@@ -1155,7 +1164,11 @@
       if (sw) sw.onclick = () => { if (confirm('切换身份会回到入口选择页，学生数据保留')) { localStorage.removeItem('beast.role'); location.reload(); } };
       const mg = document.getElementById('stMast');
       if (mg) mg.onclick = () => mastSheet(k);
-      document.querySelectorAll('.sp-card').forEach((b) => (b.onclick = () => subjPetSheet(k, b.dataset.subj)));
+      document.querySelectorAll('.sp-card').forEach((b) => (b.onclick = () => {
+        ensurePetSys(k);
+        if (!k.subjPets[b.dataset.subj]) return subjGetSheet(k, b.dataset.subj);
+        subjPetSheet(k, b.dataset.subj);
+      }));
       const sd = document.getElementById('spDress');
       if (sd) sd.onclick = () => dressSheet(k);
     }
@@ -3034,7 +3047,12 @@
           m.querySelectorAll('#shSubj button').forEach((x) => x.classList.remove('on'));
           b.classList.add('on'); subjSel = b.dataset.sub;
         }));
-        m.querySelectorAll('[data-ss]').forEach((b) => (b.onclick = () => { close(); subjPetSheet(k, b.dataset.ss); }));
+        m.querySelectorAll('[data-ss]').forEach((b) => (b.onclick = () => {
+          close();
+          ensurePetSys(k);
+          if (!k.subjPets[b.dataset.ss]) return subjGetSheet(k, b.dataset.ss);
+          subjPetSheet(k, b.dataset.ss);
+        }));
         // 选了负分自动把理由切到扣分常用语（反之亦然）
         const syncWhy = () => {
           const cur = m.querySelector('#shWhy button.on');
@@ -4485,39 +4503,75 @@
         case 'tap': this.tone(880, t, .05, 'sine', .05); break;
       }
     },
+    /* ---- v3.38 BGM：独立总线 + 固定旋律循环，流畅不卡顿 ---- */
+    bgmBus() {
+      if (this.bgmOut) return this.bgmOut;
+      const c = this.ctx;
+      const g = c.createGain(); g.gain.value = 1;
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; lp.Q.value = .4;
+      g.connect(lp); lp.connect(this.master);
+      this.bgmOut = g;
+      return g;
+    },
+    pad(f, t, d, v) {
+      const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      o.detune.value = (Math.random() * 6 - 3);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(v, t + 0.9);
+      g.gain.setValueAtTime(v, t + d - 1.1);
+      g.gain.linearRampToValueAtTime(0.0001, t + d);
+      o.connect(g); g.connect(this.bgmBus());
+      o.start(t); o.stop(t + d + 0.1);
+    },
+    mel(f, t, d, v) {
+      const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(v, t + 0.04);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 0.5), t + d * 0.6);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g); g.connect(this.bgmBus());
+      o.start(t); o.stop(t + d + 0.1);
+    },
+    /* C 大调五声（C5 D5 E5 G5 A5 C6），8 小节旋律循环，-1 = 空拍 */
+    MEL: [
+      [2, -1, 3, -1, 4, -1, 3, -1],
+      [2, -1, 1, -1, 2, 3, -1, -1],
+      [1, -1, 2, -1, 3, 2, -1, -1],
+      [0, -1, 1, 2, 1, -1, 0, -1],
+      [5, -1, 4, -1, 3, -1, 4, -1],
+      [4, 3, 2, -1, 1, -1, 2, -1],
+      [1, 2, 3, -1, 4, -1, 3, 2],
+      [2, -1, 1, -1, 0, -1, -1, -1]
+    ],
+    SCALE: [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5],
     bgmBar(t) {
-      const ch = this.CH[this.bar % 4];
-      /* 柔和铺底和弦 */
-      ch.forEach((f, i) => {
-        const c = this.ctx, o = c.createOscillator(), g = c.createGain();
-        o.type = 'sine'; o.frequency.value = f;
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.linearRampToValueAtTime(0.016, t + 1.2);
-        g.gain.linearRampToValueAtTime(0.0001, t + 4.2);
-        o.connect(g); g.connect(this.master);
-        o.start(t); o.stop(t + 4.4);
+      const bar = this.bar % 8;
+      const ch = this.CH[bar % 4];
+      /* 柔和铺底和弦（三角波，慢起慢收） */
+      ch.forEach((f) => this.pad(f, t, 4.0, 0.020));
+      /* 低音根音：两下，稳住节奏 */
+      this.mel(ch[0] / 2, t, 1.7, 0.05);
+      this.mel(ch[0] / 2, t + 2.0, 1.7, 0.04);
+      /* 旋律：固定乐句，八分音符网格，连贯不跳 */
+      const line = this.MEL[bar];
+      line.forEach((ni, i) => {
+        if (ni < 0) return;
+        this.mel(this.SCALE[ni], t + i * 0.5, 0.92, 0.052);
       });
-      /* 低音 */
-      this.tone(ch[0] / 2, t, 3.4, 'sine', 0.028);
-      /* 五声音阶随机漫步旋律（治愈感） */
-      let idx = this.melIdx || 2;
-      [0.6, 2.1, 3.3].forEach((off, i) => {
-        if (Math.random() < (i === 2 ? 0.5 : 0.8)) {
-          idx = Math.max(0, Math.min(this.PENT.length - 1, idx + [(-2), -1, 1, 2][Math.floor(Math.random() * 4)]));
-          this.tone(this.PENT[idx], t + off, 0.9, 'triangle', 0.038);
-        }
-      });
-      this.melIdx = idx;
       this.bar++;
     },
     bgmStart() {
       if (!this.on || this.bgmTimer) return;
       const c = this.ready(); if (!c) return;
-      this.bar = 0; this.nextBar = c.currentTime + 0.15;
+      this.bar = 0; this.nextBar = c.currentTime + 0.2;
+      /* 700ms 轮询 + 每次提前 4.5s 排期，避免定时器抖动造成断音 */
       this.bgmTimer = setInterval(() => {
         if (!this.on) return this.bgmStop();
-        while (this.nextBar < c.currentTime + 6) { this.bgmBar(this.nextBar); this.nextBar += 4; }
-      }, 1500);
+        if (c.state === 'suspended') return;
+        while (this.nextBar < c.currentTime + 4.5) { this.bgmBar(this.nextBar); this.nextBar += 4; }
+      }, 700);
     },
     bgmStop() { if (this.bgmTimer) { clearInterval(this.bgmTimer); this.bgmTimer = null; } },
     toggle() {
@@ -4538,15 +4592,19 @@
   function ensurePetSys(k) {
     if (!k || !k.pet) return;
     if (!k.subjPets || typeof k.subjPets !== 'object') k.subjPets = {};
+    if (!k.subjBank || typeof k.subjBank !== 'object') k.subjBank = {};
     const all = Object.keys(PETS);
     const base = Math.max(0, all.indexOf(k.pet.type));
+    /* v3.38: 开局只保留初始一只宠物（数学槽），其余四科靠获得；
+       老数据里从未喂养过的赠送宠（Lv.3 且 0 经验）自动回收，养过的保留 */
     SUBJ_LIST.forEach((s, i) => {
       const p = k.subjPets[s.k];
-      if (!p || !p.type || !PETS[p.type]) {
-        /* 开局五科五只不同的宠物：错位抽样，均从蛋期养起 */
-        const t = i === 0 ? k.pet.type : all[(base + i * 17) % all.length];
-        k.subjPets[s.k] = { type: t, exp: 0, lv: 3 };
+      if (i === 0) {
+        if (!p || !p.type || !PETS[p.type]) k.subjPets.math = { type: k.pet.type, exp: 0, lv: 3 };
+        return;
       }
+      if (p && (!p.type || !PETS[p.type])) { delete k.subjPets[s.k]; return; }
+      if (p && p.lv <= 3 && !p.exp) delete k.subjPets[s.k];
     });
     if (!k.wardrobe || typeof k.wardrobe !== 'object') k.wardrobe = {};
     if (!Array.isArray(k.owned)) k.owned = ['bow'];
@@ -4554,7 +4612,8 @@
   }
   function subjPetOf(k, subj) { ensurePetSys(k); return (k.subjPets && k.subjPets[subj]) || null; }
 
-  /* 学科经验：只喂对应学科的宠物；subj 为空 = 全科（班主任综合加分） */
+  /* 学科经验：只喂对应学科的宠物；subj 为空 = 全科（班主任综合加分）
+     v3.38: 该科还没有宠物时，经验存进「经验银行」，获得宠物时一次性补进 */
   function addSubjExp(k, subj, n) {
     if (!k || !n || n <= 0) return [];
     ensurePetSys(k);
@@ -4562,7 +4621,11 @@
     const ups = [];
     list.forEach((sk) => {
       const p = k.subjPets[sk];
-      if (!p) return;
+      if (!p) {
+        if (!k.subjBank) k.subjBank = {};
+        k.subjBank[sk] = (k.subjBank[sk] || 0) + Math.round(n);
+        return;
+      }
       const before = p.lv;
       /* v3.32: 宠物稀有度即效果 —— 稀有度越高，经验获取越快 */
       p.exp += Math.round(n * (1 + (rarFx(p.type).exp || 0)));
@@ -4571,6 +4634,61 @@
     });
     P.save();
     return ups;
+  }
+  /* v3.38 获得学科宠物：随机降临一只，经验银行里的积累一次性注入 */
+  const SUBJ_GET_NEED = 30;
+  function grantSubjPet(k, subj, cb) {
+    ensurePetSys(k);
+    if (!SUBJ_LIST.some((x) => x.k === subj) || k.subjPets[subj]) { if (cb) cb(null); return null; }
+    const t = (window.BPGames && BPGames.pickPet) ? BPGames.pickPet() : Object.keys(PETS)[Math.floor(Math.random() * Object.keys(PETS).length)];
+    const bank = k.subjBank ? (k.subjBank[subj] || 0) : 0;
+    const p = k.subjPets[subj] = { type: t, exp: 20 + bank, lv: 3 };
+    if (k.subjBank) k.subjBank[subj] = 0;
+    while (p.exp >= expNeed(p.lv) && p.lv < 60) { p.exp -= expNeed(p.lv); p.lv += 1; }
+    P.save();
+    if (cb) cb(p);
+    return p;
+  }
+  /* 空槽位面板：怎么获得这一科的宠物 */
+  function subjGetSheet(k, subj) {
+    ensurePetSys(k);
+    const s = SUBJ_LIST.find((x) => x.k === subj) || SUBJ_LIST[0];
+    const bank = (k.subjBank && k.subjBank[s.k]) || 0;
+    const canGet = bank >= SUBJ_GET_NEED;
+    const body =
+      '<div class="sp-hero" style="--c:' + s.c + '"><div class="sp-av sp-av-empty">➕</div>' +
+      '<div class="sp-t"><b>还没有' + s.n + '宠物</b><small>完成下面的任意一种方式即可获得</small>' +
+      (bank ? '<span class="sp-fx">经验银行已存 ' + bank + ' 点' + s.n + '经验</span>' : '') + '</div></div>' +
+      '<div class="sg-ways">' +
+      '<div class="sg-way"><i>1️⃣</i><div><b>老师加分</b><small>' + s.n + '老师（或班主任）给你加 ' + s.n + '相关积分，攒满 <b>' + SUBJ_GET_NEED + '</b> 点经验即可直接领取</small></div></div>' +
+      '<div class="sg-way"><i>2️⃣</i><div><b>每日答题全勤</b><small>每天 5 个任务全部完成开宝箱时，若还有学科没宠物，必掉一只</small></div></div>' +
+      '<div class="sg-way"><i>3️⃣</i><div><b>知识冒险 Boss</b><small>击败章节 Boss / 决战知识魔王，有概率掉落</small></div></div>' +
+      '</div>' +
+      '<button class="btn' + (canGet ? '' : ' ghost disabled') + '" id="sgGo" style="margin-top:14px;width:100%"' + (canGet ? '' : ' disabled') + '>' +
+      (canGet ? '🎉 领取' + s.n + '宠物（' + bank + ' 经验已就绪）' : '还差 ' + (SUBJ_GET_NEED - bank) + ' 点经验可领取') + '</button>';
+    openSheet('<div class="sheet-h">' + s.ic + ' 如何获得' + s.n + '宠物</div>' + body, (m) => {
+      const go = m.querySelector('#sgGo');
+      if (go && canGet) go.onclick = () => {
+        grantSubjPet(k, s.k, (p) => {
+          if (p) petDropFXShow(p.type, s);
+          else toast('已经有' + s.n + '宠物啦');
+        });
+      };
+    });
+  }
+  function petDropFXShow(type, s) {
+    const m = document.createElement('div');
+    m.className = 'evo-mask';
+    m.innerHTML = '<div class="evo-box drop-box"><i class="drop-rays" style="--rc:#ffb300"></i>' +
+      '<div class="big img"><img src="' + imgFor(type, 2) + '" alt=""></div>' +
+      '<h2>🎉 ' + (s ? s.n : '') + '宠物降临！</h2>' +
+      '<p>' + PETS[type].emoji + ' <b>' + esc(PETS[type].name) + '</b><br>银行里的经验已一次性喂给它</p>' +
+      '<button class="btn sm" style="margin-top:14px;background:#ffd76e;color:#5b3a00" id="pdOk">收下啦</button></div>';
+    document.body.appendChild(m);
+    requestAnimationFrame(() => m.classList.add('in'));
+    const close = () => { m.classList.remove('in'); setTimeout(() => { m.remove(); render(); }, 320); };
+    m.querySelector('#pdOk').onclick = close;
+    m.onclick = (e) => { if (e.target === m) close(); };
   }
   /* 学科宠物平均等级：老师端一眼看出这个孩子哪科宠物养得好 */
   function subjAvgLv(k) {
@@ -4679,6 +4797,7 @@
     ensurePetSys(k);
     const s = SUBJ_LIST.find((x) => x.k === subj) || SUBJ_LIST[0];
     const p = k.subjPets[s.k];
+    if (!p) return subjGetSheet(k, s.k);
     const need = expNeed(p.lv);
     const own = Object.keys(PETS).filter((t) => k.dex && (k.dex[t + '-baby'] || k.dex[t + '-growth'] || k.dex[t + '-adult'] || k.dex[t + '-ultimate']));
     const pool = own.length ? own : [p.type];
@@ -4821,6 +4940,7 @@
   window.BP = { P, esc, toast, openSheet, $view, render, addExp, grantPoints, addLog,
     kid, todayStr, isClass, petImg, petMeta, imgFor, stageIdxOf, stageOf, expNeed, evoFX, PETS, displayName,
     SUBJ_LIST, SUBJ_NAME, ACCS, ACC_SLOTS, WEAPONS, RARFX, rarFx, SND, ensurePetSys, addSubjExp, subjPetOf, petBand, petAv, subjPetAv,
+    grantSubjPet, petDropFXShow, SUBJ_GET_NEED, subjGetSheet,
     dressSheet, subjPetSheet, subjAvgLv, mySubjScope, teacherTeamSheet, teacherRoleSheet, curCls, isStudent, refreshSubjList };
   window.BPHook = { routes, ROUTES_ALL };
 
@@ -5012,7 +5132,7 @@
     }
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3370', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3380', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

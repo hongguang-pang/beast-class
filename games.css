@@ -265,16 +265,26 @@
   color: #fff; font-weight: 800; font-size: 10px; border-radius: 99px; padding: 2px 8px; animation: goBlink 1s infinite; }
 .adv-node.pos-0 .qn-go, .adv-node.pos-2 .qn-go { right: auto; left: 28px; }
 
-/* ================= v3.26 入学摸底 ================= */
-.plc-mask { z-index: 90; }
-.plc-box { max-width: 340px; width: 92%; text-align: center; }
+/* ================= v3.26 入学摸底 =================
+   v3.38: 改为明亮白卡片 —— 摸底是正经答题，不再用暗色降临弹层 */
+.plc-mask { z-index: 90; background: linear-gradient(180deg, #6d5bd0 0%, #8a6fe0 60%, #a58af0 100%); }
+.plc-box { max-width: 340px; width: 92%; text-align: center; background: #fff; border-radius: 22px;
+  padding: 22px 18px 20px; color: #3a2a4a; transform: none; transition: none;
+  box-shadow: 0 18px 60px rgba(30, 15, 80, .35); }
+.plc-mask.in .plc-box { transform: none; }
 .plc-top { font-size: 11px; color: #9a8ab0; font-weight: 700; margin-bottom: 8px; }
 .plc-q { font-size: 16px; font-weight: 700; color: #3a2a4a; margin: 10px 0 16px; line-height: 1.5; }
 .plc-opts { display: flex; flex-direction: column; gap: 8px; }
 .plc-opts button { border: 1.5px solid #e4d9f5; background: #f9f6fd; border-radius: 12px;
-  padding: 11px 12px; font-size: 14px; color: #4a3364; font-weight: 650; cursor: pointer; }
+  padding: 12px 12px; font-size: 14.5px; color: #4a3364; font-weight: 650; cursor: pointer; }
+.plc-opts button:active { background: #efe6fb; }
 .plc-opts button.ok { border-color: #7bc96f; background: #eefae9; }
 .plc-opts button.no { border-color: #f28b82; background: #fdeceb; }
+.plc-box h2 { color: #4a3364; }
+.plc-box p { color: #6b5a85; opacity: 1; }
+.plc-prog { display: flex; gap: 4px; margin: 0 0 12px; }
+.plc-prog i { flex: 1; height: 5px; border-radius: 999px; background: #ece4f8; }
+.plc-prog i.on { background: #8a6fe0; }
 .plc-grades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
 .plc-grades button { border: 1.5px solid #e4d9f5; background: #f9f6fd; border-radius: 12px;
   padding: 12px 0; font-size: 14px; font-weight: 800; color: #4a3364; cursor: pointer; }

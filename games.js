@@ -1031,7 +1031,17 @@
       d.last = d.date;
       reward(k, 5, 15, '完成全部每日答题，打开打卡宝箱', '🎁', 'en');
       P.save();
-      chestFX('+5 积分 · +15 经验 · 连续打卡 ' + d.streak + ' 天', () => render());
+      /* v3.38: 还有学科没宠物时，宝箱必掉一只 */
+      const missS = (BP.SUBJ_LIST || []).filter((s) => !k.subjPets[s.k]).map((s) => s.k);
+      chestFX('+5 积分 · +15 经验 · 连续打卡 ' + d.streak + ' 天', () => {
+        if (missS.length && BP.grantSubjPet) {
+          const sk = missS[Math.floor(Math.random() * missS.length)];
+          BP.grantSubjPet(k, sk, (pp) => {
+            if (pp && BP.petDropFXShow) BP.petDropFXShow(pp.type, (BP.SUBJ_LIST || []).find((x) => x.k === sk));
+            else render();
+          });
+        } else render();
+      });
     };
   }
   /* 掉落宠物展示（带稀有度光效） */
@@ -1562,6 +1572,8 @@
         (r.results || []).forEach((x) => mastAdd(k, n.t === 'kn' ? n.subj : x.q.type, n.t === 'kn' ? n.kn : null, x.ok));
         let dropMsg = '';
         let dropItem = null;
+        let dropSubj = null;
+        let dropSubjType = null;
         const bonus = n.lv || 0; /* 难度加成：关卡越靠后奖励越高 */
         if (n.t === 'chall') {
           const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
@@ -1595,7 +1607,11 @@
           /* v3.32: Boss 额外概率掉饰品/武器 */
           const item = Math.random() < .55 ? rollItemDrop('boss') : null;
           giveItemDrop(k, item);
-          reward(k, 5 + bonus, 25 + bonus * 5, '击败' + (bossS ? bossS.name : '单元') + ' Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」' + (item ? ' · 掉落' + (item.kind === 'wpn' ? '武器' : '饰品') + '「' + (item.kind === 'wpn' ? BP.WEAPONS[item.id].n : BP.ACCS[item.id].n) + '」' : ''), '👑', (n.subj || 'mix'));
+          /* v3.38: 还有学科没宠物时，Boss 战 50% 掉一只 */
+          const missS = (BP.SUBJ_LIST || []).filter((s) => !k.subjPets[s.k]).map((s) => s.k);
+          dropSubj = (missS.length && Math.random() < .5) ? missS[Math.floor(Math.random() * missS.length)] : null;
+          if (dropSubj && BP.grantSubjPet) { const gp = BP.grantSubjPet(k, dropSubj, null); dropSubjType = gp ? gp.type : null; if (!dropSubjType) dropSubj = null; }
+          reward(k, 5 + bonus, 25 + bonus * 5, '击败' + (bossS ? bossS.name : '单元') + ' Boss · 获得「' + DB[g].units[n.u].em + '」徽章 + 宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」' + (item ? ' · 掉落' + (item.kind === 'wpn' ? '武器' : '饰品') + '「' + (item.kind === 'wpn' ? BP.WEAPONS[item.id].n : BP.ACCS[item.id].n) + '」' : '') + (dropSubj ? ' · 掉落新' + (BP.SUBJ_NAME[dropSubj] || '') + '宠物' : ''), '👑', (n.subj || 'mix'));
           dropMsg = card; dropItem = item;
         }
         if (n.t === 'final') {
@@ -1604,7 +1620,11 @@
           /* v3.32: 决战必掉饰品/武器（稀有度更高） */
           const item = rollItemDrop('final');
           giveItemDrop(k, item);
-          reward(k, 20, 60, '🏆 击败知识魔王，通关' + gradeName(g) + '冒险 · 获得传说宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」' + (item ? ' · 掉落' + (item.kind === 'wpn' ? '武器' : '饰品') + '「' + (item.kind === 'wpn' ? BP.WEAPONS[item.id].n : BP.ACCS[item.id].n) + '」' : ''), '🏆', 'mix');
+          /* v3.38: 决战必掉缺科宠物 */
+          const missS = (BP.SUBJ_LIST || []).filter((s) => !k.subjPets[s.k]).map((s) => s.k);
+          dropSubj = missS.length ? missS[Math.floor(Math.random() * missS.length)] : null;
+          if (dropSubj && BP.grantSubjPet) { const gp = BP.grantSubjPet(k, dropSubj, null); dropSubjType = gp ? gp.type : null; if (!dropSubjType) dropSubj = null; }
+          reward(k, 20, 60, '🏆 击败知识魔王，通关' + gradeName(g) + '冒险 · 获得传说宠物「' + (BP.PETS[card] ? BP.PETS[card].name : card) + '」' + (item ? ' · 掉落' + (item.kind === 'wpn' ? '武器' : '饰品') + '「' + (item.kind === 'wpn' ? BP.WEAPONS[item.id].n : BP.ACCS[item.id].n) + '」' : '') + (dropSubj ? ' · 掉落新' + (BP.SUBJ_NAME[dropSubj] || '') + '宠物' : ''), '🏆', 'mix');
           dropMsg = card; dropItem = item;
         }
         P.save();
@@ -1614,7 +1634,12 @@
           const isFinal = n.t === 'final';
           victoryFX(isFinal ? '🏆 通关啦！' : '👑 Boss 击败！',
             isFinal ? gradeName(g) + '全部知识掌握！' : '获得「' + DB[g].units[n.u].em + '」单元徽章',
-            () => petDropFX(dropMsg, k, () => itemDropFX(dropItem, k, refresh)));
+            () => petDropFX(dropMsg, k, () => itemDropFX(dropItem, k, () => {
+              if (dropSubj && BP.petDropFXShow) {
+                const sd = (BP.SUBJ_LIST || []).find((x) => x.k === dropSubj);
+                BP.petDropFXShow(dropSubjType, sd);
+              } else refresh();
+            })));
         } else toast((n.t === 'kn' ? '知识点掌握 +' : '战斗胜利 +') + (n.t === 'review' ? 1 + bonus : n.t === 'kn' ? 1 + bonus : 2 + bonus) + ' 积分' + (dropMsg ? ' · ' + dropMsg : ''));
       }
     });

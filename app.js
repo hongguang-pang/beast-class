@@ -671,6 +671,20 @@
     stepRole(el);
   }
 
+  /* 本机已有哪些角色的档案（用于入口页快速切回，不丢数据） */
+  function roleProfiles() {
+    const out = [];
+    [['class', '老师'], ['family', '家长'], ['student', '学生']].forEach(function (pr) {
+      try {
+        const d = JSON.parse(localStorage.getItem('beast.v1.' + pr[0]) || 'null');
+        if (d && d.kids && d.kids.length) {
+          out.push({ r: pr[0], n: pr[1], cnt: d.kids.length, cls: (d.cls && d.cls.name) || '' });
+        }
+      } catch (e) {}
+    });
+    return out;
+  }
+
   function stepRole(el) {
     /* v3.33 专属入口链接：?role=student&code=XXXXXX 直接进对应入口 */
     const en = window.__entry;
@@ -681,16 +695,20 @@
       if (en.role === 'class') return stepClass(el);
       return stepFamily(el);
     }
+    const profs = roleProfiles();
     el.innerHTML =
       '<div class="big"><img src="images/egg.jpg" alt="" style="width:110px;height:110px;border-radius:26px;box-shadow:0 10px 40px rgba(255,215,110,.45)"></div>' +
       '<h2>伴学宠物</h2>' +
       '<p>选一个入口进入，各入口数据相互独立</p>' +
+      (profs.length ? '<div class="w-backin">本机已有档案，直接继续：' +
+        profs.map((p) => '<button data-back="' + p.r + '">↩️ 继续以' + p.n + '身份进入' +
+          '<span>' + (p.cls ? p.cls + ' · ' : '') + p.cnt + ' 人</span></button>').join('') + '</div>' : '') +
       '<div class="w-role">' +
       '<button data-r="student"><b>🎒 我是学生 · 来闯关</b><span>每日答题、知识冒险、加入班级</span></button>' +
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.36 · 道德与法治 · 学生界面入口<br>' +
+      '<div class="w-ver">版本 v3.37 · 学生界面一键切换 · 道德与法治<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -699,6 +717,10 @@
       if (b.dataset.r === 'class') stepClass(el);
       else if (b.dataset.r === 'student') stepStudent(el);
       else stepFamily(el);
+    }));
+    el.querySelectorAll('[data-back]').forEach((b) => (b.onclick = () => {
+      try { localStorage.setItem('beast.role', b.dataset.back); } catch (e) {}
+      location.reload();
     }));
     el.querySelector('#wMig').onclick = () => qrImportSheet(true);
   }
@@ -2635,6 +2657,7 @@
       '<div class="btn-row" style="margin-top:12px">' +
       '<button class="btn sm" id="seCopy" style="flex:1">复制链接</button>' +
       '<button class="btn sm ghost" id="seCopyCode" style="flex:1"' + (code ? '' : ' disabled') + '>复制班级码</button></div>' +
+      '<button class="btn ghost sm" id="sePreview" style="width:100%;margin-top:8px">📱 在这台设备上预览学生界面</button>' +
       '<div class="tiny se-note">老师端只做管理与统计，不开放答题闯关，避免老师替学生刷分导致成绩失真。老师本人想体验关卡，可用手机打开此链接以学生身份注册一个体验号。</div>',
       (m) => {
         const cv = m.querySelector('#seQr');
@@ -2645,6 +2668,40 @@
         if (bCode && code) bCode.onclick = () => copyText(code, '✅ 班级码 ' + code + ' 已复制', bCode);
         const lk = m.querySelector('#seLink');
         if (lk) lk.onclick = () => copyText(link, '✅ 链接已复制，发给学生即可', null);
+        const pv = m.querySelector('#sePreview');
+        if (pv) pv.onclick = () => switchToStudent(code);
+      });
+  }
+
+  /* 切到学生界面：学生档案与老师/家长档案分别存储，互不影响，随时可切回
+     本机没有学生档案 → 走学生入学（带班级码）；已有 → 直接回到自己的学生主页 */
+  function switchToStudent(code) {
+    try {
+      localStorage.setItem('beast.role', 'student');
+      const raw = localStorage.getItem('beast.v1.student');
+      if (raw) {
+        let d = null;
+        try { d = JSON.parse(raw); } catch (e) { d = null; }
+        if (!d || !d.kids || !d.kids.length) localStorage.removeItem('beast.v1.student');
+      }
+    } catch (e) {}
+    const q = '?role=student' + (code ? '&code=' + encodeURIComponent(code) : '');
+    location.replace(location.pathname + q + '#/home');
+  }
+  /* 在老师/家长设备上打开学生链接时的切换面板 */
+  function studentSwitchSheet(code) {
+    const cur = (function () { try { return localStorage.getItem('beast.role') || 'family'; } catch (e) { return 'family'; } })();
+    const curName = cur === 'class' ? '老师' : cur === 'student' ? '学生' : '家长';
+    openSheet(
+      '<div class="sheet-h">🎒 学生界面入口</div>' +
+      '<div class="tiny se-intro">这个链接是给学生用的。<b>本机现在是「' + curName + '」界面</b>，所以在电脑上直接打开还是看到' + curName + '页面 —— 学生在自己手机上打开会自动进入学生界面。</div>' +
+      '<div class="se-link" style="margin-top:4px"><span>教学演示：把链接发到家长群 / 班级群，学生点开即入学</span></div>' +
+      '<button class="btn" id="ssGo" style="width:100%;margin-top:12px">📱 在这台设备上进入学生界面</button>' +
+      '<button class="btn ghost" id="ssStay" style="width:100%;margin-top:8px">留在' + curName + '界面</button>' +
+      '<div class="tiny se-note">' + curName + '的数据不会丢：进入学生界面后，点右上角头像（或在学生首页点「🔄 切换身份」）就能切回' + curName + '。</div>',
+      (m, close) => {
+        m.querySelector('#ssGo').onclick = () => { close(); switchToStudent(code); };
+        m.querySelector('#ssStay').onclick = () => close();
       });
   }
 
@@ -4943,18 +5000,19 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) maybeSnapshot(); });
     setInterval(() => { const C = window.BEAST_CLOUD; if (C && C.pending()) C.flush().catch(() => {}); maybeSnapshot(); }, 60000);
     render();
-    /* 专属入口链接在已有档案的设备上打开：只提示，不强切身份（防止老师机被误切成学生） */
+    /* 学生链接在已有老师/家长档案的设备上打开：给出明确的一键切换（不再只弹一句提示） */
     if (window.__entry) {
       const wr = window.__entry.role;
+      const wc = window.__entry.code || '';
       window.__entry = null;
       const cur = (function () { try { return localStorage.getItem('beast.role') || 'family'; } catch (e) { return 'family'; } })();
       if (wr === 'student' && cur !== 'student') {
-        setTimeout(() => toast('🔗 这是学生入口链接 · 本机当前是' + (cur === 'class' ? '老师' : '家长') + '端，点右上角头像可切换身份'), 1200);
+        setTimeout(() => studentSwitchSheet(wc), 600);
       }
     }
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3360', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3370', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

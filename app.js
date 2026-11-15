@@ -1118,7 +1118,7 @@
       '<div class="stage" style="--pet-glow:' + petMeta(k.pet.type).glow + '">' +
       '<div class="stars"></div>' +
       '<div class="lv-badge">Lv.' + k.pet.lv + '</div>' +
-      '<div class="pet-zone"><div class="aura"><div class="pet ' + st.cls + '" id="petTap">' + petBand(k.pet, 130, k.wardrobe) + '</div></div></div>' +
+      '<div class="pet-zone"><div class="aura"><div class="pet ' + st.cls + '" id="petTap">' + petBand(k.pet, 130, wardOf(k, 'main')) + '</div></div></div>' +
       '<div class="pet-name">' + esc(displayName(k)) + '</div>' +
       '<div class="pet-stage">' + st.name + ' · ' + petMeta(k.skin || k.pet.type).name + '</div>' +
       '<div class="exp-row"><div class="exp-bar"><i style="width:' + pct + '%"></i></div>' +
@@ -4505,9 +4505,12 @@
       const c = this.ready(); if (!c) return;
       const t = c.currentTime + 0.01, S = (a) => this.tone(a[0], t + (a[4] || 0) * 0.001 + (a[5] || 0), a[2], a[3], a[1]);
       switch (name) {
-        case 'right': this.tone(659.3, t, .12, 'sine', .12); this.tone(987.8, t + .09, .2, 'sine', .1); if (arguments[1]) { this.noise(t + .05, .1, .05); this.tone(180, t + .05, .12, 'square', .05, 90); } break;
-        case 'wrong': this.tone(233, t, .28, 'triangle', .09, 155); break;
-        case 'hurt': this.tone(320, t, .3, 'sawtooth', .045, 120); break;
+        /* v3.40 音效全面柔和卡通化：sine/triangle 泡泡音，短促软糯不刺耳 */
+        case 'right': this.tone(587.3, t, .1, 'sine', .09); this.tone(880, t + .07, .14, 'sine', .07, 932); if (arguments[1]) { this.tone(392, t + .02, .1, 'triangle', .05, 660); } break;
+        case 'wrong': this.tone(311, t, .22, 'sine', .07, 233); break;
+        case 'hurt': this.tone(440, t, .18, 'sine', .05, 294); this.tone(220, t + .08, .14, 'sine', .03, 180); break;
+        case 'boing': this.tone(196, t, .16, 'sine', .06, 392); this.tone(392, t + .1, .12, 'sine', .04, 294); break;
+        case 'frag': this.tone(1046.5, t, .09, 'sine', .06); this.tone(1318.5, t + .06, .12, 'sine', .05); break;
         case 'victory': [523.3, 659.3, 784.0, 1046.5].forEach((f, i) => this.tone(f, t + i * .12, .22, 'sine', .11)); this.tone(1318.5, t + .5, .5, 'sine', .09); break;
         case 'lose': [392, 329.6, 261.6].forEach((f, i) => this.tone(f, t + i * .16, .3, 'triangle', .06)); break;
         case 'chest': this.tone(180, t, .1, 'square', .06, 320); this.tone(1046.5, t + .12, .3, 'sine', .1); this.tone(1318.5, t + .2, .35, 'sine', .08); break;
@@ -4560,26 +4563,43 @@
       [1, 2, 3, -1, 4, -1, 3, 2],
       [2, -1, 1, -1, 0, -1, -1, -1]
     ],
+    /* v3.40 战斗旋律：音符更密一点，节奏感强一点，但依旧治愈不紧张 */
+    MEL_B: [
+      [0, 2, 3, -1, 4, 3, 2, -1],
+      [3, 4, 5, -1, 4, -1, 3, 2],
+      [2, 3, 4, 3, 2, -1, 1, -1],
+      [1, 2, 3, -1, 2, 1, 0, -1],
+      [4, -1, 5, 4, 3, -1, 4, -1],
+      [3, 4, 3, 2, 1, 2, 3, -1],
+      [2, 3, 4, -1, 5, 4, 3, 2],
+      [1, 2, 1, -1, 0, -1, -1, -1]
+    ],
     SCALE: [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5],
     bgmBar(t) {
       const bar = this.bar % 8;
       const ch = this.CH[bar % 4];
+      const battle = this.bgmKind === 'battle';
       /* 柔和铺底和弦（三角波，慢起慢收） */
-      ch.forEach((f) => this.pad(f, t, 4.0, 0.020));
+      ch.forEach((f) => this.pad(f, t, 4.0, battle ? 0.024 : 0.020));
       /* 低音根音：两下，稳住节奏 */
       this.mel(ch[0] / 2, t, 1.7, 0.05);
       this.mel(ch[0] / 2, t + 2.0, 1.7, 0.04);
       /* 旋律：固定乐句，八分音符网格，连贯不跳 */
-      const line = this.MEL[bar];
+      const line = (battle ? this.MEL_B : this.MEL)[bar];
       line.forEach((ni, i) => {
         if (ni < 0) return;
-        this.mel(this.SCALE[ni], t + i * 0.5, 0.92, 0.052);
+        this.mel(this.SCALE[ni], t + i * 0.5, battle ? 0.8 : 0.92, battle ? 0.056 : 0.052);
       });
+      /* v3.40 战斗模式：轻柔沙锤点缀（每拍一下，很轻），有冒险感但不吵 */
+      if (battle) for (let i = 0; i < 4; i++) this.noise(t + i * 1.0 + 0.5, .07, 0.018);
       this.bar++;
     },
-    bgmStart() {
-      if (!this.on || this.bgmTimer) return;
+    /* v3.40 BGM 只在战斗中播放：quizRun 开打时 bgmStart('battle')，结束/退出即停 */
+    bgmStart(kind) {
+      if (!this.on) return;
       const c = this.ready(); if (!c) return;
+      this.bgmKind = kind || 'scene';
+      if (this.bgmTimer) return;
       this.bar = 0; this.nextBar = c.currentTime + 0.2;
       /* 700ms 轮询 + 每次提前 4.5s 排期，避免定时器抖动造成断音 */
       this.bgmTimer = setInterval(() => {
@@ -4588,19 +4608,41 @@
         while (this.nextBar < c.currentTime + 4.5) { this.bgmBar(this.nextBar); this.nextBar += 4; }
       }, 700);
     },
-    bgmStop() { if (this.bgmTimer) { clearInterval(this.bgmTimer); this.bgmTimer = null; } },
+    bgmStop() { if (this.bgmTimer) { clearInterval(this.bgmTimer); this.bgmTimer = null; this.bgmKind = null; } },
     toggle() {
       this.on = !this.on;
       try { localStorage.setItem('beast.snd', this.on ? '1' : '0'); } catch (e) {}
-      if (!this.on) this.bgmStop(); else this.bgmStart();
+      if (!this.on) this.bgmStop();
       return this.on;
     }
   };
   try { SND.on = localStorage.getItem('beast.snd') !== '0'; } catch (e) {}
-  /* 首次交互后自动开播（浏览器自动播放策略） */
+  /* v3.40 BGM 移除全局常驻：平时安静，进入战斗才开播（quizRun 内控制）。
+     首次交互只负责解锁音频上下文（浏览器自动播放策略） */
   (function () {
-    const kick = () => { if (SND.on) SND.bgmStart(); document.removeEventListener('pointerdown', kick); };
+    const kick = () => { if (SND.ctx) SND.ready(); document.removeEventListener('pointerdown', kick); };
     document.addEventListener('pointerdown', kick, { once: true });
+  })();
+
+  /* v3.40 空闲预加载：把宠物立绘悄悄拉进缓存，Boss/宠物掉落弹窗秒开不白屏 */
+  (function () {
+    const run = () => {
+      const keys = Object.keys(PETS);
+      let i = 0;
+      const step = () => {
+        if (i >= keys.length) return;
+        /* 每次取 2 张：优先掉落弹窗用的成年期立绘，再补幼年期 */
+        for (let n = 0; n < 2 && i < keys.length; n++, i++) {
+          const t = keys[i];
+          const s2 = new Image(); s2.src = imgFor(t, 2);
+          if (n === 0 && i < keys.length) { const s1 = new Image(); s1.src = imgFor(t, 1); }
+        }
+        setTimeout(step, 350);
+      };
+      step();
+    };
+    if (document.readyState === 'complete') setTimeout(run, 2500);
+    else window.addEventListener('load', () => setTimeout(run, 2500));
   })();
 
   /* 补齐字段：老档案也能直接用（学科宠物默认继承主宠物的种类） */
@@ -4621,9 +4663,21 @@
       if (p && (!p.type || !PETS[p.type])) { delete k.subjPets[s.k]; return; }
       if (p && p.lv <= 3 && !p.exp) delete k.subjPets[s.k];
     });
+    /* v3.40 每科宠物独立装扮：k.wardrobes = { main, en, cn, math, sci, eth } 各一套槽位；
+       库存（owned/weapons）仍然全宠物共享。老数据 wardrobe 自动迁移为「主宠物」的一套 */
     if (!k.wardrobe || typeof k.wardrobe !== 'object') k.wardrobe = {};
+    if (!k.wardrobes || typeof k.wardrobes !== 'object') k.wardrobes = {};
+    if (!k.wardrobes.main || typeof k.wardrobes.main !== 'object') k.wardrobes.main = k.wardrobe;
+    k.wardrobe = k.wardrobes.main; /* main 恒与 wardrobe 同一对象，老代码无需改动 */
     if (!Array.isArray(k.owned)) k.owned = ['bow'];
     if (!Array.isArray(k.weapons)) k.weapons = [];
+  }
+  /* v3.40 取某只宠物的装扮槽位：'main' 或学科 key */
+  function wardOf(k, key) {
+    ensurePetSys(k);
+    if (!key || key === 'main' || !k.wardrobes) return k.wardrobe;
+    if (!k.wardrobes[key] || typeof k.wardrobes[key] !== 'object') k.wardrobes[key] = {};
+    return k.wardrobes[key];
   }
   function subjPetOf(k, subj) { ensurePetSys(k); return (k.subjPets && k.subjPets[subj]) || null; }
 
@@ -4681,12 +4735,14 @@
       '</div>' +
       '<button class="btn' + (canGet ? '' : ' ghost disabled') + '" id="sgGo" style="margin-top:14px;width:100%"' + (canGet ? '' : ' disabled') + '>' +
       (canGet ? '🎉 领取' + s.n + '宠物（' + bank + ' 经验已就绪）' : '还差 ' + (SUBJ_GET_NEED - bank) + ' 点经验可领取') + '</button>';
-    openSheet('<div class="sheet-h">' + s.ic + ' 如何获得' + s.n + '宠物</div>' + body, (m) => {
+    openSheet('<div class="sheet-h">' + s.ic + ' 如何获得' + s.n + '宠物</div>' + body, (m, close) => {
       const go = m.querySelector('#sgGo');
       if (go && canGet) go.onclick = () => {
+        /* v3.40 修复：领取后立刻关掉面板并刷新，经验银行余额马上归零可见 */
+        close();
         grantSubjPet(k, s.k, (p) => {
           if (p) petDropFXShow(p.type, s);
-          else toast('已经有' + s.n + '宠物啦');
+          else { render(); toast('已经有' + s.n + '宠物啦'); }
         });
       };
     });
@@ -4730,42 +4786,61 @@
   }
   function petAv(k, size) {
     ensurePetSys(k);
-    return petBand(k.pet, size, k.wardrobe);
+    return petBand(k.pet, size, wardOf(k, 'main'));
   }
   function subjPetAv(k, subj, size) {
     const p = subjPetOf(k, subj);
-    return petBand(p, size, k.wardrobe);
+    return petBand(p, size, wardOf(k, subj));
   }
 
-  /* 装扮面板：四个槽位 + 已拥有/可购买 */
-  function dressSheet(k) {
+  /* 装扮面板：四个槽位 + 已拥有/可购买
+     v3.40 每科宠物独立装扮：顶部可切换给哪只宠物穿，库存全宠物共享 */
+  function dressSheet(k, who) {
     ensurePetSys(k);
+    let cur = who || 'main';
     openSheet('<div class="sheet-h">🎀 宠物装扮</div><div class="dress-body"></div>', (m) => {
+    const petOf = (key) => (key === 'main' ? k.pet : subjPetOf(k, key));
     const render_ = () => {
       const body = m.querySelector('.dress-body');
+      const wd = wardOf(k, cur);
       const itemOf = (id) => ACCS[id] || WEAPONS[id];
+      const curPet = petOf(cur);
+      const sMeta = SUBJ_LIST.find((x) => x.k === cur);
+      /* 宠物切换条：主宠物 + 已获得的五科宠物 */
+      const whoBtns = ['main'].concat(SUBJ_LIST.map((s) => s.k)).filter((key) => key === 'main' || petOf(key))
+        .map((key) => {
+          const p = petOf(key);
+          const on = key === cur;
+          const nm = key === 'main' ? '🏠 主宠物' : (sMeta && sMeta.k === key ? sMeta.ic + ' ' + sMeta.n : key);
+          return '<button class="ds-who' + (on ? ' on' : '') + '" data-who="' + key + '">' +
+            '<span class="ds-who-av">' + petBand(p, 34, null, true) + '</span><small>' + nm + '</small></button>';
+        }).join('');
       const slotHTML = ACC_SLOTS.map((sl) => {
-        const cur = k.wardrobe[sl.k] ? itemOf(k.wardrobe[sl.k]) : null;
+        const c = wd[sl.k] ? itemOf(wd[sl.k]) : null;
         return '<div class="ds-slot"><span class="ds-l">' + sl.n + '</span>' +
-          '<span class="ds-v">' + (cur ? cur.e + ' ' + cur.n + '<button class="ds-x" data-off="' + sl.k + '">取下</button>' : '未装扮') + '</span></div>';
+          '<span class="ds-v">' + (c ? c.e + ' ' + c.n + '<button class="ds-x" data-off="' + sl.k + '">取下</button>' : '未装扮') + '</span></div>';
       }).join('');
       const owned = k.owned.filter((id) => ACCS[id]);
       const wpns = (k.weapons || []).filter((id) => WEAPONS[id]);
       const shop = Object.keys(ACCS).filter((id) => !k.owned.includes(id));
       body.innerHTML =
-        '<div class="ds-preview">' + petAv(k, 120) + '<div class="ds-pt"><b>' + esc(k.pet.name) + '</b><small>Lv.' + k.pet.lv + ' · 试穿效果实时更新</small></div></div>' +
+        '<div class="ds-who-row">' + whoBtns + '</div>' +
+        '<div class="ds-preview">' + petBand(curPet, 120, wd) + '<div class="ds-pt"><b>' +
+        (cur === 'main' ? esc(k.pet.name) : (sMeta ? sMeta.ic + ' ' + sMeta.n + '宠物 · ' : '') + esc(curPet ? PETS[curPet.type].name : '')) + '</b>' +
+        '<small>' + (cur === 'main' ? 'Lv.' + k.pet.lv + ' · ' : '') + '装扮只属于这一只 · 库存共享</small></div></div>' +
+        (cur === 'main' ? '<div class="tiny" style="margin:4px 2px">⚔️ 武器装在主宠物身上才会提供战斗协力加成，其他科宠物穿武器只有外观效果</div>' : '') +
         slotHTML +
         '<div class="section-h" style="margin-top:12px"><h2>我的饰品</h2><span class="sub">' + owned.length + ' 件</span></div>' +
         '<div class="ds-grid">' + (owned.length ? owned.map((id) => {
           const a = ACCS[id];
-          const on = k.wardrobe[a.slot] === id;
+          const on = wd[a.slot] === id;
           return '<button class="ds-it' + (on ? ' on' : '') + '" data-wear="' + id + '">' +
             '<span class="ds-e">' + a.e + '</span><b>' + a.n + '</b><small>' + (on ? '已穿戴' : '点我戴上') + '</small></button>';
         }).join('') : '<div class="tiny">还没有饰品，去商店看看</div>') + '</div>' +
         '<div class="section-h" style="margin-top:14px"><h2>⚔️ 我的武器</h2><span class="sub">' + wpns.length + ' 件 · Boss 掉落</span></div>' +
         '<div class="ds-grid">' + (wpns.length ? wpns.map((id) => {
           const w = WEAPONS[id];
-          const on = k.wardrobe.hand === id;
+          const on = wd.hand === id;
           return '<button class="ds-it' + (on ? ' on' : '') + '" data-wp="' + id + '">' +
             '<span class="ds-e">' + w.e + '</span><b>' + w.n + '</b><small>' + (on ? '已装备' : w.d) + '</small></button>';
         }).join('') : '<div class="tiny">还没有武器 · 挑战 Boss 有概率掉落</div>') + '</div>' +
@@ -4775,32 +4850,33 @@
             return '<button class="ds-it buy" data-buy="' + id + '"><span class="ds-e">' + a.e + '</span><b>' + a.n + '</b>' +
               '<small>' + (k.points >= a.price ? '💰 ' + a.price + ' 分' : '🔒 需要 ' + a.price + ' 分') + '</small></button>';
           }).join('') + '</div>' : '');
+      body.querySelectorAll('[data-who]').forEach((b) => (b.onclick = () => { cur = b.dataset.who; SND.play('tap'); render_(); }));
       body.querySelectorAll('[data-wear]').forEach((b) => (b.onclick = () => {
         const id = b.dataset.wear, a = ACCS[id];
-        k.wardrobe[a.slot] = k.wardrobe[a.slot] === id ? null : id;
-        if (!k.wardrobe[a.slot]) delete k.wardrobe[a.slot];
+        wd[a.slot] = wd[a.slot] === id ? null : id;
+        if (!wd[a.slot]) delete wd[a.slot];
         P.save(); render_();
-        toast(a.slot === 'head' ? '戴上啦，宠物形象已同步' : '已装扮 · 形象已同步');
+        toast(a.slot === 'head' ? '戴上啦，这只宠物的形象已同步' : '已装扮 · 形象已同步');
         if (typeof render === 'function') render();
       }));
       body.querySelectorAll('[data-wp]').forEach((b) => (b.onclick = () => {
         const id = b.dataset.wp, w = WEAPONS[id];
-        k.wardrobe.hand = k.wardrobe.hand === id ? null : id;
-        if (!k.wardrobe.hand) delete k.wardrobe.hand;
+        wd.hand = wd.hand === id ? null : id;
+        if (!wd.hand) delete wd.hand;
         P.save(); render_();
-        toast(k.wardrobe.hand ? '⚔️ 已装备「' + w.n + '」，战斗协力更强' : '已收起武器');
+        toast(cur === 'main' && wd.hand ? '⚔️ 已装备「' + w.n + '」，战斗协力更强' : '已收起武器');
         if (typeof render === 'function') render();
       }));
       body.querySelectorAll('[data-off]').forEach((b) => (b.onclick = () => {
-        delete k.wardrobe[b.dataset.off]; P.save(); render_(); render();
+        delete wd[b.dataset.off]; P.save(); render_(); render();
       }));
       body.querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => {
         const id = b.dataset.buy, a = ACCS[id];
         if (k.points < a.price) return toast('积分不够，还差 ' + (a.price - k.points) + ' 分');
         if (!confirm('用 ' + a.price + ' 积分兑换「' + a.n + '」？')) return;
-        k.points -= a.price; k.owned.push(id); k.wardrobe[a.slot] = id;
+        k.points -= a.price; k.owned.push(id); wd[a.slot] = id;
         addLog(k, '🛍️', '兑换饰品「' + a.n + '」', -a.price);
-        P.save(); render_(); render(); toast('🎉 已拥有「' + a.n + '」，自动戴上');
+        P.save(); render_(); render(); toast('🎉 已拥有「' + a.n + '」，自动给当前宠物戴上');
       }));
     };
     render_();
@@ -4822,6 +4898,7 @@
       '<div class="sp-bar"><i style="width:' + Math.round(p.exp / need * 100) + '%"></i></div>' +
       '<span class="sp-exp">' + p.exp + ' / ' + need + ' 经验</span>' +
       (rarFx(p.type).label ? '<span class="sp-fx">' + rarFx(p.type).label + (PETS[p.type].rar ? ' · ' + PETS[p.type].rar : '') + '</span>' : '') + '</div></div>' +
+      '<button class="btn ghost" id="spDressThis" style="margin:10px 0 0;width:100%">🎀 给这只宠物装扮</button>' +
       '<div class="tiny" style="margin:8px 2px">这只宠物只吃<b>' + s.n + '</b>的经验：' + s.n + '老师加分、' + s.n + '知识点通关、每日答题里的' + s.n + '题都会喂它。其他学科的经验不会分给它。</div>' +
       '<div class="section-h" style="margin-top:12px"><h2>换一只' + s.n + '宠物</h2><span class="sub">从已解锁图鉴里选</span></div>' +
       '<div class="sp-grid">' + pool.slice(0, 60).map((t) => {
@@ -4831,6 +4908,8 @@
           '<b>' + PETS[t].name + '</b>' + (on ? '<small>当前</small>' : '') + '</button>';
       }).join('') + '</div>';
     openSheet('<div class="sheet-h">' + s.ic + ' ' + s.n + '宠物</div>' + body, (m) => {
+      const dr = m.querySelector('#spDressThis');
+      if (dr) dr.onclick = () => dressSheet(k, subj);
       m.querySelectorAll('[data-t]').forEach((b) => (b.onclick = () => {
         p.type = b.dataset.t; P.save();
         toast('已换成 ' + PETS[p.type].name + '（等级和经验保留）');
@@ -4954,7 +5033,7 @@
 
   window.BP = { P, esc, toast, openSheet, $view, render, addExp, grantPoints, addLog,
     kid, todayStr, isClass, petImg, petMeta, imgFor, stageIdxOf, stageOf, expNeed, evoFX, PETS, displayName,
-    SUBJ_LIST, SUBJ_NAME, ACCS, ACC_SLOTS, WEAPONS, RARFX, rarFx, rarOf, rarChip, RARC, SND, ensurePetSys, addSubjExp, subjPetOf, petBand, petAv, subjPetAv,
+    SUBJ_LIST, SUBJ_NAME, ACCS, ACC_SLOTS, WEAPONS, RARFX, rarFx, rarOf, rarChip, RARC, SND, ensurePetSys, addSubjExp, subjPetOf, petBand, petAv, subjPetAv, wardOf,
     grantSubjPet, petDropFXShow, SUBJ_GET_NEED, subjGetSheet,
     dressSheet, subjPetSheet, subjAvgLv, mySubjScope, teacherTeamSheet, teacherRoleSheet, curCls, isStudent, refreshSubjList };
   window.BPHook = { routes, ROUTES_ALL };
@@ -5136,7 +5215,7 @@
     const sndBtn = document.getElementById('sndBtn');
     if (sndBtn) {
       sndBtn.textContent = SND.on ? '🔊' : '🔇';
-      sndBtn.onclick = () => { sndBtn.textContent = SND.toggle() ? '🔊' : '🔇'; toast(SND.on ? '🎵 音效与治愈 BGM 已开启' : '🔇 已静音'); };
+      sndBtn.onclick = () => { sndBtn.textContent = SND.toggle() ? '🔊' : '🔇'; toast(SND.on ? '🎵 音效已开启（背景音乐会在战斗中响起）' : '🔇 已静音'); };
     }
     /* v3.39 登录后随时可看操作说明 */
     const helpBtn = document.getElementById('helpBtn');

@@ -1035,3 +1035,11 @@ details.knm-chap[open]>summary{border-bottom:1px dashed #f0e8fc;padding-bottom:5
 }
 .rar-tag[data-r="SSR"] { box-shadow: 0 0 9px rgba(245, 179, 1, .75); }
 #helpBtn { font-size: 14px; }
+
+/* ================= v3.40 每科宠物独立装扮：装扮面板宠物切换条 ================= */
+.ds-who-row { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; }
+.ds-who { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border: 2px solid #e8e4f8; background: #f8f6ff; border-radius: 14px; padding: 5px 8px 3px;
+  min-width: 60px; cursor: pointer; }
+.ds-who.on { border-color: #7c6cf0; background: #efeaff; box-shadow: 0 2px 8px rgba(124, 108, 240, .25); }
+.ds-who small { font-size: 11px; color: #6a6390; white-space: nowrap; }

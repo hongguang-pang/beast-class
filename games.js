@@ -667,6 +667,103 @@
     '知识城堡就在眼前，把守城门的 Boss 可不好对付，做好准备！',
     '最终决战！集齐五章知识之力，挑战最强的知识魔王！'
   ];
+  /* ================= v3.40 剧情引子（小说式开场 → 战斗） =================
+     每章一段小说式剧情，点关卡先看剧情卡，再开打；可在闯关页一键关掉 */
+  const STORY_CHAP = [
+    { n: '风起 · 会发光的石板路',
+      t: ['清晨的雾还没散，小队的靴子踩上知识大陆的软土。脚下的石板一块接一块亮起来，像在说：走吧，前面有新的知识在等你。',
+          '伙伴们把行囊背好，宠物抖了抖绒毛。第一缕阳光落下来的时候，路悄悄向前伸了一段——那是知识大陆在给勇敢的人指路。'] },
+    { n: '雾锁 · 迷雾森林的灯',
+      t: ['森林里的雾又冷又厚，伸手只能看见五根手指。传说每答对一个问题，头顶就会亮起一盏灯，灯多了，路自然就出来了。',
+          '树后传来窸窸窣窣的声音，是谁把知识藏进了雾里？小队点起第一盏灯，光晕刚好照亮脚下一枚会发光的蘑菇。'] },
+    { n: '桥语 · 一次只问一个问题',
+      t: ['问答桥横在深谷之上，桥上的老人只有一个规矩：一次，只问一个问题。答对了，脚下的石板就向前挪一格。',
+          '石板缝里长着会发光的青苔，谷底的风把远处 Boss 的呼噜声吹了上来。小队深吸一口气——稳住，一道一道来。'] },
+    { n: '城下 · 守门人的赌局',
+      t: ['知识城堡就在眼前，可吊桥拉着，守门人抱着手臂：想进城？先赢我一局。他出的题一道比一道刁钻，答错的人要绕很远的路。',
+          '宠物在身后轻轻蹭了蹭裤腿，像在说别怕。城墙上章鱼旗猎猎作响，这一次，把学会的东西全部用上吧！'] },
+    { n: '王座之巅 · 知识魔王',
+      t: ['书山堆成的王座上，知识魔王缓缓睁开眼睛。它由所有「没弄懂」的题目组成，越害怕它，它就越强大。',
+          '但小队一路走来，每一块石板、每一盏灯、每一座桥都是证据——知识已经在心里生了根。魔王打了个寒颤：这一局，轮到它紧张了。'] }
+  ];
+  /* 每个学科的一句风景描写，让剧情跟着关卡内容变化 */
+  const STORY_SUBJ = {
+    en:  '风里飘来几个英文单词，像纸飞机一样打着旋落在面前。',
+    math: '地上画满了算式，数字在石缝里一闪一闪，等着被摆正。',
+    cn:  '书页翻动的声音从树后传来，半句诗停在空中，缺了下阕。',
+    sci:  '路边的试管咕噜咕噜冒泡，气泡里映出一道小小的彩虹。',
+    eth:  '路口的木牌写着「请排队通行」，字迹认真得像新贴上去的。'
+  };
+  /* 由关卡生成剧情卡内容 */
+  function storyOf(n, g) {
+    if (n.t === 'treasure') return null;
+    const G = DB[g];
+    const chap = STORY_CHAP[Math.min(4, n.u || 0)];
+    const S = n.subj ? SUBJ[n.subj] : null;
+    const scene = STORY_SUBJ[n.subj] || '风把五科的书页一起吹响，像在列队欢迎。';
+    const unitT = (G.units[n.u] && G.units[n.u].t) || '未知的领域';
+    if (n.t === 'kn') {
+      const st = n.stage || 1;
+      const stLine = st === 1
+        ? '「' + n.kn + '」刻在路边的石碑上，字迹被雾气糊住了。守碑的小精灵眨眨眼：「念对了，我就把路让开。」'
+        : st === 2
+          ? '小精灵把「' + n.kn + '」拆成三块碎字抛向空中：「接得住，才算真的记住了。」'
+          : '石碑裂开一道缝，里面传出低沉的声音：「最后一个问题——' + n.kn + '，你真的懂了吗？」';
+      return { ch: n.u || 0, em: S ? S.icon : '📖', title: chap.n.split('·')[1].trim() + ' · ' + n.kn,
+        lines: [scene, stLine, '答对问题，就能点亮这块石板，继续往前走。'] };
+    }
+    if (n.t === 'boss') {
+      const bn = S ? S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[n.u];
+      return { ch: n.u || 0, em: S ? S.icon : '👹', title: 'Boss 来袭 · ' + bn,
+        lines: ['「' + unitT + '」的出口被挡住了。' + bn + '从阴影里站起来，个头比想象中大得多。',
+          '它搓着手指，摆出守门人的姿势：「过了我这关，徽章才归你。」',
+          '小队互相看了看，点点头——把学会的全部用上，赢下这一局！'] };
+    }
+    if (n.t === 'final') {
+      return { ch: 4, em: '👑', title: '最终决战 · 知识魔王',
+        lines: ['书山之巅，' + gradeName(g) + '所有的「没弄懂」堆成了知识魔王的身体。它盯着小队，声音像雷滚过山谷。',
+          '「你们答对的每一道题，都是从我这儿抢走的。」魔王咆哮着张开双臂。',
+          '宠物站到了最前面，五色的徽章在胸口发亮。最后一场——去吧，把这一学年彻底赢下来！'] };
+    }
+    if (n.t === 'review') {
+      return { ch: n.u || 0, em: '🛡️', title: '复习营地 · 休整一下',
+        lines: ['营地里的篝火噼啪作响，复习木桩立在场子中央，等着大家练手。',
+          '把之前学过的招式再打一遍，手感就回来了。', '热身完毕？那就开始吧。'] };
+    }
+    if (n.t === 'chall' || n.t === 'battle') {
+      const en = ENEMIES[(n.u || 0) % ENEMIES.length];
+      return { ch: n.u || 0, em: en.split(' ')[0], title: '遭遇战 · ' + en.split(' ')[1],
+        lines: [scene, en.split(' ')[1] + '从草丛里跳了出来，挡在路中间，一副「此路是我开」的表情。',
+          '别慌，题目就是武器。上！'] };
+    }
+    return null;
+  }
+  /* 剧情卡片：小说式开场，看完进入战斗；localStorage 关掉后直接开打 */
+  function storyEnabled() { try { return localStorage.getItem('beast.story') !== 'off'; } catch (e) { return true; } }
+  function storyCard(story, onStart) {
+    if (!story) return onStart();
+    if (!storyEnabled()) return onStart();
+    BP.SND.play('frag');
+    const m = document.createElement('div');
+    m.className = 'story-mask sc-' + (story.ch % 5);
+    m.innerHTML = '<div class="story-card">' +
+      '<button class="story-x" id="stX">✕</button>' +
+      '<div class="story-em">' + story.em + '</div>' +
+      '<h2 class="story-t">' + esc(story.title) + '</h2>' +
+      '<div class="story-lines">' + story.lines.map((l, i) => '<p style="animation-delay:' + (0.3 + i * 0.9) + 's">' + esc(l) + '</p>').join('') + '</div>' +
+      '<div class="story-foot"><button class="btn" id="stGo">⚔️ 开始挑战</button>' +
+      '<button class="story-off" id="stOff">⚡ 以后直接开打，不再看剧情</button></div></div>';
+    document.body.appendChild(m);
+    requestAnimationFrame(() => m.classList.add('in'));
+    const go = () => { m.classList.remove('in'); setTimeout(() => m.remove(), 260); onStart(); };
+    m.querySelector('#stGo').onclick = go;
+    m.querySelector('#stX').onclick = () => { m.classList.remove('in'); setTimeout(() => m.remove(), 260); };
+    m.querySelector('#stOff').onclick = () => {
+      try { localStorage.setItem('beast.story', 'off'); } catch (e) {}
+      toast('已关闭剧情引子，闯关页可随时重新打开 📖');
+      go();
+    };
+  }
   /* ================= v3.30 知识图谱关卡引擎 =================
      每章 30 个知识点：英语 8（6 单词 + 2 句型）· 数学 8 · 语文 8 · 科学 4 · 道法 2
      每个知识点 3 级关卡（识记 / 练习 / 精通）→ 90 关 + 章 Boss
@@ -838,12 +935,16 @@
     const el = document.createElement('div');
     el.className = 'qz-mask';
     document.body.appendChild(el);
+    /* v3.40 BGM 只在战斗中播放：有敌人的关卡开播治愈战斗曲，退出/结束即停 */
+    if (cfg.enemy) BP.SND.bgmStart('battle');
+    const stopBgm = () => BP.SND.bgmStop();
     const petSrc = petImg(k);
     const petName = BP.displayName(k);
     /* v3.32: 武器 + 宠物稀有度 → 助战协力概率加成 */
     const hitBonus = (function () {
       ensurePetSys(k);
-      const w = k.wardrobe && k.wardrobe.hand && BP.WEAPONS[k.wardrobe.hand];
+      const mwd = BP.wardOf ? BP.wardOf(k, 'main') : k.wardrobe;
+      const w = mwd && mwd.hand && BP.WEAPONS[mwd.hand];
       return ((w && w.fx && w.fx.hit) || 0) + (BP.rarFx(k.pet.type).hit || 0);
     })();
 
@@ -873,7 +974,7 @@
         '<div class="qz-opts">' + q.opts.map((o, i) => '<button class="qz-opt" data-i="' + i + '">' + esc(o) + '</button>').join('') + '</div>' +
         '<div class="qz-fb" id="qzFb"></div></div>' +
         '</div>';
-      el.querySelector('#qzX').onclick = () => { if (confirm('中途退出本题不记录成绩，确定退出？')) { el.remove(); } };
+      el.querySelector('#qzX').onclick = () => { if (confirm('中途退出本题不记录成绩，确定退出？')) { stopBgm(); el.remove(); } };
       el.querySelectorAll('.qz-opt').forEach((b) => (b.onclick = () => answer(+b.dataset.i, b)));
       /* 自动化测试钩子: 仅当测试脚本显式写入 sessionStorage 时生效 */
       if (sessionStorage.getItem('qzTestMark')) el.querySelectorAll('.qz-opt')[q.a].style.border = '3px solid gold';
@@ -932,6 +1033,7 @@
     }
     function finish() {
       const win = cfg.enemy ? eHp <= 0 : (cfg.mode === 'drill' ? wrongQs.length === 0 : true);
+      stopBgm();
       BP.SND.play(win ? 'victory' : 'lose');
       const total = cfg.qs.length;
       const right = total - wrongQs.length;
@@ -1093,8 +1195,10 @@
     } else {
       if (!k.weapons) k.weapons = [];
       if (!k.weapons.includes(d.id)) k.weapons.push(d.id);
-      if (!k.wardrobe || typeof k.wardrobe !== 'object') k.wardrobe = {};
-      if (!k.wardrobe.hand) k.wardrobe.hand = d.id; /* 首件自动装备 */
+      if (!k.wardrobes || typeof k.wardrobes !== 'object') k.wardrobes = {};
+      const mwd = k.wardrobes.main || (k.wardrobes.main = k.wardrobe || {});
+      k.wardrobe = mwd;
+      if (!mwd.hand) mwd.hand = d.id; /* 首件自动装备（主宠物） */
     }
   }
   function itemDropFX(d, k, cb) {
@@ -1124,6 +1228,24 @@
     const close = () => { m.classList.remove('in'); setTimeout(() => { m.remove(); if (cb) cb(); }, 320); };
     m.querySelector('#idOk').onclick = close;
     m.onclick = (e) => { if (e.target === m) close(); };
+  }
+
+  /* v3.40 碎片掉落小卡：普通关卡打完也能看见「掉什么」 */
+  function fragDropFX(ft, sub) {
+    const meta = BP.PETS[ft] || { name: '', emoji: '🧩' };
+    const rar = rarOf(ft), R = RAR[rar];
+    BP.SND.play('frag');
+    const m = document.createElement('div');
+    m.className = 'frag-drop';
+    m.innerHTML = '<div class="fd-card" style="border-color:' + R.c + ';box-shadow:0 6px 24px ' + R.c + '44">' +
+      '<i class="drop-rays" style="--rc:' + R.c + '"></i>' +
+      '<span class="fd-img"><img src="' + BP.imgFor(ft, 1) + '" alt="" onerror="this.style.display=\'none\'"><i class="rar-tag" style="background:' + R.c + '">' + rar + '</i></span>' +
+      '<div class="fd-t"><b>🧩 掉落「' + esc(meta.name) + '」碎片 ×1</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div></div>';
+    document.body.appendChild(m);
+    requestAnimationFrame(() => m.classList.add('in'));
+    const rm = () => { if (!m.parentNode) return; m.classList.remove('in'); setTimeout(() => m.remove(), 300); };
+    m.onclick = rm;
+    setTimeout(rm, 2600);
   }
 
   /* ================= v3.24 每日互动（每天首次给经验） ================= */
@@ -1324,8 +1446,9 @@
       '<div class="qh-t"><b>' + gradeName(g) + ' · 知识冒险</b><small>' +
       (k.className ? esc(k.className) + ' · ' : '') +
       (q.trophy ? '🏆 已通关，可重刷拿满星' : '进度 ' + doneN + '/' + total + ' 关 · 5 大学科 150 个知识点') + '</small></div>' +
-      '<div class="qh-btns"><button id="qKnMap">📚</button><button id="qColl">🧸</button>' +
-      '<button id="qWrong">📕' + (wrongOpen(k).length ? '<b class="wr-n">' + wrongOpen(k).length + '</b>' : '') + '</button><button id="qGrade">🎓</button></div></div>' +
+      '<div class="qh-btns"><button id="qKnMap" title="知识图谱">📚</button><button id="qColl" title="我的收集">🧸</button>' +
+      '<button id="qStory" title="剧情引子开关">' + (storyEnabled() ? '📖' : '⚡') + '</button>' +
+      '<button id="qWrong" title="错题本">📕' + (wrongOpen(k).length ? '<b class="wr-n">' + wrongOpen(k).length + '</b>' : '') + '</button><button id="qGrade" title="切换年级">🎓</button></div></div>' +
       '<div class="qbar-wrap"><div class="qbar"><i style="width:' + pct + '%"></i></div>' +
       '<div class="qbar-lb"><span>本学年 ' + total + ' 关 · 已通关 ' + doneN + '</span><b>' + pct + '%</b></div></div>' +
       '<div class="tiny q-tip">🎯 每章 30 个知识点，每个 3 级关卡（识记 → 练习 → 精通）；只显示当前进度附近，通关后自动推进</div>' +
@@ -1342,6 +1465,12 @@
       P.save(); render(); toast('新的冒险：' + gradeName(gg) + ' · ' + mapSize(gg) + ' 关');
     });
     document.getElementById('qColl').onclick = () => collSheet(k, q);
+    document.getElementById('qStory').onclick = () => {
+      const on = !storyEnabled();
+      try { localStorage.setItem('beast.story', on ? 'on' : 'off'); } catch (e) {}
+      render();
+      toast(on ? '📖 剧情引子已开启：每关先看小说式开场' : '⚡ 剧情引子已关闭：点关直接开打');
+    };
     document.getElementById('qWrong').onclick = () => wrongSheet(k, () => render());
     document.getElementById('qKnMap').onclick = () => knMapSheet(k, q);
     /* 章节折叠 / 视窗展开 */
@@ -1556,7 +1685,8 @@
       : n.t === 'boss' ? (bossS ? { em: bossS.icon, name: bossS.name + '·' + bossS.bosses[n.u % bossS.bosses.length], hp: qs.length }
         : (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(BOSSES[n.u]))
       : { em: '👑', name: '知识魔王', hp: qs.length };
-    quizRun({
+    /* v3.40 剧情引子：先看小说式开场卡，再进入答题战斗 */
+    storyCard(storyOf(n, g), () => quizRun({
       qs, enemy,
       aid: aidList(k),
       onEnd: (r) => {
@@ -1574,11 +1704,12 @@
         let dropItem = null;
         let dropSubj = null;
         let dropSubjType = null;
+        let dropFragType = null;
         const bonus = n.lv || 0; /* 难度加成：关卡越靠后奖励越高 */
         if (n.t === 'chall') {
           const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
           reward(k, 3 + bonus, 15 + bonus * 3, '挑战关达成 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🏅', (n.subj || 'mix'));
-          dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
+          dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1'; dropFragType = ft;
         }
         if (n.t === 'kn') {
           /* 知识点三级关：识记 1 分 / 练习 2 分 / 精通 3 分，精通满分必掉碎片 */
@@ -1588,18 +1719,18 @@
             '知识点' + STAGE_NAME[st - 1] + ' · ' + n.kn + (full ? ' · 完美!' : ''), '📖', (n.subj || 'mix'));
           if (full && (st >= 3 || Math.random() < 0.45)) {
             const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
-            dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
+            dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1'; dropFragType = ft;
           }
         }
         if (n.t === 'battle') {
           const ft = dropFrag(k, [rarityByScore(r.right, r.total)]);
           reward(k, 2 + bonus, 12 + bonus * 3, '冒险战斗获胜 · ' + DB[g].units[n.u].t + ' · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '⚔️', (n.subj || 'mix'));
-          dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
+          dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1'; dropFragType = ft;
         }
         if (n.t === 'review') {
           const ft = dropFrag(k, ['N', 'R']);
           reward(k, 1 + bonus, 6 + bonus * 2, '完成复习营地 · 掉落🧩' + (BP.PETS[ft] ? BP.PETS[ft].name : '') + '碎片', '🛡️', (n.subj || 'mix'));
-          dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1';
+          dropMsg = '🧩 掉落「' + (BP.PETS[ft] ? BP.PETS[ft].name : '?') + '」碎片 ×1'; dropFragType = ft;
         }
         if (n.t === 'boss') {
           if (!q.badges.includes(n.u)) q.badges.push(n.u);
@@ -1640,9 +1771,15 @@
                 BP.petDropFXShow(dropSubjType, sd);
               } else refresh();
             })));
-        } else toast((n.t === 'kn' ? '知识点掌握 +' : '战斗胜利 +') + (n.t === 'review' ? 1 + bonus : n.t === 'kn' ? 1 + bonus : 2 + bonus) + ' 积分' + (dropMsg ? ' · ' + dropMsg : ''));
+        } else {
+          /* v3.40 普通关卡也看得见掉落：碎片小卡特效替代纯文字 toast */
+          refresh();
+          const pts = (n.t === 'review' ? 1 + bonus : n.t === 'kn' ? 1 + bonus : 2 + bonus);
+          if (dropFragType) fragDropFX(dropFragType, '+' + pts + ' 积分 · 经验已到账');
+          else toast((n.t === 'kn' ? '知识点掌握 +' : '战斗胜利 +') + pts + ' 积分');
+        }
       }
-    });
+    }));
   }
 
   function openTreasure(k, q, n, refresh) {

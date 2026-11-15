@@ -690,7 +690,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.34 · 科目必选 · 学科名与知识图谱统一<br>' +
+      '<div class="w-ver">版本 v3.35 · 学生界面入口 · 科目必选<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -1097,7 +1097,7 @@
       (isClass() ? '<div class="quick-links tl-links">' +
         '<a href="#/class">👥 全班</a><a href="#/analysis">📊 学情分析</a><a href="#/board">🏆 光荣榜</a><a href="#/log">📒 记录</a>' +
         '</div>' +
-        '<button class="stu-entry-btn" id="stuEntry">🔗 学生答题入口 · 生成链接发给学生</button>' +
+        '<button class="stu-entry-btn" id="stuEntry">🔗 学生界面入口 · 链接和班级码发给学生</button>' +
         '<div class="tiny tl-note">老师端只做管理与统计，不设答题闯关。学生用自己的手机打开上面的链接作答，成绩自动汇总到这里。</div>'
         : isStudent() ? studentHomeHTML(k) :
         '<div class="games-grid">' +
@@ -2572,34 +2572,63 @@
     const code = (c && c.code) ? c.code : '';
     return location.origin + location.pathname + '?role=student' + (code ? '&code=' + encodeURIComponent(code) : '');
   }
-  function copyText(txt, tip) {
-    const fallback = () => {
+  /* 复制：成功后按钮变「✅ 已复制」+ 震动 + 提示；浏览器拦截时弹出可长按的内容框，
+     绝不让用户猜到底复制成功没有 */
+  function copyText(txt, okTip, btn) {
+    const success = () => {
+      toast(okTip || '✅ 已复制');
+      if (btn) {
+        if (!btn.dataset.oldTxt) btn.dataset.oldTxt = btn.textContent;
+        btn.textContent = '✅ 已复制';
+        btn.classList.add('copied');
+        clearTimeout(btn._cpT);
+        btn._cpT = setTimeout(() => {
+          btn.textContent = btn.dataset.oldTxt;
+          btn.classList.remove('copied');
+        }, 1600);
+      }
+      try { if (navigator.vibrate) navigator.vibrate(18); } catch (e) {}
+    };
+    const manual = () => {
+      toast('浏览器不允许自动复制，长按下面的内容手动复制');
+      openSheet('<div class="sheet-h">📋 长按复制</div>' +
+        '<div class="tiny">自动复制被浏览器拦下了。长按下面框里的内容 → 全选 → 复制即可。</div>' +
+        '<textarea class="se-copybox" readonly rows="4">' + esc(txt) + '</textarea>',
+        (mm) => {
+          const ta = mm.querySelector('.se-copybox');
+          if (ta) { try { ta.focus(); ta.select(); } catch (e) {} }
+        });
+    };
+    const legacy = () => {
       const ta = document.createElement('textarea');
       ta.value = txt;
-      ta.style.position = 'fixed'; ta.style.left = '-9999px'; ta.style.top = '0';
-      document.body.appendChild(ta); ta.focus(); ta.select();
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0';
+      ta.style.width = '1px'; ta.style.height = '1px'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      try { ta.focus(); ta.select(); ta.setSelectionRange(0, txt.length); } catch (e) {}
       let ok = false;
       try { ok = document.execCommand('copy'); } catch (e) {}
       ta.remove();
-      toast(ok ? tip : '复制失败，请长按链接手动选择复制');
+      if (ok) success(); else manual();
     };
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(txt).then(() => toast(tip)).catch(fallback);
+        navigator.clipboard.writeText(txt).then(success).catch(legacy);
         return;
       }
     } catch (e) {}
-    fallback();
+    legacy();
   }
   function studentEntrySheet() {
     const c = curCls();
     const code = (c && c.code) ? c.code : '';
     const link = studentEntryLink();
     openSheet(
-      '<div class="sheet-h">🔗 学生答题入口</div>' +
+      '<div class="sheet-h">🔗 学生界面入口</div>' +
       '<div class="tiny se-intro">学生用自己的手机打开这个链接（或扫码）→ 选「我是学生」→ 设置名字和 4 位以上密码 → 自动加入本班。此后每次答题、闯关的成绩都会自动汇总到你的班级里。</div>' +
-      '<div class="se-qr"><canvas id="seQr"></canvas><div class="tiny">用微信/相机扫码，直接进入学生入学页</div></div>' +
-      '<div class="se-link" id="seLink">' + esc(link) + '</div>' +
+      '<div class="se-qr"><canvas id="seQr"></canvas><div class="tiny">用微信/相机扫码，直接进入学生界面</div></div>' +
+      '<div class="se-link" id="seLink"><span>' + esc(link) + '</span><i>点我复制</i></div>' +
       (code
         ? '<div class="tiny">班级码 <b>' + esc(code) + '</b> 已内置在链接中，学生打开后不用再手输</div>'
         : '<div class="tiny">当前班级还没有班级码：学生打开后需要手动输入。建议先去「☁️ 同步」里生成班级码。</div>') +
@@ -2610,11 +2639,12 @@
       (m) => {
         const cv = m.querySelector('#seQr');
         try { drawQr(cv, link, 230); } catch (e) { if (cv) cv.remove(); }
-        m.querySelector('#seCopy').onclick = () => copyText(link, '✅ 链接已复制，发给学生即可');
-        const cc = m.querySelector('#seCopyCode');
-        if (cc && code) cc.onclick = () => copyText(code, '✅ 班级码已复制');
+        const bLink = m.querySelector('#seCopy');
+        const bCode = m.querySelector('#seCopyCode');
+        if (bLink) bLink.onclick = () => copyText(link, '✅ 链接已复制，发给学生即可', bLink);
+        if (bCode && code) bCode.onclick = () => copyText(code, '✅ 班级码 ' + code + ' 已复制', bCode);
         const lk = m.querySelector('#seLink');
-        if (lk) lk.onclick = () => copyText(link, '✅ 链接已复制');
+        if (lk) lk.onclick = () => copyText(link, '✅ 链接已复制，发给学生即可', null);
       });
   }
 
@@ -2639,7 +2669,7 @@
         : '<div class="tiny" style="margin-top:6px">把它写在黑板/群公告里，学生用「我是学生 → 加入班级」输入即可</div>';
     }
     if (!stu) {
-      body += '<button class="btn ghost sm" id="csEntry" style="margin-top:8px;width:100%">🔗 学生答题入口 · 生成链接/二维码</button>';
+      body += '<button class="btn ghost sm" id="csEntry" style="margin-top:8px;width:100%">🔗 学生界面入口 · 链接/二维码</button>';
     }
     if (!stu && key) {
       body += '<div class="cloud-key"><span>教师密钥（换设备接管用）</span><b>' + esc(key.slice(0, 10)) + '…</b>' +
@@ -4208,7 +4238,7 @@
     const _hk = (location.hash || '').replace('#/', '').split('?')[0];
     if (isClass() && ['daily', 'quest', 'tasks', 'lucky'].includes(_hk)) {
       try { history.replaceState(null, '', '#/home'); } catch (e) { location.hash = '#/home'; }
-      toast('👩‍🏫 老师端不参与答题闯关 · 请把「学生答题入口」链接发给学生');
+      toast('👩‍🏫 老师端不参与答题闯关 · 请把「学生界面入口」链接发给学生');
     }
     const empty = !P.d.kids || !P.d.kids.length;
     if (empty && !isClass()) {
@@ -4924,7 +4954,7 @@
     }
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3340', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3350', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

@@ -672,6 +672,15 @@
   }
 
   function stepRole(el) {
+    /* v3.33 专属入口链接：?role=student&code=XXXXXX 直接进对应入口 */
+    const en = window.__entry;
+    if (en && (en.role === 'student' || en.role === 'family' || en.role === 'class')) {
+      window.__entry = null;
+      try { localStorage.setItem('beast.role', en.role); } catch (e) {}
+      if (en.role === 'student') return stepStudent(el, en.code);
+      if (en.role === 'class') return stepClass(el);
+      return stepFamily(el);
+    }
     el.innerHTML =
       '<div class="big"><img src="images/egg.jpg" alt="" style="width:110px;height:110px;border-radius:26px;box-shadow:0 10px 40px rgba(255,215,110,.45)"></div>' +
       '<h2>伴学宠物</h2>' +
@@ -681,7 +690,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.32 · 图鉴新宠 + Boss 掉宝 + 武器音效<br>' +
+      '<div class="w-ver">版本 v3.33 · 老师端不含答题 · 学生专属入口链接<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -695,13 +704,14 @@
   }
 
   /* 学生入口：建档 → 摸底掉宠；可选加入班级 */
-  function stepStudent(el) {
+  function stepStudent(el, preCode) {
     el.innerHTML =
       '<h2 style="margin-top:0">学生入学</h2>' +
       '<p>先做个摸底测试，成绩越好，降临的宠物伙伴越稀有！<br>有班级码的话可以填上，加入后跟着班级走。</p>' +
       '<div class="field"><label>你的名字 / 昵称</label><input id="wsName" maxlength="8" placeholder="比如：小明"></div>' +
       '<div class="field"><label>设置密码（4-12 位字母或数字）</label><input id="wsPwd" maxlength="12" placeholder="换设备凭「名字+密码」找回档案"></div>' +
-      '<div class="field"><label>班级码（没有可留空）</label><input id="wsCode" maxlength="8" placeholder="问老师要 6 位班级码"></div>' +
+      '<div class="field"><label>班级码' + (preCode ? '（老师入口已自动填好）' : '（没有可留空）') + '</label>' +
+      '<input id="wsCode" maxlength="8" placeholder="问老师要 6 位班级码" value="' + esc(preCode || '') + '"></div>' +
       '<button class="btn" id="wsGo" style="margin-top:14px">开始摸底 📚</button>' +
       '<button class="w-back" id="wsBack">‹ 返回</button>';
     el.querySelector('#wsBack').onclick = () => stepRole(el);
@@ -1080,8 +1090,11 @@
       '<div><b>' + weekPts + '</b><span>本周获得</span></div>' +
       '<div><b>' + third + '</b><span>' + thirdLbl + '</span></div></div>' +
       '</div>' +
-      (isClass() ? '<div class="quick-links">' +
-        '<a href="#/daily">🎯 每日答题</a><a href="#/quest">🗺️ 冒险闯关</a><a href="#/dex">📖 我的图鉴</a><a href="#/tasks">✅ 今日任务</a><a href="#/board">🏆 光荣榜</a><a href="#/lucky">🎡 幸运抽奖</a></div>'
+      (isClass() ? '<div class="quick-links tl-links">' +
+        '<a href="#/class">👥 全班</a><a href="#/analysis">📊 学情分析</a><a href="#/board">🏆 光荣榜</a><a href="#/log">📒 记录</a>' +
+        '</div>' +
+        '<button class="stu-entry-btn" id="stuEntry">🔗 学生答题入口 · 生成链接发给学生</button>' +
+        '<div class="tiny tl-note">老师端只做管理与统计，不设答题闯关。学生用自己的手机打开上面的链接作答，成绩自动汇总到这里。</div>'
         : isStudent() ? studentHomeHTML(k) :
         '<div class="games-grid">' +
           '<a class="game-card gc-daily" href="#/daily"><span class="gc-em">🎯</span><div><b>每日打卡答题</b><small>每天 5 种题型 · 连续打卡</small></div><i class="gc-go">GO</i></a>' +
@@ -1123,6 +1136,8 @@
     /* 家庭/班级端学情分析入口 */
     const fa = document.getElementById('famAnalysis');
     if (fa) fa.onclick = () => { location.hash = '#/analysis'; };
+    const se = document.getElementById('stuEntry');
+    if (se) se.onclick = () => studentEntrySheet();
     document.querySelectorAll('.inter-btn').forEach((b) => (b.onclick = () => {
       if (window.BPGames) window.BPGames.petInteract(k, b.dataset.a);
     }));
@@ -1170,7 +1185,7 @@
   }
   function recentLogsHTML(k) {
     const items = P.d.log.filter((l) => l.kid === k.id).slice(0, 4);
-    if (!items.length) return '<div class="card empty">还没有记录，去做个任务吧</div>';
+    if (!items.length) return '<div class="card empty">' + (isClass() ? '还没有记录 · 学生答题或你加分后会显示在这里' : '还没有记录，去做个任务吧') + '</div>';
     return items.map(logItemHTML).join('');
   }
   function logItemHTML(l) {
@@ -1601,6 +1616,7 @@
     $view.innerHTML = html;
     bindKidsRow();
     document.querySelectorAll('.dex-card[data-skin]').forEach((c) => (c.onclick = () => {
+      if (isClass()) { toast('👩‍🏫 出战宠物由学生自己选，老师端仅查看图鉴'); return; }
       const el = c.dataset.skin;
       k.skin = (k.skin === el) ? null : el;
       P.save();
@@ -2538,6 +2554,58 @@
     C.bonus(cls.code, sids, delta, reason, subj || 'all').catch(() => {});
   }
 
+  /* ================= v3.33 学生专属网络入口（老师生成链接/二维码发给学生） ================= */
+  function studentEntryLink() {
+    const c = curCls();
+    const code = (c && c.code) ? c.code : '';
+    return location.origin + location.pathname + '?role=student' + (code ? '&code=' + encodeURIComponent(code) : '');
+  }
+  function copyText(txt, tip) {
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.style.position = 'fixed'; ta.style.left = '-9999px'; ta.style.top = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+      toast(ok ? tip : '复制失败，请长按链接手动选择复制');
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(() => toast(tip)).catch(fallback);
+        return;
+      }
+    } catch (e) {}
+    fallback();
+  }
+  function studentEntrySheet() {
+    const c = curCls();
+    const code = (c && c.code) ? c.code : '';
+    const link = studentEntryLink();
+    openSheet(
+      '<div class="sheet-h">🔗 学生答题入口</div>' +
+      '<div class="tiny se-intro">学生用自己的手机打开这个链接（或扫码）→ 选「我是学生」→ 设置名字和 4 位以上密码 → 自动加入本班。此后每次答题、闯关的成绩都会自动汇总到你的班级里。</div>' +
+      '<div class="se-qr"><canvas id="seQr"></canvas><div class="tiny">用微信/相机扫码，直接进入学生入学页</div></div>' +
+      '<div class="se-link" id="seLink">' + esc(link) + '</div>' +
+      (code
+        ? '<div class="tiny">班级码 <b>' + esc(code) + '</b> 已内置在链接中，学生打开后不用再手输</div>'
+        : '<div class="tiny">当前班级还没有班级码：学生打开后需要手动输入。建议先去「☁️ 同步」里生成班级码。</div>') +
+      '<div class="btn-row" style="margin-top:12px">' +
+      '<button class="btn sm" id="seCopy" style="flex:1">复制链接</button>' +
+      '<button class="btn sm ghost" id="seCopyCode" style="flex:1"' + (code ? '' : ' disabled') + '>复制班级码</button></div>' +
+      '<div class="tiny se-note">老师端只做管理与统计，不开放答题闯关，避免老师替学生刷分导致成绩失真。老师本人想体验关卡，可用手机打开此链接以学生身份注册一个体验号。</div>',
+      (m) => {
+        const cv = m.querySelector('#seQr');
+        try { drawQr(cv, link, 230); } catch (e) { if (cv) cv.remove(); }
+        m.querySelector('#seCopy').onclick = () => copyText(link, '✅ 链接已复制，发给学生即可');
+        const cc = m.querySelector('#seCopyCode');
+        if (cc && code) cc.onclick = () => copyText(code, '✅ 班级码已复制');
+        const lk = m.querySelector('#seLink');
+        if (lk) lk.onclick = () => copyText(link, '✅ 链接已复制');
+      });
+  }
+
   /* 云端同步面板：状态 + 班级码 + 教师密钥 + 手动同步 */
   function cloudSheet() {
     const C = CL();
@@ -2558,6 +2626,9 @@
         ? '<div class="tiny" style="margin-top:6px">把这个码给同学就行；你的答题数据会自动同步给老师</div>'
         : '<div class="tiny" style="margin-top:6px">把它写在黑板/群公告里，学生用「我是学生 → 加入班级」输入即可</div>';
     }
+    if (!stu) {
+      body += '<button class="btn ghost sm" id="csEntry" style="margin-top:8px;width:100%">🔗 学生答题入口 · 生成链接/二维码</button>';
+    }
     if (!stu && key) {
       body += '<div class="cloud-key"><span>教师密钥（换设备接管用）</span><b>' + esc(key.slice(0, 10)) + '…</b>' +
         '<button id="ckShow">显示</button></div>';
@@ -2576,6 +2647,8 @@
       };
       const tk = m.querySelector('#csTake');
       if (tk) tk.onclick = () => { close(); cloudTakeOverSheet(); };
+      const en = m.querySelector('#csEntry');
+      if (en) en.onclick = () => { close(); studentEntrySheet(); };
       const cn = m.querySelector('#csConn');
       if (cn) cn.onclick = () => {
         cn.textContent = '连接中…';
@@ -4112,6 +4185,12 @@
     if (isStudent() && ['class', 'board', 'compare', 'tasks', 'shop', 'lucky'].includes((location.hash || '').replace('#/', '').split('?')[0])) {
       location.hash = '#/home';
     }
+    /* 老师端不参与学生玩法：答题/闯关/任务/抽奖一律拦回首页（避免老师替学生刷分） */
+    const _hk = (location.hash || '').replace('#/', '').split('?')[0];
+    if (isClass() && ['daily', 'quest', 'tasks', 'lucky'].includes(_hk)) {
+      try { history.replaceState(null, '', '#/home'); } catch (e) { location.hash = '#/home'; }
+      toast('👩‍🏫 老师端不参与答题闯关 · 请把「学生答题入口」链接发给学生');
+    }
     const empty = !P.d.kids || !P.d.kids.length;
     if (empty && !isClass()) {
       $view.innerHTML = '';
@@ -4740,6 +4819,15 @@
   function boot() {
     P.load();
     if (!P.d) { P.d = P.fresh(); }
+    /* v3.33 专属入口链接：?role=student&code=XXXXXX（老师生成发给学生） */
+    try {
+      const q = new URLSearchParams(location.search);
+      const wr = (q.get('role') || '').toLowerCase();
+      if (wr) {
+        window.__entry = { role: wr, code: (q.get('code') || '').trim().toUpperCase() };
+        history.replaceState(null, '', location.pathname + (location.hash || ''));
+      }
+    } catch (e) {}
     restoreAccount();
     P.save();   // 迁移结果立即落盘
     if (!location.hash) location.replace('#/home');
@@ -4761,9 +4849,18 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) maybeSnapshot(); });
     setInterval(() => { const C = window.BEAST_CLOUD; if (C && C.pending()) C.flush().catch(() => {}); maybeSnapshot(); }, 60000);
     render();
+    /* 专属入口链接在已有档案的设备上打开：只提示，不强切身份（防止老师机被误切成学生） */
+    if (window.__entry) {
+      const wr = window.__entry.role;
+      window.__entry = null;
+      const cur = (function () { try { return localStorage.getItem('beast.role') || 'family'; } catch (e) { return 'family'; } })();
+      if (wr === 'student' && cur !== 'student') {
+        setTimeout(() => toast('🔗 这是学生入口链接 · 本机当前是' + (cur === 'class' ? '老师' : '家长') + '端，点右上角头像可切换身份'), 1200);
+      }
+    }
     legacyNotice();
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3320', { updateViaCache: 'none' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js?v=3330', { updateViaCache: 'none' }).catch(() => {});
       let rld = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (rld) return; rld = true;

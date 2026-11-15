@@ -22,7 +22,9 @@ svg{display:block}
   background:color-mix(in srgb,var(--bg) 82%,transparent);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 #topbar h1{flex:1;text-align:center;font-size:16.5px;font-weight:700;letter-spacing:.5px}
-.tb-side{width:76px;display:flex;justify-content:center}
+.tb-side{width:76px;display:flex;justify-content:center;gap:4px}
+.tb-r{width:110px;justify-content:flex-end}
+#acctBtn{min-width:34px;padding:0 8px;font-size:14px}
 #parentBtn{border:1px solid var(--line);background:var(--surface);color:var(--text-2);
   font-size:12px;font-weight:600;padding:6px 11px;border-radius:999px;cursor:pointer}
 #parentBtn:active{transform:scale(.95)}
@@ -792,3 +794,187 @@ svg{display:block}
 /* —— 权限诊断行 —— */
 .qf-diag{margin-top:10px;padding:7px 10px;border-radius:9px;background:#f5f3fb;
   font-size:11.5px;line-height:1.7;color:#6b6480;text-align:left}
+
+/* ================= v3.28 云端同步 ================= */
+.cc-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #c9b8e8;
+  margin-right: 4px; vertical-align: 1px; }
+.cc-dot.on { background: #5ec46a; box-shadow: 0 0 0 2px rgba(94,196,106,.22); }
+.ch-cloud { margin-top: 6px; opacity: .95; display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.ch-cloud #clsCloud { margin-left: auto; font-size: 11px; padding: 2px 10px; border-radius: 99px;
+  border: 1px solid rgba(255,255,255,.45); background: rgba(255,255,255,.16); color: #fff; }
+.stu-sync { display: flex; align-items: center; gap: 4px; margin-top: 10px; padding: 8px 12px;
+  background: #f7f2ff; border: 1px solid #eadffa; border-radius: 12px; font-size: 12px; color: #6b5586; }
+.stu-sync:active { background: #efe6fb; }
+.cloud-stat { background: #f7f2ff; border: 1px solid #eadffa; border-radius: 14px; padding: 12px 14px; margin-top: 10px; }
+.cloud-stat b { display: block; font-size: 14px; color: #3a2a4a; }
+.cloud-stat small { display: block; font-size: 11.5px; color: #9a8ab0; margin-top: 3px; }
+.cloud-code { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 10px 14px;
+  background: linear-gradient(135deg, #fff7e6, #ffeccc); border-radius: 12px; border: 1px solid #ffe0a3; }
+.cloud-code span { font-size: 12px; color: #8a5a00; }
+.cloud-code b { font-size: 20px; letter-spacing: 3px; color: #d97706; font-weight: 800; }
+.cloud-key { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 12px;
+  background: #f5f5f7; border-radius: 10px; font-size: 11px; color: #6b6b7a; }
+.cloud-key span { flex: none; }
+.cloud-key b { font-family: ui-monospace, monospace; color: #3a2a4a; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.cloud-key button { border: 1px solid #ddd; background: #fff; border-radius: 8px; padding: 3px 10px; font-size: 11px; color: #4a3364; }
+.stu .jl { position: absolute; top: 4px; left: 4px; font-size: 10px; font-style: normal; opacity: .9; }
+
+/* ================= v3.29 账号中心 ================= */
+.acc-me { display: flex; align-items: center; gap: 10px; background: linear-gradient(100deg, #f3edff, #eaf3ff);
+  border: 1.5px solid #ded0f7; border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; }
+.acc-me .acc-nm small, .acc-me small { font-size: 11px; color: #8578a3; }
+.acc-av { width: 34px; height: 34px; border-radius: 10px; background: #7c3aed; color: #fff; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex: none; font-size: 15px; }
+.acc-av.big { width: 42px; height: 42px; font-size: 18px; }
+.acc-me b { font-size: 14.5px; color: #3a2a4a; }
+.acc-it { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px;
+  border: 1px solid #eee4fb; margin-top: 6px; background: #fff; }
+.acc-it.me { border-color: #c9b3f5; background: #faf7ff; }
+.acc-nm { flex: 1; min-width: 0; }
+.acc-nm b { font-size: 13.5px; color: #3a2a4a; display: block; }
+.acc-nm small { font-size: 10.5px; color: #9a8ab0; }
+.acc-cur { font-size: 10px; color: #7c3aed; background: #efe7ff; border-radius: 999px; padding: 3px 8px; font-weight: 700; }
+.acc-sw { border: 1.5px solid #d5c8f5; background: #fff; color: #6d28d9; border-radius: 999px; font-size: 11px; padding: 4px 10px; }
+.acc-sync { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #6a5a86;
+  background: #f7f3fd; border-radius: 10px; padding: 8px 10px; margin: 4px 0 10px; }
+
+/* ================= v3.30 版本更新提示 ================= */
+#upTip{position:fixed;left:10px;right:10px;bottom:calc(70px + env(safe-area-inset-bottom));z-index:9999;
+  display:flex;align-items:center;gap:8px;background:linear-gradient(100deg,#7c3aed,#a855f7);color:#fff;
+  border-radius:14px;padding:10px 12px;box-shadow:0 10px 30px rgba(80,30,150,.34);font-size:13px;animation:upIn .3s ease}
+#upTip[hidden]{display:none}
+#upTip span{flex:1;line-height:1.35}
+#upTip button{border:0;border-radius:999px;padding:6px 11px;font-size:12px;font-weight:800;background:#fff;color:#6d28d9}
+#upTip #upX{background:rgba(255,255,255,.2);color:#fff;font-size:15px;padding:2px 9px}
+@keyframes upIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+/* 知识图谱总览：章节折叠 */
+details.knm-chap{margin-top:10px;border:1px solid #efe6fb;border-radius:12px;padding:6px 10px;background:#fff}
+details.knm-chap>summary{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;padding:2px 0}
+details.knm-chap>summary::-webkit-details-marker{display:none}
+details.knm-chap>summary b{flex:1;font-size:12.5px;color:#5b21b6}
+details.knm-chap>summary span{font-size:11px;color:#a394bb}
+details.knm-chap[open]>summary{border-bottom:1px dashed #f0e8fc;padding-bottom:5px;margin-bottom:2px}
+
+/* ================= v3.31 学科宠物 · 饰品 ================= */
+/* 宠物形象容器：饰品叠在图上层 */
+.pav{position:relative;display:inline-block;flex:none;line-height:0}
+.pav>img{width:100%!important;height:100%!important;object-fit:contain!important;border-radius:22%!important;border:0!important;box-shadow:none!important;background:transparent}
+.pav .pav-acc{position:absolute;transform:translate(-50%,-50%);z-index:3;line-height:1;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.28));pointer-events:none}
+.pav .pav-acc.back{z-index:1;opacity:.95}
+.pav .pav-acc.neck,.pav .pav-acc.face{z-index:4}
+
+/* 学生首页：五科宠物 */
+.subj-pets{background:#fff;border-radius:18px;padding:12px 12px 10px;margin-top:12px;
+  box-shadow:0 6px 20px rgba(90,60,140,.1);border:1px solid #f0eafc}
+.sp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sp-head b{font-size:14px;color:#3d2c55}
+.sp-dress{border:0;background:#f3edff;color:#6d28d9;font-size:11.5px;font-weight:700;
+  border-radius:999px;padding:5px 10px}
+.sp-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.sp-card{display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid #efe8fb;
+  background:#fcfaff;border-radius:14px;padding:7px 2px 6px;position:relative;overflow:hidden}
+.sp-card::after{content:"";position:absolute;inset:auto 0 0 0;height:3px;background:var(--c);opacity:.5}
+.spc-av{display:block;line-height:0}
+.spc-t{display:flex;flex-direction:column;align-items:center;width:100%}
+.spc-t b{font-size:10.5px;color:#4a3364;white-space:nowrap}
+.spc-t small{font-size:9px;color:#9b8bb3}
+.spc-bar{display:block;width:80%;height:3px;border-radius:3px;background:#eee;margin-top:2px;overflow:hidden}
+.spc-bar i{display:block;height:100%;background:var(--c);border-radius:3px}
+.sp-note{margin-top:7px;text-align:center;font-size:10px;color:#a99bc0}
+
+/* 装扮面板 */
+.ds-preview{display:flex;align-items:center;gap:14px;background:linear-gradient(100deg,#f7f2ff,#fff8ec);
+  border-radius:16px;padding:12px;margin-bottom:10px;border:1px solid #eee3fb}
+.ds-pt b{display:block;font-size:15px;color:#3d2c55}
+.ds-pt small{font-size:11px;color:#9384ad}
+.ds-slot{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:11px;background:#faf7ff;
+  border:1px dashed #e7dcfa;margin-top:6px;font-size:12.5px;color:#4a3364}
+.ds-l{width:38px;color:#8b7aa8;font-size:11.5px}
+.ds-v{flex:1;display:flex;align-items:center;gap:6px}
+.ds-x{border:0;background:#fff;color:#a08fbb;border-radius:999px;font-size:10.5px;padding:3px 8px;border:1px solid #e7dcfa}
+.ds-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.ds-it{display:flex;flex-direction:column;align-items:center;gap:1px;background:#fff;border:1.5px solid #eee4fb;
+  border-radius:14px;padding:9px 4px 8px}
+.ds-it.on{border-color:#c9b3f5;background:#faf6ff;box-shadow:0 4px 14px rgba(124,58,237,.12)}
+.ds-it .ds-e{font-size:24px;line-height:1.1}
+.ds-it b{font-size:11px;color:#3d2c55}
+.ds-it small{font-size:9.5px;color:#9b8bb3}
+.ds-it.buy small{color:#c07a00}
+
+/* 学科宠物面板 */
+.sp-hero{display:flex;align-items:center;gap:14px;padding:12px;border-radius:16px;
+  background:linear-gradient(100deg,#fff,#f8f4ff);border:1.5px solid #eee3fb;position:relative;overflow:hidden}
+.sp-hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c,#7c3aed)}
+.sp-av{flex:none}
+.sp-t{flex:1;min-width:0}
+.sp-t b{font-size:16px;color:#3d2c55}
+.sp-t small{display:block;font-size:11px;color:#9384ad;margin:1px 0 6px}
+.sp-bar{height:8px;border-radius:999px;background:#efe8fb;overflow:hidden}
+.sp-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#a78bfa,#ffd76e)}
+.sp-exp{font-size:10.5px;color:#9b8bb3}
+.sp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:6px}
+.sp-it{display:flex;flex-direction:column;align-items:center;gap:1px;border:1.5px solid #eee4fb;border-radius:12px;
+  background:#fff;padding:6px 2px}
+.sp-it.on{border-color:#c9b3f5;background:#faf6ff}
+.sp-it b{font-size:9.5px;color:#4a3364;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.sp-it small{font-size:9px;color:#7c3aed}
+
+/* 教师团队 / 身份 */
+.me-chip{display:flex;align-items:center;gap:6px;width:100%;margin-top:8px;background:#f3edff;border:1px solid #e0d3fa;
+  color:#5b21b6;border-radius:12px;padding:9px 12px;font-size:12.5px;font-weight:700}
+.me-chip i{margin-left:auto;font-style:normal;font-size:11px;color:#9b8bb3}
+.tt-list{margin-top:10px}
+.tt-row{display:flex;align-items:center;gap:8px;padding:6px 0}
+.tt-r{width:62px;font-size:12.5px;color:#5b4a75;flex:none}
+.tt-in{flex:1;min-width:0;border:1.5px solid #e7dcfa;border-radius:10px;padding:8px 10px;font-size:13px;background:#fff}
+.tt-save{border:0;background:#7c3aed;color:#fff;border-radius:999px;font-size:11px;padding:6px 12px;font-weight:700}
+.tr-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.tr-it{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #eee4fb;border-radius:12px;
+  padding:11px 13px;font-size:13px;color:#4a3364;text-align:left}
+.tr-it.on{border-color:#c9b3f5;background:#faf6ff;color:#5b21b6;font-weight:700}
+.tr-it i{margin-left:auto;font-style:normal;font-size:10.5px;color:#7c3aed;background:#efe7ff;border-radius:999px;padding:2px 8px}
+
+/* 加分学科选择 */
+.subj-chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px}
+.subj-chips button{flex:none;border:1.5px solid #e7dcfa;background:#fff;color:#6a5a86;border-radius:999px;
+  font-size:11.5px;padding:6px 11px;white-space:nowrap}
+.subj-chips button.on{border-color:#c9b3f5;background:#f3edff;color:#5b21b6;font-weight:700}
+
+/* 学生详情里的五科宠物 */
+.sh-subjs{display:flex;gap:8px;justify-content:space-between;margin:10px 0 6px}
+.sh-sp{flex:1;display:flex;flex-direction:column;align-items:center;gap:0;border:1px solid #eee4fb;border-radius:12px;
+  background:#fcfaff;padding:5px 2px 4px}
+.sh-sp b{font-size:12px}
+.sh-sp small{font-size:9px;color:#9b8bb3}
+
+/* 分学科宠物墙 */
+.bd-subj{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px}
+.bd-subj button{flex:none;border:1.5px solid #e7dcfa;background:#fff;color:#6a5a86;border-radius:999px;
+  font-size:12px;padding:6px 12px;white-space:nowrap}
+.bd-subj button.on{background:#7c3aed;border-color:#7c3aed;color:#fff;font-weight:700}
+.bd-sub{font-style:normal;font-size:9.5px;color:#a99bc0;margin-left:5px}
+
+/* v3.32 宠物稀有度效果标签 */
+.sp-fx { display: inline-block; margin-top: 5px; font-size: 11px; color: #b46bff; font-weight: 600; }
+
+/* ================= v3.33 教师端入口隔离 + 学生专属链接 ================= */
+.tl-links a { color: #4c2fa8; }
+.stu-entry-btn {
+  display: block; width: 100%; margin-top: 10px; padding: 13px 12px;
+  border: 0; border-radius: 15px; cursor: pointer;
+  font-size: 14px; font-weight: 750; color: #5b3a00;
+  background: linear-gradient(135deg, #ffe19a, #ffc94d);
+  box-shadow: 0 6px 18px rgba(255, 186, 0, .28);
+}
+.stu-entry-btn:active { transform: scale(.985); }
+.tl-note { margin: 8px 4px 2px; line-height: 1.6; color: var(--text-3); }
+.se-intro { line-height: 1.65; margin-bottom: 10px; }
+.se-qr { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 10px 0 4px; }
+.se-qr canvas { border-radius: 14px; background: #fff; padding: 6px; box-shadow: 0 6px 20px rgba(0, 0, 0, .1); }
+.se-link {
+  margin: 8px 0; padding: 11px 12px; border-radius: 12px; word-break: break-all;
+  font-size: 12px; line-height: 1.5; color: #2b2b3a;
+  background: rgba(124, 58, 237, .07); border: 1px dashed rgba(124, 58, 237, .35);
+}
+.se-note { margin-top: 12px; line-height: 1.6; color: var(--text-3); }

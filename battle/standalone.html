@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>知识大陆 · 宠物远征</title>
+<style>
+/* 《知识大陆 · 宠物远征》样式 · 竖屏 390×844 优先 */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { width:100%; height:100%; overflow:hidden; font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif; user-select:none; -webkit-user-select:none; }
+body { background:#0e1220; }
+#stage {
+  position:relative; width:100%; max-width:480px; height:100%; margin:0 auto; overflow:hidden;
+  background:linear-gradient(180deg,#20264a 0%,#332a4d 55%,#452c46 100%);
+}
+#stage::before {
+  content:""; position:absolute; inset:0; pointer-events:none; opacity:.55;
+  background-image:radial-gradient(2px 2px at 20% 12%,#fff8,transparent),radial-gradient(2px 2px at 70% 22%,#fff6,transparent),
+    radial-gradient(1.5px 1.5px at 40% 30%,#fff5,transparent),radial-gradient(2px 2px at 85% 40%,#fff5,transparent),
+    radial-gradient(1.5px 1.5px at 15% 48%,#fff4,transparent),radial-gradient(1.5px 1.5px at 62% 8%,#fff4,transparent);
+}
+#fx { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:5; }
+.hidden { display:none !important; }
+.view { position:absolute; inset:0; z-index:2; display:flex; flex-direction:column; }
+
+/* ---------- 顶栏 ---------- */
+#topbar { position:absolute; top:0; left:0; right:0; height:52px; z-index:8; display:flex; align-items:center; justify-content:space-between; padding:0 14px; background:rgba(10,12,24,.42); border-bottom:1px solid rgba(245,179,1,.25); }
+#chapter { color:#f5ecd8; font-size:15px; font-weight:700; letter-spacing:1px; }
+#topright { display:flex; gap:8px; }
+.icon-btn { width:30px; height:30px; border-radius:50%; border:1px solid rgba(245,179,1,.45); background:rgba(255,255,255,.06); color:#ffe6a0; font-size:14px; font-weight:800; cursor:pointer; }
+.icon-btn.off { opacity:.45; }
+
+/* ---------- 选年级 / 组队 ---------- */
+#selectView { padding-top:52px; overflow-y:auto; }
+.sel-head { text-align:center; padding:8px 20px 4px; }
+.sel-badge { display:inline-block; color:#f5b301; border:1px solid #f5b301; border-radius:20px; padding:3px 14px; font-size:12px; letter-spacing:3px; }
+.sel-head h1, .res-head h1 { color:#fff4d6; font-size:30px; letter-spacing:4px; margin-top:10px; text-shadow:0 2px 16px rgba(245,179,1,.5); }
+.sel-head p { color:#c9c4d8; font-size:12px; margin-top:6px; }
+.sec-label { color:#ffd98a; font-size:12px; letter-spacing:2px; margin:12px 20px 6px; }
+.grade-row { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; padding:0 16px; }
+.grade-pill {
+  padding:9px 0; border-radius:10px; border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.06); color:#e6dff5; font-size:13px; font-weight:700; cursor:pointer; text-align:center;
+}
+.grade-pill.on { background:linear-gradient(135deg,#f7c948,#e8950b); color:#4a3000; border-color:#f7c948; box-shadow:0 4px 14px rgba(245,179,1,.35); }
+.grade-info { text-align:center; color:#9f98b8; font-size:11px; margin-top:6px; }
+.grade-info b { color:#ffd98a; }
+
+.pet-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:8px 16px; }
+.pet-card {
+  position:relative; background:rgba(255,255,255,.06); border:2px solid rgba(255,255,255,.14); border-radius:14px;
+  padding:8px 4px 6px; text-align:center; cursor:pointer; transition:transform .12s,box-shadow .2s,background .2s;
+}
+.pet-card:active { transform:scale(.96); }
+.pet-card.sel { box-shadow:0 0 0 3px #f5b301,0 0 20px rgba(245,179,1,.45); background:rgba(245,179,1,.1); }
+.pet-card .pemoji { font-size:34px; line-height:1.1; filter:drop-shadow(0 4px 8px #0008); }
+.pet-card .pname { color:#fff4d6; font-size:12px; font-weight:700; margin-top:4px; }
+.pet-card .prar { display:inline-block; font-size:9px; font-weight:800; padding:1px 6px; border-radius:8px; margin-top:3px; }
+.pet-card .pskill { color:#b6aecb; font-size:10px; margin-top:3px; }
+.pet-card .order-tag {
+  position:absolute; top:5px; right:5px; width:18px; height:18px; border-radius:50%;
+  background:#f5b301; color:#4a3000; font-size:11px; font-weight:900; line-height:18px;
+}
+
+/* 属性小标 */
+.elem-chip {
+  display:inline-block; font-size:11px; font-weight:800; padding:2px 9px; border-radius:10px;
+  border:1px solid currentColor; background:rgba(255,255,255,.08); vertical-align:middle;
+}
+.elem-mini { font-size:10px; padding:1px 6px; border-radius:8px; border:1px solid currentColor; }
+
+/* 队伍预览 */
+.team-bar { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:2px 16px 0; }
+.team-slot {
+  height:46px; border-radius:12px; border:1px dashed rgba(255,255,255,.22);
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  color:#7f7896; font-size:11px; background:rgba(255,255,255,.03);
+}
+.team-slot.filled { border-style:solid; border-color:rgba(245,179,1,.5); background:rgba(245,179,1,.09); color:#ffe9b0; font-size:12px; font-weight:700; }
+.team-slot .semoji { font-size:22px; }
+.roster-hint { text-align:center; color:#a9a1c0; font-size:11px; margin-top:8px; padding:0 16px; line-height:1.7; }
+.roster-hint .ok { color:#7ae0a0; }
+.roster-hint .no { color:#ff9db4; }
+
+.big-btn {
+  display:block; width:calc(100% - 40px); margin:12px auto 6px; padding:15px; border:none; border-radius:14px;
+  background:linear-gradient(135deg,#f7c948,#e8950b); color:#4a3000; font-size:17px; font-weight:800; letter-spacing:2px;
+  box-shadow:0 6px 20px rgba(245,179,1,.35); cursor:pointer;
+}
+.big-btn:disabled { background:#3c3c4a; color:#b8b3c9; box-shadow:none; cursor:default; border:1px dashed rgba(255,255,255,.18); }
+.big-btn:active:not(:disabled) { transform:translateY(2px); }
+.sel-foot { text-align:center; color:#8f8aa3; font-size:11px; margin:0 20px 18px; line-height:1.6; }
+
+/* ---------- 战斗页 ---------- */
+#battleView { padding-top:52px; }
+#enemyZone { text-align:center; padding-top:6px; height:196px; position:relative; }
+#enemyName { color:#ffd9e8; font-size:14px; letter-spacing:2px; }
+#enemyElem { margin-top:4px; }
+#enemyEmoji { font-size:78px; line-height:1.05; margin:2px 0; filter:drop-shadow(0 8px 14px #0008); transition:transform .12s; }
+#enemyEmoji.hit { animation:enemyHit .4s ease; }
+@keyframes enemyHit { 0%{transform:translateX(0)} 20%{transform:translateX(14px) rotate(6deg)} 45%{transform:translateX(-10px) rotate(-4deg)} 70%{transform:translateX(5px)} 100%{transform:translateX(0)} }
+#enemyEmoji.grow { animation:enemyGrow .5s ease; }
+@keyframes enemyGrow { 0%{transform:scale(1)} 50%{transform:scale(1.2)} 100%{transform:scale(1.08)} }
+#bossPhase { color:#ffcf6b; font-size:12px; letter-spacing:2px; margin-top:2px; }
+.hpbar { position:relative; height:18px; border-radius:9px; background:rgba(0,0,0,.45); overflow:hidden; border:1px solid rgba(255,255,255,.18); }
+.hpbar .hpfill { position:absolute; inset:0 auto 0 0; width:100%; transition:width .4s ease; }
+.hpbar span { position:absolute; inset:0; text-align:center; line-height:16px; font-size:10px; color:#fff; font-weight:700; text-shadow:0 1px 2px #000; }
+.enemy-hp { width:62%; margin:4px auto 0; }
+.enemy-hp .hpfill { background:linear-gradient(90deg,#e0557f,#b42a5a); }
+
+#playerZone { position:relative; padding:2px 18px 0; }
+#combo { position:absolute; right:18px; top:-8px; color:#fff; font-size:12px; font-weight:800; background:rgba(0,0,0,.35); padding:3px 10px; border-radius:12px; animation:comboPop .3s ease; }
+#combo span { font-size:20px; color:#f5b301; }
+@keyframes comboPop { from{transform:scale(.6)} to{transform:scale(1)} }
+#playerRow { display:flex; align-items:center; gap:12px; }
+#playerEmoji { font-size:50px; filter:drop-shadow(0 4px 8px #0008); }
+#playerEmoji.cast { animation:cast .55s ease; }
+@keyframes cast { 0%{transform:translateX(0)} 40%{transform:translateX(28px) scale(1.15)} 100%{transform:translateX(0)} }
+#playerEmoji.hurt { animation:hurt .4s ease; }
+@keyframes hurt { 0%,100%{transform:translateX(0)} 30%{transform:translateX(-8px)} 60%{transform:translateX(6px)} }
+.player-meta { flex:1; }
+#playerName { color:#fff4d6; font-size:14px; font-weight:700; margin-bottom:5px; }
+#playerName small { font-size:10px; padding:1px 7px; border-radius:8px; margin-left:4px; }
+.player-hp .hpfill { background:linear-gradient(90deg,#5fd18a,#2fa45f); }
+#battleLog { text-align:center; color:#e7dcff; font-size:11.5px; min-height:18px; margin-top:5px; line-height:1.5; }
+
+/* 队伍切换条 */
+.team-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:8px 16px 0; }
+.tm-btn {
+  position:relative; display:flex; align-items:center; gap:5px; padding:6px 6px;
+  border-radius:12px; border:1.5px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05);
+  cursor:pointer; overflow:hidden;
+}
+.tm-btn.active { border-color:#f5b301; background:rgba(245,179,1,.14); box-shadow:0 0 12px rgba(245,179,1,.3); }
+.tm-btn.down { opacity:.42; filter:grayscale(1); cursor:default; }
+.tm-btn .temoji { font-size:22px; }
+.tm-btn .tmeta { flex:1; min-width:0; }
+.tm-btn .tname { color:#f3ecdc; font-size:10px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tm-btn .thp { height:5px; border-radius:3px; background:rgba(0,0,0,.45); margin-top:3px; overflow:hidden; }
+.tm-btn .thp i { display:block; height:100%; background:linear-gradient(90deg,#5fd18a,#2fa45f); width:100%; transition:width .3s; }
+.tm-btn.down .thp i { background:#8a4a5a; }
+.tm-btn .tadv { position:absolute; top:2px; right:3px; font-size:9px; color:#7ae0a0; font-weight:800; }
+
+/* ---------- 题卡 ---------- */
+#questionCard { margin:auto 12px 10px; background:rgba(250,246,235,.98); border-radius:16px; padding:13px 14px 10px; box-shadow:0 10px 30px #0008; }
+#qHead { display:flex; align-items:center; gap:8px; font-size:11px; color:#8a7959; margin-bottom:8px; }
+#qSubj { color:#a5761a; font-weight:800; white-space:nowrap; }
+.q-kn { flex:1; color:#7a6a48; background:#efe4c9; border-radius:8px; padding:2px 7px; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#qProgress { color:#a89a7d; white-space:nowrap; }
+#qText { color:#2f2a20; font-size:16px; font-weight:700; line-height:1.45; min-height:46px; margin-bottom:10px; }
+#qOptions { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.opt {
+  background:#fff; border:2px solid #e3d9c2; border-radius:11px; padding:11px 6px; font-size:14.5px; color:#3a3020;
+  cursor:pointer; transition:transform .12s,border-color .2s,background .2s; min-height:46px;
+}
+.opt:active { transform:scale(.96); }
+.opt.right { border-color:#39a869; background:#e7f7ec; color:#1d7a44; font-weight:800; }
+.opt.wrong { border-color:#d9536e; background:#fdecef; color:#a3283f; }
+.opt.removed { text-decoration:line-through; opacity:.3; pointer-events:none; }
+#qFoot { text-align:center; margin-top:9px; min-height:26px; }
+#noteBtn { background:none; border:1px solid #d9c399; color:#9a7b3f; border-radius:10px; padding:5px 12px; font-size:11.5px; cursor:pointer; }
+#noteBtn:disabled { opacity:.4; cursor:default; }
+
+/* ---------- 覆盖层 ---------- */
+.overlay { position:absolute; inset:0; z-index:20; background:rgba(8,8,18,.8); display:flex; align-items:center; justify-content:center; padding:24px; }
+.clear-card { background:#f7f0dd; border-radius:22px; padding:26px 22px; text-align:center; width:100%; max-width:320px; box-shadow:0 16px 50px #000a; }
+.clear-star { font-size:48px; }
+.clear-card h2 { color:#6b4a12; font-size:24px; letter-spacing:2px; margin:8px 0; }
+.clear-card p { color:#8a7959; font-size:13.5px; margin-bottom:16px; }
+.clear-card .big-btn { width:100%; margin:0; }
+
+/* 怎么玩 */
+.howto-card { background:#faf4e6; border-radius:20px; padding:22px 20px; width:100%; max-width:330px; box-shadow:0 16px 50px #000a; }
+.howto-card h2 { color:#6b4a12; font-size:20px; letter-spacing:2px; text-align:center; margin-bottom:12px; }
+.howto-steps { margin:0 0 10px 18px; color:#4a3d24; font-size:13px; line-height:1.85; }
+.howto-steps b { color:#a5761a; }
+.howto-tip { color:#8a7959; font-size:11.5px; line-height:1.6; margin-bottom:14px; }
+.howto-card .big-btn { width:100%; margin:0; }
+
+/* ---------- 结算 ---------- */
+#resultView { padding-top:56px; overflow-y:auto; }
+.res-head { text-align:center; }
+.res-head h1 { font-size:26px; }
+#resStats { margin:16px 20px 8px; background:rgba(255,255,255,.07); border:1px solid rgba(245,179,1,.25); border-radius:16px; padding:14px 16px; color:#f0e8d4; font-size:14px; line-height:2; }
+#resStats b { color:#f5b301; font-size:17px; }
+#resKn { margin:0 20px 10px; color:#c9c2d8; font-size:11.5px; line-height:1.8; }
+#resKn h3 { color:#9ee8b8; font-size:12.5px; margin-bottom:4px; }
+#resKn .kn-chip { display:inline-block; background:rgba(158,232,184,.12); border:1px solid rgba(158,232,184,.35); color:#b7f0cb; border-radius:8px; padding:2px 7px; margin:2px 4px 2px 0; font-size:10.5px; }
+#resWrong { margin:0 20px; color:#c9c2d8; font-size:11.5px; line-height:1.7; }
+#resWrong h3 { color:#ffcf8b; font-size:12.5px; margin-bottom:5px; }
+
+/* ---------- 伤害数字 ---------- */
+.dmg { position:absolute; z-index:9; font-weight:900; font-size:28px; pointer-events:none; text-shadow:0 2px 6px #000,0 0 12px currentColor; animation:dmgUp 1s ease forwards; }
+.dmg.good { color:#ffd23f; }
+.dmg.crit { color:#7ae0ff; font-size:34px; }
+.dmg.bad { color:#ff8fa8; }
+@keyframes dmgUp { 0%{transform:translateY(0) scale(.6);opacity:0} 20%{transform:translateY(-10px) scale(1.2);opacity:1} 100%{transform:translateY(-66px) scale(1);opacity:0} }
+
+/* ---------- 对错大字 ---------- */
+.verdict {
+  position:absolute; left:0; right:0; z-index:12; text-align:center;
+  font-size:36px; font-weight:900; letter-spacing:3px; pointer-events:none;
+  text-shadow:0 3px 0 #0006,0 0 20px currentColor; animation:verdictPop 1.1s ease forwards;
+}
+.verdict.v-good { color:#ffe14d; }
+.verdict.v-crit { color:#7ae0ff; }
+.verdict.v-bad { color:#ff9db4; }
+@keyframes verdictPop {
+  0%{transform:scale(.4) rotate(-6deg);opacity:0}
+  18%{transform:scale(1.15) rotate(2deg);opacity:1}
+  30%{transform:scale(1) rotate(0);opacity:1}
+  80%{opacity:1}
+  100%{transform:translateY(-24px) scale(1.05);opacity:0}
+}
+
+/* ---------- 选宠页压缩：4 列，开始按钮不滚动可见 ---------- */
+.pet-grid { grid-template-columns:repeat(4,1fr); gap:6px; padding:6px 14px; }
+.pet-card { padding:6px 3px 5px; border-radius:12px; }
+.pet-card .pemoji { font-size:26px; }
+.pet-card .pname { font-size:11px; margin-top:3px; }
+.pet-card .prar { font-size:8px; padding:1px 5px; margin-top:2px; }
+.pet-card .pskill { font-size:9px; margin-top:2px; }
+.pet-card .order-tag { width:15px; height:15px; line-height:15px; font-size:10px; top:3px; right:3px; }
+.sel-head { padding:2px 20px 2px; }
+.sel-head h1 { font-size:26px; }
+.sec-label { margin:8px 16px 5px; }
+.team-bar { padding:0 14px; }
+.team-slot { height:40px; font-size:10.5px; }
+.roster-hint { font-size:10.5px; margin-top:6px; }
+.big-btn { margin:8px auto 4px; padding:13px; }
+
+/* ---------- 战场中部 ---------- */
+#arena { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:4px 16px; min-height:70px; }
+.lv-dots { display:flex; align-items:center; gap:8px; }
+.lv-dot { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.18); }
+.lv-dot.done { background:#5fd18a; box-shadow:0 0 8px rgba(95,209,138,.6); }
+.lv-dot.now { width:22px; border-radius:5px; background:linear-gradient(90deg,#f7c948,#e8950b); box-shadow:0 0 10px rgba(245,179,1,.55); }
+.elem-hint { font-size:11.5px; color:#cfc7e4; text-align:center; line-height:1.6; }
+.elem-hint b { font-size:12.5px; }
+.elem-hint .adv { color:#7ae0ff; }
+.elem-hint .weak { color:#ff9db4; }
+.elem-hint .even { color:#cfc7e4; }
+
+/* ---------- 小屏（≤720px 高）自适应：保证题卡不被裁切 ---------- */
+@media (max-height: 720px) {
+  #topbar { height:46px; }
+  #selectView, #battleView { padding-top:46px; }
+  .sel-head h1 { font-size:22px; letter-spacing:2px; }
+  .sel-head p, .sel-badge { font-size:11px; }
+  .pet-card .pemoji { font-size:22px; }
+  .pet-card .pskill { display:none; }
+  .pet-card .pname { font-size:10px; }
+  #enemyZone { height:150px; padding-top:2px; }
+  #enemyEmoji { font-size:60px; }
+  #enemyName { font-size:12.5px; }
+  #playerEmoji { font-size:40px; }
+  #playerName { font-size:12.5px; margin-bottom:3px; }
+  #battleLog { font-size:10.5px; margin-top:3px; min-height:15px; }
+  .team-row { padding-top:5px; }
+  .tm-btn { padding:4px 5px; }
+  .tm-btn .temoji { font-size:18px; }
+  #arena { min-height:34px; gap:6px; padding:2px 14px; }
+  .elem-hint { font-size:10.5px; }
+  #questionCard { padding:10px 12px 8px; margin:auto 10px 8px; }
+  #qHead { margin-bottom:6px; }
+  #qText { font-size:14.5px; min-height:38px; margin-bottom:8px; }
+  #qOptions { gap:7px; }
+  .opt { min-height:38px; padding:8px 5px; font-size:13px; }
+  #qFoot { margin-top:6px; min-height:22px; }
+  #noteBtn { padding:4px 10px; font-size:10.5px; }
+}
+@media (max-height: 720px) {
+  .sel-head { padding:0 16px; }
+  .sel-head h1 { margin-top:4px; }
+  .sel-badge { padding:1px 10px; }
+  .grade-pill { padding:6px 0; font-size:12px; }
+  .grade-info { margin-top:3px; font-size:10px; }
+  .sec-label { margin:6px 16px 4px; }
+  .pet-grid { gap:5px; padding:4px 12px; }
+  .pet-card { padding:4px 2px 3px; }
+  .team-bar { padding:0 12px; gap:6px; }
+  .team-slot { height:34px; }
+  .roster-hint { margin-top:4px; font-size:10px; line-height:1.5; }
+  .big-btn { margin:4px auto 2px; padding:11px; font-size:16px; }
+  .sel-foot { margin-bottom:6px; font-size:10px; }
+}
+
+/* ---------- 大屏（≥780px 高）把战场撑满，避免题板贴底 ---------- */
+@media (min-height: 780px) {
+  #enemyZone { height:240px; padding-top:10px; }
+  #enemyEmoji { font-size:96px; }
+  #enemyName { font-size:15px; }
+  #playerEmoji { font-size:60px; }
+  #arena { min-height:110px; gap:14px; }
+  #questionCard { margin:auto 12px max(16px, env(safe-area-inset-bottom)); padding:16px 16px 12px; }
+  .opt { min-height:54px; font-size:15.5px; }
+  #qText { min-height:52px; }
+  .tm-btn { padding:8px; }
+  .tm-btn .temoji { font-size:24px; }
+}
+
+</style>
+<script>
+/* 加载守护：任何未捕获的错误都显示出来，而不是静默白屏 */
+(function(){
+  window.__bootErr = [];
+  function panel(msg){
+    try{
+      var d = document.getElementById('__errbar');
+      if(!d){
+        d = document.createElement('div'); d.id = '__errbar';
+        d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99999;background:#7a1f1f;color:#fff;font:13px/1.6 -apple-system,sans-serif;padding:10px 14px;white-space:pre-wrap';
+        (document.body || document.documentElement).appendChild(d);
+      }
+      d.textContent = '页面没跑起来：' + msg + '\n换个浏览器打开（微信里点右上角「···」→ 在浏览器打开），或截图发给开发者。';
+    }catch(e){}
+  }
+  window.__errPanel = panel;
+  window.addEventListener('error', function(e){
+    var m = (e && e.message) || '资源加载失败';
+    if(e && e.target && e.target.tagName){
+      m = '资源加载失败：' + (e.target.src || e.target.href || e.target.tagName);
+    }
+    window.__bootErr.push(m); panel(m);
+  }, true);
+  setTimeout(function(){
+    if(!document.querySelector('#petGrid .pet-card')){
+      var w = (window.__bootErr && window.__bootErr[0]) || '未知原因';
+      panel(w + '（宠物列表没渲染出来）');
+    }
+  }, 2500);
+})();
+</script>
+</head>
+<body>
+<div id="stage">
+  <canvas id="fx"></canvas>
+
+  <!-- 顶栏 -->
+  <div id="topbar">
+    <div id="chapter">宠物远征</div>
+    <div id="topright">
+      <button id="soundBtn" class="icon-btn" title="音效开关">🔊</button>
+      <button id="helpBtn" class="icon-btn" title="怎么玩">?</button>
+    </div>
+  </div>
+
+  <!-- 选年级 + 组队 -->
+  <section id="selectView" class="view">
+    <div class="sel-head">
+      <div class="sel-badge">知识大陆</div>
+      <h1>宠物远征</h1>
+      <p>选年级 · 组三只宠物 · 答对题就出招</p>
+    </div>
+
+    <div class="sec-label">① 选择年级</div>
+    <div id="gradeRow" class="grade-row"></div>
+    <div id="gradeInfo" class="grade-info"></div>
+
+    <div class="sec-label">② 选 3 只宠物组队（首发在最左）</div>
+    <div id="petGrid" class="pet-grid"></div>
+
+    <div id="teamBar" class="team-bar"></div>
+    <div id="rosterHint" class="roster-hint"></div>
+
+    <button id="startBtn" class="big-btn" disabled>再选 3 只宠物出发</button>
+    <p class="sel-foot">答对＝宠物出招 · 属性克制伤害 ×1.6 · 答错不淘汰，换只宠物继续</p>
+  </section>
+
+  <!-- 战斗页 -->
+  <section id="battleView" class="view hidden">
+    <div id="enemyZone">
+      <div id="enemyName">苔球怪</div>
+      <div id="enemyElem" class="elem-chip">🌿 木</div>
+      <div id="enemyEmoji">🪴</div>
+      <div class="hpbar enemy-hp"><div id="enemyHpFill" class="hpfill"></div><span id="enemyHpTxt">110/110</span></div>
+      <div id="bossPhase" class="hidden"></div>
+    </div>
+
+    <div id="playerZone">
+      <div id="combo" class="hidden"><span id="comboNum">0</span> 连击</div>
+      <div id="playerRow">
+        <div id="playerEmoji">🔥</div>
+        <div class="player-meta">
+          <div id="playerName">焰爪犬</div>
+          <div class="hpbar player-hp"><div id="playerHpFill" class="hpfill"></div><span id="playerHpTxt">100/100</span></div>
+        </div>
+      </div>
+      <div id="battleLog">答对题目，宠物就会出招！</div>
+    </div>
+
+    <!-- 队伍切换 -->
+    <div id="teamRow" class="team-row"></div>
+
+    <!-- 战场中部：关卡进度 + 属性关系 -->
+    <div id="arena">
+      <div id="lvDots" class="lv-dots"></div>
+      <div id="elemHint" class="elem-hint"></div>
+    </div>
+
+    <!-- 题卡 -->
+    <div id="questionCard">
+      <div id="qHead">
+        <span id="qSubj">🧮 数学</span>
+        <span id="qKn" class="q-kn">两位数乘两位数</span>
+        <span id="qProgress">第 1 题</span>
+      </div>
+      <div id="qText">题目加载中…</div>
+      <div id="qOptions"></div>
+      <div id="qFoot"><button id="noteBtn">📓 米娅的笔记 ×2</button></div>
+    </div>
+  </section>
+
+  <!-- 过关 -->
+  <div id="levelClear" class="overlay hidden">
+    <div class="clear-card">
+      <div class="clear-star">⭐</div>
+      <h2 id="clearTitle">过关！</h2>
+      <p id="clearSub">敌人碎成了书页</p>
+      <button id="nextBtn" class="big-btn">继续前进</button>
+    </div>
+  </div>
+
+  <!-- 失败（温柔） -->
+  <div id="defeat" class="overlay hidden">
+    <div class="clear-card">
+      <div class="clear-star">🌱</div>
+      <h2>休息一下也没关系</h2>
+      <p>这些题目，下次一定会。</p>
+      <button id="retryBtn" class="big-btn">再挑战一次</button>
+    </div>
+  </div>
+
+  <!-- 结算 -->
+  <div id="resultView" class="view hidden">
+    <div class="res-head"><div class="sel-badge">远征完成</div><h1>你真的学会了！</h1></div>
+    <div id="resStats"></div>
+    <div id="resKn"></div>
+    <div id="resWrong"></div>
+    <button id="againBtn" class="big-btn">再玩一次</button>
+    <p class="sel-foot">下次考试前，再来找知识大陆。</p>
+  </div>
+
+  <!-- 怎么玩 -->
+  <div id="howto" class="overlay hidden">
+    <div class="howto-card">
+      <h2>怎么玩 · 4 步</h2>
+      <ol class="howto-steps">
+        <li><b>选年级、组队</b>：先选 1-6 年级，再挑 3 只宠物（属性不同，克制不同敌人）。</li>
+        <li><b>读题点答案</b>：题目下方三个选项，点对的那一个。</li>
+        <li><b>答对＝出招</b>：宠物冲向敌人，伤害＝基础×连击×属性克制（克制 ×1.6、被克 ×0.7）。</li>
+        <li><b>答错＝挨打</b>：当前这只宠物掉血，连击清零。倒下就换下一只，三只都倒下才会失败。</li>
+      </ol>
+      <p class="howto-tip">战斗中随时点下方的宠物头像换人；卡住可点「米娅的笔记」划掉一个错项。</p>
+      <button id="howtoGo" class="big-btn">开始探索</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ============================================================
+ * 《知识大陆 · 宠物远征》年级知识图谱数据（自动生成，可整表替换）
+ * 来源：伴学宠物 1-6 年级知识图谱（每科 40 个知识点名 + 题库）
+ * GRADES 年级 / ELEMENTS 五属性 / ELEM_ADV 克制环 / BATTLE_PETS 宠物
+ * KG_NAMES 各年级各科知识点名 / KG_BANK 各年级题库（含 kn 知识点标签）
+ * ============================================================ */
+
+window.GRADES = [{"id": "g1", "name": "一年级", "short": "一"}, {"id": "g2", "name": "二年级", "short": "二"}, {"id": "g3", "name": "三年级", "short": "三"}, {"id": "g4", "name": "四年级", "short": "四"}, {"id": "g5", "name": "五年级", "short": "五"}, {"id": "g6", "name": "六年级", "short": "六"}];
+
+window.ELEMENTS = {
+  fire: { name:'火', icon:'🔥', color:'#ff6b3d' },
+  water: { name:'水', icon:'💧', color:'#3aa7ff' },
+  wood: { name:'木', icon:'🌿', color:'#4fbf6a' },
+  light: { name:'光', icon:'✨', color:'#ffd34d' },
+  dark: { name:'暗', icon:'🌙', color:'#a377ff' },
+};
+/* 克制环：火→木→水→火；光↔暗互克 */
+window.ELEM_ADV = { fire:'wood', wood:'water', water:'fire', light:'dark', dark:'light' };
+window.ELEM_ADV_MULT = 1.6;
+window.ELEM_WEAK_MULT = 0.7;
+
+window.BATTLE_PETS = [
+  { id:"P001", name:"焰爪犬", emoji:"🔥", rar:"R", elem:"fire", skill:"焰爪击" },
+  { id:"P011", name:"潮汐猫", emoji:"💧", rar:"R", elem:"water", skill:"潮汐弹" },
+  { id:"P027", name:"森角鹿", emoji:"🦌", rar:"SR", elem:"wood", skill:"森光冲" },
+  { id:"P035", name:"岩甲龟", emoji:"🐢", rar:"R", elem:"wood", skill:"岩甲撞" },
+  { id:"P042", name:"冰晶狐", emoji:"❄️", rar:"SR", elem:"water", skill:"冰晶刺" },
+  { id:"P051", name:"光羽鹤", emoji:"🕊️", rar:"R", elem:"light", skill:"光羽闪" },
+  { id:"D201", name:"星羽兽", emoji:"🦅", rar:"SSR", elem:"light", skill:"星羽坠" },
+  { id:"D203", name:"焰鳞兽", emoji:"🐉", rar:"SSR", elem:"fire", skill:"炎鳞破" },
+  { id:"D207", name:"月影兽", emoji:"🌙", rar:"SSR", elem:"dark", skill:"月影斩" },
+  { id:"D209", name:"暮影狼", emoji:"🐺", rar:"SR", elem:"dark", skill:"暮影扑" }
+];
+
+window.RAR_BONUS = { N:0, R:2, SR:4, SSR:6 };
+window.RAR_COLOR = { N:'#9aa3b2', R:'#3b82f6', SR:'#a855f7', SSR:'#f5b301' };
+
+window.KG_NAMES = {
+  g1: {
+    math: ["数一数比多少", "位置上下前后", "左右的认识", "5以内数的认识", "5以内加法", "5以内减法", "6-10的认识", "6-10的加减法", "10以内加法", "10以内减法", "10以内连加", "10以内连减", "加减混合", "认识图形", "认识长方体正方体", "认识圆柱球", "分类整理", "11-20的认识", "20以内数的顺序", "20以内数的组成", "20以内不进位加法", "20以内进位加法", "20以内不退位减法", "20以内退位减法", "认识钟表", "整十数加法", "整十数减整十数", "100以内数的认识", "比较大小", "找规律", "认识人民币", "元角分的换算", "两位数加一位数", "两位数减一位数", "购物中的数学", "摆一摆拼一拼", "认识平行四边形", "看图解决问题", "用数学提问题", "整理与复习"],
+    cn: ["汉语拼音字母表", "拼音声母", "拼音韵母", "拼音声调", "拼读方法", "三拼音节", "整体认读音节", "轻声", "儿化音", "笔画笔顺", "偏旁部首", "独体字与合体字", "识字与朗读", "同音字", "形近字", "看图识字", "日月明", "猜字谜", "对韵歌", "金木水火土", "口耳目", "方位词", "反义词", "叠词", "量词", "姓氏歌", "四季与自然", "影子课文", "比尾巴", "古诗诵读一", "秋冬课文", "大小多少", "小书包", "升国旗", "小蜗牛", "雨点儿", "明天要下雨", "说话写话", "标点符号", "阅读理解"],
+    sci: ["植物有生命", "观察一棵树", "认识常见植物", "动物的家", "观察蜗牛", "石头与土壤", "玩磁铁", "认识天气", "天气与穿衣", "白天与黑夜", "四季变化", "水的样子", "空气在哪里", "声音从哪里来", "我们的感官", "身体的部位", "保护牙齿", "爱护小动物", "影子游戏", "种子的旅行"],
+    eth: ["校园礼仪", "课间安全", "上下楼梯", "垃圾分类", "爱护课本", "诚实不说谎", "排队守秩序", "饭前洗手", "认识国旗", "和家人打招呼"],
+  },
+  g2: {
+    math: ["100以内加减法", "两位数加两位数", "两位数减两位数", "连加连减竖式", "乘法初步认识", "乘法口诀1-5", "乘法口诀6-9", "乘加乘减", "除法初步认识", "用口诀求商", "平均分", "除法竖式", "倍的认识", "角的认识", "直角的认识", "锐角钝角", "观察物体", "平移与旋转", "轴对称图形", "长度单位", "米和厘米", "线段的认识", "1000以内数的认识", "万以内数的认识", "数的读写与组成", "近似数", "整百整十加减", "整百数加减法", "混合运算", "有余数的除法", "两位数乘一位数", "时分秒", "秒的认识", "时间计算", "统计表", "数据收集整理", "图形拼组", "简单推理", "克与千克", "解决问题"],
+    cn: ["场景歌", "树之歌", "拍手歌", "田家四季歌", "曹冲称象", "玲玲的画", "古诗二首", "黄山奇石", "日月潭", "葡萄沟", "坐井观天", "寒号鸟", "我要的是葫芦", "大禹治水", "朱德的扁担", "纸船和风筝", "雪孩子", "狐假虎威", "成语积累", "查字典方法", "部首查字法", "音序查字法", "词语搭配", "AABB式词语", "ABB式词语", "比喻句", "拟人句", "把字句", "被字句", "陈述句与疑问句", "感叹句", "问号与感叹号", "留言条", "日记格式", "续写故事", "口语交际", "反义词积累", "多音字", "偏旁归类", "看图写话"],
+    sci: ["植物的根", "茎和叶", "花与果实", "植物的种子", "蚂蚁的家", "蜗牛观察", "动物的过冬方式", "石头分类", "土壤里的生物", "磁铁能吸什么", "指南针", "云和雨", "风向与风力", "太阳和月亮", "声音的高低", "光的直线传播", "水的三态", "常见的材料", "纸的特点", "简单的电路"],
+    eth: ["交通安全", "防溺水", "用电安全", "陌生人防范", "公共场所礼仪", "爱护花草", "借东西要说", "做错事要道歉", "班级值日", "节约用纸"],
+  },
+  g3: {
+    math: ["万以内数的大小比较", "三位数加三位数", "三位数减三位数", "三位数加减法", "估算", "多位数乘一位数", "口算乘法", "笔算乘法", "两位数乘两位数", "多位数除以一位数", "除数是一位数除法", "周长", "长方形与正方形", "面积", "面积单位", "长方形面积", "正方形面积", "面积单位换算", "时分秒应用", "年月日", "平年与闰年", "年月日的计算", "24时计时法", "毫米分米", "千米", "吨的认识", "分数初步认识", "分数的简单计算", "分数的比较", "倍数关系", "小数初步认识", "小数的读写", "小数的大小比较", "简单的小数加减", "复式统计表", "搭配问题", "位置与方向", "东南西北方向", "数字编码", "集合思想"],
+    cn: ["生字词语", "多音字", "近义词与反义词", "修辞手法", "秋天的雨", "铺满金色巴掌的水泥道", "卖火柴的小女孩", "去年的树", "那一定会很好", "搭船的鸟", "翠鸟", "古诗三首", "富饶的西沙群岛", "美丽的小兴安岭", "搭石", "总也倒不了的老屋", "司马光", "守株待兔", "陶罐和铁罐", "阅读策略", "部首查字", "词语理解方法", "成语故事", "寓言的特点", "童话的特点", "总分结构", "中心句", "过渡句", "比喻与拟人", "排比句", "反问句", "引号用法", "冒号用法", "修改病句", "扩句与缩句", "习作写人", "习作写事", "习作写景", "观察日记", "复述课文"],
+    sci: ["水沸腾", "水的蒸发与凝结", "水的循环", "空气占据空间", "空气有质量", "声音由振动产生", "声音的传播", "光的反射", "影子长短变化", "测量气温", "认识温度计", "植物的一生", "植物的茎的作用", "动物的生命周期", "昆虫的特征", "人的呼吸", "人的消化", "土壤的类型", "岩石与矿物", "天气与生活"],
+    eth: ["消防安全", "地震避险", "食品保质期", "上网时间管理", "对校园欺凌说不", "集体活动守则", "节约用电", "保护水资源", "尊重他人隐私", "按时完成作业"],
+  },
+  g4: {
+    math: ["大数的认识", "亿以内数的读写", "数的产生与十进制", "亿以上数的认识", "计算工具的认识", "公顷与平方千米", "线段射线直线", "角的度量", "角的分类", "画角", "三位数乘两位数", "积的变化规律", "平行与垂直", "平行四边形与梯形", "除数是两位数除法", "商的变化规律", "单价数量总价", "速度时间路程", "四则运算", "运算律", "简便计算", "小数的意义", "小数的性质", "小数点移动", "小数与单位换算", "求小数的近似数", "小数加减法", "小数乘法", "小数除法", "三角形", "三角形的特性", "三角形的分类", "三角形的内角和", "观察物体二", "条形统计图", "复式条形统计图", "平均数", "用数对确定位置", "优化问题", "鸡兔同笼"],
+    cn: ["观潮", "走月亮", "现代诗", "繁星", "一个豆荚里的五粒豆", "蝙蝠和雷达", "呼风唤雨的世纪", "爬山虎的脚", "蟋蟀的住宅", "盘古开天地", "精卫填海", "普罗米修斯", "女娲补天", "母鸡", "猫", "白鹅", "古诗三首", "神话的特点", "批注阅读", "记叙文六要素", "形声字", "多义字", "词语的感情色彩", "四字词语", "谚语积累", "歇后语", "对偶句", "设问句", "双重否定句", "关联词", "段落大意", "文章结构", "写景顺序", "说明性文章", "寓言的寓意", "诗歌的节奏", "书信格式", "连续观察日记", "习作写童话", "习作写观察"],
+    sci: ["声音的强弱与高低", "噪声与危害", "声音的传播介质", "光的传播", "平面镜成像", "潜望镜", "呼吸器官", "心跳与运动", "食物的营养", "食物的保存", "消化与吸收", "骨骼与肌肉", "植物的光合作用", "动物怎样繁殖", "岩石风化", "岩石的用途", "地球的内部", "火山与地震", "常见的力", "电路连接"],
+    eth: ["遵守交通信号", "乘车安全", "拒绝烟酒", "网络文明用语", "保护个人隐私", "垃圾分类投放", "团队分工合作", "感恩与表达", "爱护公共设施", "遇到危险要求助"],
+  },
+  g5: {
+    math: ["小数乘整数", "小数乘小数", "积的近似数", "整数乘法运算律推广", "小数乘法", "除数是整数的小数除法", "一个数除以小数", "商的近似数", "循环小数", "小数除法", "用计算器探索规律", "位置", "可能性", "用字母表示数", "等式的性质", "解方程", "简易方程", "实际问题与方程", "多边形的面积", "平行四边形的面积", "三角形的面积", "梯形的面积", "组合图形的面积", "因数与倍数", "2、3、5的倍数特征", "质数与合数", "长方体和正方体", "分数的意义", "分数的基本性质", "真分数与假分数", "约分与通分", "同分母分数加减", "异分母分数加减", "分数与小数互化", "图形的旋转", "折线统计图", "解决问题策略", "图形面积变换", "找次品", "数学广角"],
+    cn: ["白鹭", "落花生", "桂花雨", "珍珠鸟", "搭石", "将相和", "什么比猎豹的速度更快", "地道战", "太阳", "松鼠", "慈母情深", "父爱之舟", "鸟的天堂", "月迹", "古人谈读书", "忆读书", "四季之美", "圆明园的毁灭", "说明方法", "体会思想感情", "汉字演变", "楷书与行书", "词语辨析", "成语运用", "名言警句", "诗句积累", "场景描写", "人物描写方法", "环境描写作用", "详写与略写", "倒叙与插叙", "举例子与列数字", "演讲稿", "读后感", "缩写故事", "民间故事", "古典名著阅读", "习作写说明文", "习作写读后感", "修改习作"],
+    sci: ["光的反射与折射", "光的色散", "透镜与放大镜", "热胀冷缩", "地球自转", "地球公转与四季", "月相变化", "日食与月食", "地球的内部结构", "地震的成因", "生物与环境", "食物链", "生态瓶", "种子萌发条件", "植物的繁殖方式", "热的传递", "保温与散热", "杠杆", "滑轮与斜面", "能源与节约"],
+    eth: ["社会公德", "公共场所秩序", "志愿服务", "诚实守信", "拒绝危险游戏", "合理使用零花钱", "尊重劳动成果", "保护生态环境", "遵守法律法规", "理性对待网络信息"],
+  },
+  g6: {
+    math: ["分数乘整数", "分数乘分数", "分数乘法简便运算", "倒数", "分数乘法", "分数除以整数", "一个数除以分数", "分数除法解决问题", "分数除法", "分数四则混合运算", "比的认识", "比的基本性质", "化简比", "比的应用", "圆的认识", "圆的各部分名称", "圆的周长", "圆的面积", "扇形", "位置与方向", "百分数", "百分数应用", "折扣", "成数", "税率", "利率", "扇形统计图", "负数", "比例", "正比例", "反比例", "比例尺", "比例应用", "图形的放大与缩小", "圆柱的认识", "圆柱的表面积", "圆柱的体积", "圆锥的体积", "数与形", "鸽巢问题"],
+    cn: ["草原", "丁香结", "古诗词三首", "花之歌", "七律·长征", "狼牙山五壮士", "开国大典", "灯光", "竹节人", "宇宙生命之谜", "故宫博物院", "桥", "穷人", "在柏林", "夏天里的成长", "盼", "文言文二则", "月光曲", "少年闰土", "好的故事", "拼音复习", "汉字结构", "词语积累与运用", "成语典故", "古诗文诵读", "文言实词", "文言虚词", "句子衔接", "修辞综合", "标点综合", "概括主要内容", "体会文章情感", "表达方法", "非连续性文本", "名著阅读童年", "鲁滨逊漂流记", "汤姆·索亚历险记", "习作写倡议书", "习作写科幻", "毕业赠言"],
+    sci: ["显微镜与细胞", "微生物与健康", "生物的遗传", "变异现象", "生物的适应", "生物的进化", "生态系统", "能量转换", "电磁铁", "电路与开关", "杠杆平衡", "轮轴与齿轮", "地球的资源", "气候变化", "太阳系", "月球的秘密", "星座与星空", "新能源", "航天探索", "科技与生活"],
+    eth: ["宪法与公民", "权利与义务", "责任担当", "国家安全意识", "明辨是非", "拒绝校园暴力", "青春期健康", "防沉迷上网", "保护文化遗产", "国际理解与尊重"],
+  }
+};
+
+/* 题库：q 题干 / options（已打乱）/ a 正确下标 / kn 知识点 / lv 难度 0-4 */
+window.KG_BANK = {
+  g1: {
+    cn: [{"q": "\"大\"的反义词是：", "options": ["高", "长", "小"], "a": 2, "kn": "反义词", "lv": 0}, {"q": "\"上\"的反义词是：", "options": ["下", "左", "里"], "a": 0, "kn": "反义词", "lv": 0}, {"q": "\"日\"加一笔可以变成：", "options": ["目", "水", "木"], "a": 0, "kn": "语文基础", "lv": 1}, {"q": "\"mā ma\"对应的词语是：", "options": ["马马", "妈妈", "麻麻"], "a": 1, "kn": "语文基础", "lv": 1}, {"q": "选量词：一___小鸟", "options": ["条", "只", "头"], "a": 1, "kn": "量词", "lv": 2}, {"q": "\"东\"的反义词是：", "options": ["南", "西", "北"], "a": 1, "kn": "反义词", "lv": 2}, {"q": "《静夜思》的作者是：", "options": ["李白", "杜甫", "白居易"], "a": 0, "kn": "作者与作品", "lv": 3}, {"q": "\"床前明月光\"的下一句是：", "options": ["低头思故乡", "疑是地上霜", "举头望明月"], "a": 1, "kn": "古诗诵读一", "lv": 3}, {"q": "\"春眠不觉晓\"的下一句是：", "options": ["处处闻啼鸟", "花落知多少", "夜来风雨声"], "a": 0, "kn": "古诗诵读一", "lv": 4}, {"q": "\"山\"共有几画？", "options": ["3 画", "2 画", "4 画"], "a": 0, "kn": "笔画笔顺", "lv": 4}],
+    sci: [{"q": "太阳从哪边升起？", "options": ["东边", "西边", "南边"], "a": 0, "kn": "地球与宇宙", "lv": 0}, {"q": "植物生长需要：", "options": ["只有土", "阳光和水", "只有风"], "a": 1, "kn": "植物有生命", "lv": 0}, {"q": "一年有几个季节？", "options": ["6 个", "2 个", "4 个"], "a": 2, "kn": "四季变化", "lv": 1}, {"q": "冰融化后会变成：", "options": ["水", "石头", "气"], "a": 0, "kn": "水的样子", "lv": 2}],
+    eth: [{"q": "上课想发言应该：", "options": ["直接喊", "先举手", "站起来就走"], "a": 1, "kn": "品德与生活", "lv": 0}, {"q": "红灯亮了应该：", "options": ["绕着走", "停下等待", "赶紧跑过去"], "a": 1, "kn": "课间安全", "lv": 1}],
+    en: [{"q": "「apple」的意思是？", "options": ["书包", "苹果", "鸡蛋"], "a": 1, "kn": "单词 apple（苹果）", "lv": 0}, {"q": "「苹果」用英语怎么说？", "options": ["apple", "bag", "ant"], "a": 0, "kn": "单词 apple（苹果）", "lv": 0}, {"q": "「ant」的意思是？", "options": ["书包", "蚂蚁", "鸡蛋"], "a": 1, "kn": "单词 ant（蚂蚁）", "lv": 0}, {"q": "「蚂蚁」用英语怎么说？", "options": ["egg", "ant", "bag"], "a": 1, "kn": "单词 ant（蚂蚁）", "lv": 0}, {"q": "「bag」的意思是？", "options": ["苹果", "蚂蚁", "书包"], "a": 2, "kn": "单词 bag（书包）", "lv": 0}, {"q": "「书包」用英语怎么说？", "options": ["ant", "bag", "dog"], "a": 1, "kn": "单词 bag（书包）", "lv": 0}, {"q": "「cat」的意思是？", "options": ["苹果", "狗", "猫"], "a": 2, "kn": "单词 cat（猫）", "lv": 0}, {"q": "「猫」用英语怎么说？", "options": ["dog", "bag", "cat"], "a": 2, "kn": "单词 cat（猫）", "lv": 0}, {"q": "「dog」的意思是？", "options": ["苹果", "狗", "猫"], "a": 1, "kn": "单词 dog（狗）", "lv": 0}, {"q": "「狗」用英语怎么说？", "options": ["cat", "dog", "bag"], "a": 1, "kn": "单词 dog（狗）", "lv": 0}, {"q": "「egg」的意思是？", "options": ["猫", "蚂蚁", "鸡蛋"], "a": 2, "kn": "单词 egg（鸡蛋）", "lv": 0}, {"q": "「鸡蛋」用英语怎么说？", "options": ["apple", "egg", "cat"], "a": 1, "kn": "单词 egg（鸡蛋）", "lv": 0}, {"q": "补全句子：I have a ____.（我有一个苹果。）", "options": ["ant", "bag", "apple"], "a": 2, "kn": "句型 I have a ____.", "lv": 0}, {"q": "补全句子：This is a ____.（这是一个苹果。）", "options": ["cat", "apple", "egg"], "a": 1, "kn": "句型 This is a ____.", "lv": 0}, {"q": "「fish」的意思是？", "options": ["鱼", "帽子", "狐狸"], "a": 0, "kn": "单词 fish（鱼）", "lv": 1}, {"q": "「鱼」用英语怎么说？", "options": ["fish", "hat", "jet"], "a": 0, "kn": "单词 fish（鱼）", "lv": 1}, {"q": "「fox」的意思是？", "options": ["狐狸", "鱼", "喷气机"], "a": 0, "kn": "单词 fox（狐狸）", "lv": 1}, {"q": "「狐狸」用英语怎么说？", "options": ["fish", "jet", "fox"], "a": 2, "kn": "单词 fox（狐狸）", "lv": 1}, {"q": "「grape」的意思是？", "options": ["冰", "喷气机", "葡萄"], "a": 2, "kn": "单词 grape（葡萄）", "lv": 1}, {"q": "「葡萄」用英语怎么说？", "options": ["fish", "jet", "grape"], "a": 2, "kn": "单词 grape（葡萄）", "lv": 1}, {"q": "「hat」的意思是？", "options": ["帽子", "冰", "狐狸"], "a": 0, "kn": "单词 hat（帽子）", "lv": 1}, {"q": "「帽子」用英语怎么说？", "options": ["fish", "hat", "grape"], "a": 1, "kn": "单词 hat（帽子）", "lv": 1}, {"q": "「ice」的意思是？", "options": ["葡萄", "冰", "喷气机"], "a": 1, "kn": "单词 ice（冰）", "lv": 1}, {"q": "「冰」用英语怎么说？", "options": ["ice", "fox", "fish"], "a": 0, "kn": "单词 ice（冰）", "lv": 1}, {"q": "「jet」的意思是？", "options": ["狐狸", "葡萄", "喷气机"], "a": 2, "kn": "单词 jet（喷气机）", "lv": 1}, {"q": "「喷气机」用英语怎么说？", "options": ["fox", "jet", "ice"], "a": 1, "kn": "单词 jet（喷气机）", "lv": 1}, {"q": "补全句子：I see a ____.（我看见鱼。）", "options": ["fish", "hat", "fox"], "a": 0, "kn": "句型 I see a ____.", "lv": 1}, {"q": "补全句子：The ____ is fun.（鱼很有趣。）", "options": ["jet", "fish", "hat"], "a": 1, "kn": "句型 The ____ is fun.", "lv": 1}, {"q": "「kite」的意思是？", "options": ["橙子", "风筝", "鸟巢"], "a": 1, "kn": "单词 kite（风筝）", "lv": 2}, {"q": "「风筝」用英语怎么说？", "options": ["ox", "nest", "kite"], "a": 2, "kn": "单词 kite（风筝）", "lv": 2}, {"q": "「lion」的意思是？", "options": ["鸟巢", "风筝", "狮子"], "a": 2, "kn": "单词 lion（狮子）", "lv": 2}, {"q": "「狮子」用英语怎么说？", "options": ["lion", "kite", "nest"], "a": 0, "kn": "单词 lion（狮子）", "lv": 2}, {"q": "「monkey」的意思是？", "options": ["猴子", "风筝", "公牛"], "a": 0, "kn": "单词 monkey（猴子）", "lv": 2}, {"q": "「猴子」用英语怎么说？", "options": ["orange", "monkey", "nest"], "a": 1, "kn": "单词 monkey（猴子）", "lv": 2}, {"q": "「nest」的意思是？", "options": ["公牛", "鸟巢", "狮子"], "a": 1, "kn": "单词 nest（鸟巢）", "lv": 2}, {"q": "「鸟巢」用英语怎么说？", "options": ["nest", "lion", "monkey"], "a": 0, "kn": "单词 nest（鸟巢）", "lv": 2}, {"q": "「orange」的意思是？", "options": ["猴子", "鸟巢", "橙子"], "a": 2, "kn": "单词 orange（橙子）", "lv": 2}, {"q": "「橙子」用英语怎么说？", "options": ["monkey", "lion", "orange"], "a": 2, "kn": "单词 orange（橙子）", "lv": 2}, {"q": "「ox」的意思是？", "options": ["公牛", "鸟巢", "猴子"], "a": 0, "kn": "单词 ox（公牛）", "lv": 2}, {"q": "「公牛」用英语怎么说？", "options": ["monkey", "ox", "lion"], "a": 1, "kn": "单词 ox（公牛）", "lv": 2}, {"q": "补全句子：Look at the ____!（看这只风筝！）", "options": ["orange", "kite", "monkey"], "a": 1, "kn": "句型 Look at the ____!", "lv": 2}, {"q": "补全句子：I like the ____.（我喜欢风筝。）", "options": ["lion", "monkey", "kite"], "a": 2, "kn": "句型 I like the ____.", "lv": 2}, {"q": "「pig」的意思是？", "options": ["小火车", "猪", "钢笔"], "a": 1, "kn": "单词 pig（猪）", "lv": 3}, {"q": "「猪」用英语怎么说？", "options": ["pig", "tiger", "sun"], "a": 0, "kn": "单词 pig（猪）", "lv": 3}, {"q": "「pen」的意思是？", "options": ["女王", "太阳", "钢笔"], "a": 2, "kn": "单词 pen（钢笔）", "lv": 3}, {"q": "「钢笔」用英语怎么说？", "options": ["queen", "sun", "pen"], "a": 2, "kn": "单词 pen（钢笔）", "lv": 3}, {"q": "「queen」的意思是？", "options": ["小火车", "老虎", "女王"], "a": 2, "kn": "单词 queen（女王）", "lv": 3}, {"q": "「女王」用英语怎么说？", "options": ["queen", "train", "pig"], "a": 0, "kn": "单词 queen（女王）", "lv": 3}, {"q": "「sun」的意思是？", "options": ["太阳", "老虎", "钢笔"], "a": 0, "kn": "单词 sun（太阳）", "lv": 3}, {"q": "「太阳」用英语怎么说？", "options": ["train", "tiger", "sun"], "a": 2, "kn": "单词 sun（太阳）", "lv": 3}, {"q": "「tiger」的意思是？", "options": ["老虎", "猪", "女王"], "a": 0, "kn": "单词 tiger（老虎）", "lv": 3}, {"q": "「老虎」用英语怎么说？", "options": ["tiger", "pig", "sun"], "a": 0, "kn": "单词 tiger（老虎）", "lv": 3}, {"q": "「train」的意思是？", "options": ["太阳", "猪", "小火车"], "a": 2, "kn": "单词 train（小火车）", "lv": 3}, {"q": "「小火车」用英语怎么说？", "options": ["tiger", "train", "pen"], "a": 1, "kn": "单词 train（小火车）", "lv": 3}, {"q": "补全句子：The ____ is big.（猪很大。）", "options": ["pig", "sun", "queen"], "a": 0, "kn": "句型 The ____ is big.", "lv": 3}, {"q": "补全句子：Point to the ____.（指向猪。）", "options": ["pig", "sun", "train"], "a": 0, "kn": "句型 Point to the ____.", "lv": 3}, {"q": "「umbrella」的意思是？", "options": ["盒子", "雨伞", "背心"], "a": 1, "kn": "单词 umbrella（雨伞）", "lv": 4}, {"q": "「雨伞」用英语怎么说？", "options": ["water", "umbrella", "vest"], "a": 1, "kn": "单词 umbrella（雨伞）", "lv": 4}, {"q": "「vest」的意思是？", "options": ["背心", "动物园", "盒子"], "a": 0, "kn": "单词 vest（背心）", "lv": 4}, {"q": "「背心」用英语怎么说？", "options": ["yak", "vest", "box"], "a": 1, "kn": "单词 vest（背心）", "lv": 4}, {"q": "「water」的意思是？", "options": ["牦牛", "水", "动物园"], "a": 1, "kn": "单词 water（水）", "lv": 4}, {"q": "「水」用英语怎么说？", "options": ["vest", "yak", "water"], "a": 2, "kn": "单词 water（水）", "lv": 4}, {"q": "「box」的意思是？", "options": ["盒子", "牦牛", "水"], "a": 0, "kn": "单词 box（盒子）", "lv": 4}, {"q": "「盒子」用英语怎么说？", "options": ["yak", "box", "water"], "a": 1, "kn": "单词 box（盒子）", "lv": 4}, {"q": "「yak」的意思是？", "options": ["牦牛", "盒子", "水"], "a": 0, "kn": "单词 yak（牦牛）", "lv": 4}, {"q": "「牦牛」用英语怎么说？", "options": ["vest", "box", "yak"], "a": 2, "kn": "单词 yak（牦牛）", "lv": 4}, {"q": "「zoo」的意思是？", "options": ["动物园", "牦牛", "盒子"], "a": 0, "kn": "单词 zoo（动物园）", "lv": 4}, {"q": "「动物园」用英语怎么说？", "options": ["box", "umbrella", "zoo"], "a": 2, "kn": "单词 zoo（动物园）", "lv": 4}, {"q": "补全句子：Give me the ____.（给我雨伞。）", "options": ["water", "umbrella", "vest"], "a": 1, "kn": "句型 Give me the ____.", "lv": 4}, {"q": "补全句子：Where is the ____?（雨伞在哪里？）", "options": ["zoo", "vest", "umbrella"], "a": 2, "kn": "句型 Where is the ____?", "lv": 4}]
+  },
+  g2: {
+    cn: [{"q": "选量词：一___小狗", "options": ["只", "把", "座"], "a": 0, "kn": "量词", "lv": 0}, {"q": "\"里\"的反义词是：", "options": ["东", "上", "外"], "a": 2, "kn": "反义词积累", "lv": 0}, {"q": "《咏鹅》的作者是：", "options": ["骆宾王", "孟浩然", "李白"], "a": 0, "kn": "作者与作品", "lv": 1}, {"q": "\"生日\"的\"生\"可以组词：", "options": ["生肖", "升起", "生活"], "a": 2, "kn": "词语搭配", "lv": 1}, {"q": "\"欲穷千里目\"的下一句是：", "options": ["白日依山尽", "更上一层楼", "黄河入海流"], "a": 1, "kn": "古诗二首", "lv": 2}, {"q": "\"春天\"的\"春\"可以组词：", "options": ["日春", "春风", "春开"], "a": 1, "kn": "词语搭配", "lv": 2}, {"q": "\"狐假虎威\"中\"假\"的意思是：", "options": ["不真", "假扮", "借"], "a": 2, "kn": "词语搭配", "lv": 3}, {"q": "\"高大\"的反义词是：", "options": ["巨大", "矮小", "长短"], "a": 1, "kn": "反义词积累", "lv": 3}, {"q": "\"遥知不是雪，为有暗香来\"写的是：", "options": ["雪花", "梅花", "梨花"], "a": 1, "kn": "语文基础", "lv": 4}, {"q": "\"种瓜得瓜\"的下一句是：", "options": ["种树得树", "种豆得豆", "自食其果"], "a": 1, "kn": "古诗二首", "lv": 4}],
+    sci: [{"q": "月亮自己会发光吗？", "options": ["有时会", "不会，反射太阳光", "会，月亮是灯"], "a": 1, "kn": "光的直线传播", "lv": 0}, {"q": "彩虹一般有几种颜色？", "options": ["7 种", "10 种", "5 种"], "a": 0, "kn": "科学常识", "lv": 1}, {"q": "小鱼用什么呼吸？", "options": ["鼻子", "肺", "鳃"], "a": 2, "kn": "动物的过冬方式", "lv": 2}],
+    eth: [{"q": "同学摔倒了你应该：", "options": ["装没看见", "扶起他", "笑话他"], "a": 1, "kn": "同伴交往", "lv": 0}, {"q": "过马路要走：", "options": ["随便走", "车缝里钻", "斑马线"], "a": 2, "kn": "交通安全", "lv": 1}, {"q": "垃圾分类中，果皮属于：", "options": ["厨余垃圾", "有害垃圾", "可回收物"], "a": 0, "kn": "环保与公德", "lv": 2}],
+    en: [{"q": "「panda」的意思是？", "options": ["熊猫", "老虎", "小鸟"], "a": 0, "kn": "单词 panda（熊猫）", "lv": 0}, {"q": "「熊猫」用英语怎么说？", "options": ["bear", "bird", "panda"], "a": 2, "kn": "单词 panda（熊猫）", "lv": 0}, {"q": "「bird」的意思是？", "options": ["老虎", "熊", "小鸟"], "a": 2, "kn": "单词 bird（小鸟）", "lv": 0}, {"q": "「小鸟」用英语怎么说？", "options": ["bear", "bird", "panda"], "a": 1, "kn": "单词 bird（小鸟）", "lv": 0}, {"q": "「rabbit」的意思是？", "options": ["鸭子", "兔子", "熊"], "a": 1, "kn": "单词 rabbit（兔子）", "lv": 0}, {"q": "「兔子」用英语怎么说？", "options": ["duck", "rabbit", "tiger"], "a": 1, "kn": "单词 rabbit（兔子）", "lv": 0}, {"q": "「duck」的意思是？", "options": ["老虎", "熊猫", "鸭子"], "a": 2, "kn": "单词 duck（鸭子）", "lv": 0}, {"q": "「鸭子」用英语怎么说？", "options": ["bird", "tiger", "duck"], "a": 2, "kn": "单词 duck（鸭子）", "lv": 0}, {"q": "「bear」的意思是？", "options": ["兔子", "鸭子", "熊"], "a": 2, "kn": "单词 bear（熊）", "lv": 0}, {"q": "「熊」用英语怎么说？", "options": ["bear", "tiger", "rabbit"], "a": 0, "kn": "单词 bear（熊）", "lv": 0}, {"q": "「tiger」的意思是？", "options": ["鸭子", "老虎", "兔子"], "a": 1, "kn": "单词 tiger（老虎）", "lv": 0}, {"q": "「老虎」用英语怎么说？", "options": ["tiger", "duck", "rabbit"], "a": 0, "kn": "单词 tiger（老虎）", "lv": 0}, {"q": "补全句子：The ____ is cute.（熊猫很可爱。）", "options": ["duck", "rabbit", "panda"], "a": 2, "kn": "句型 The ____ is cute.", "lv": 0}, {"q": "补全句子：I like the ____.（我喜欢熊猫。）", "options": ["rabbit", "panda", "duck"], "a": 1, "kn": "句型 I like the ____.", "lv": 0}, {"q": "「rice」的意思是？", "options": ["米饭", "面包", "蛋糕"], "a": 0, "kn": "单词 rice（米饭）", "lv": 1}, {"q": "「米饭」用英语怎么说？", "options": ["cake", "bread", "rice"], "a": 2, "kn": "单词 rice（米饭）", "lv": 1}, {"q": "「noodles」的意思是？", "options": ["面条", "果汁", "牛奶"], "a": 0, "kn": "单词 noodles（面条）", "lv": 1}, {"q": "「面条」用英语怎么说？", "options": ["noodles", "cake", "juice"], "a": 0, "kn": "单词 noodles（面条）", "lv": 1}, {"q": "「juice」的意思是？", "options": ["米饭", "蛋糕", "果汁"], "a": 2, "kn": "单词 juice（果汁）", "lv": 1}, {"q": "「果汁」用英语怎么说？", "options": ["rice", "bread", "juice"], "a": 2, "kn": "单词 juice（果汁）", "lv": 1}, {"q": "「milk」的意思是？", "options": ["牛奶", "面条", "面包"], "a": 0, "kn": "单词 milk（牛奶）", "lv": 1}, {"q": "「牛奶」用英语怎么说？", "options": ["milk", "cake", "rice"], "a": 0, "kn": "单词 milk（牛奶）", "lv": 1}, {"q": "「bread」的意思是？", "options": ["面条", "面包", "米饭"], "a": 1, "kn": "单词 bread（面包）", "lv": 1}, {"q": "「面包」用英语怎么说？", "options": ["juice", "bread", "milk"], "a": 1, "kn": "单词 bread（面包）", "lv": 1}, {"q": "「cake」的意思是？", "options": ["面包", "面条", "蛋糕"], "a": 2, "kn": "单词 cake（蛋糕）", "lv": 1}, {"q": "「蛋糕」用英语怎么说？", "options": ["milk", "juice", "cake"], "a": 2, "kn": "单词 cake（蛋糕）", "lv": 1}, {"q": "补全句子：I want some ____.（我想要一些米饭。）", "options": ["rice", "cake", "milk"], "a": 0, "kn": "句型 I want some ____.", "lv": 1}, {"q": "补全句子：The ____ is yummy.（米饭很好吃。）", "options": ["rice", "cake", "noodles"], "a": 0, "kn": "句型 The ____ is yummy.", "lv": 1}, {"q": "「one」的意思是？", "options": ["五", "一", "二"], "a": 1, "kn": "单词 one（一）", "lv": 2}, {"q": "「一」用英语怎么说？", "options": ["three", "one", "five"], "a": 1, "kn": "单词 one（一）", "lv": 2}, {"q": "「two」的意思是？", "options": ["二", "三", "六"], "a": 0, "kn": "单词 two（二）", "lv": 2}, {"q": "「二」用英语怎么说？", "options": ["two", "four", "five"], "a": 0, "kn": "单词 two（二）", "lv": 2}, {"q": "「three」的意思是？", "options": ["三", "二", "一"], "a": 0, "kn": "单词 three（三）", "lv": 2}, {"q": "「三」用英语怎么说？", "options": ["three", "six", "four"], "a": 0, "kn": "单词 three（三）", "lv": 2}, {"q": "「four」的意思是？", "options": ["三", "四", "六"], "a": 1, "kn": "单词 four（四）", "lv": 2}, {"q": "「四」用英语怎么说？", "options": ["four", "two", "three"], "a": 0, "kn": "单词 four（四）", "lv": 2}, {"q": "「five」的意思是？", "options": ["一", "二", "五"], "a": 2, "kn": "单词 five（五）", "lv": 2}, {"q": "「五」用英语怎么说？", "options": ["five", "four", "three"], "a": 0, "kn": "单词 five（五）", "lv": 2}, {"q": "「six」的意思是？", "options": ["二", "四", "六"], "a": 2, "kn": "单词 six（六）", "lv": 2}, {"q": "「六」用英语怎么说？", "options": ["five", "six", "three"], "a": 1, "kn": "单词 six（六）", "lv": 2}, {"q": "补全句子：I have ____ books.（我有一本书。）", "options": ["four", "one", "three"], "a": 1, "kn": "句型 I have ____ books.", "lv": 2}, {"q": "补全句子：Number ____, please!（请给我一号！）", "options": ["one", "six", "five"], "a": 0, "kn": "句型 Number ____, please!", "lv": 2}, {"q": "「head」的意思是？", "options": ["鼻子", "头", "眼睛"], "a": 1, "kn": "单词 head（头）", "lv": 3}, {"q": "「头」用英语怎么说？", "options": ["hand", "nose", "head"], "a": 2, "kn": "单词 head（头）", "lv": 3}, {"q": "「eye」的意思是？", "options": ["耳朵", "手", "眼睛"], "a": 2, "kn": "单词 eye（眼睛）", "lv": 3}, {"q": "「眼睛」用英语怎么说？", "options": ["hand", "ear", "eye"], "a": 2, "kn": "单词 eye（眼睛）", "lv": 3}, {"q": "「ear」的意思是？", "options": ["头", "耳朵", "手"], "a": 1, "kn": "单词 ear（耳朵）", "lv": 3}, {"q": "「耳朵」用英语怎么说？", "options": ["hand", "nose", "ear"], "a": 2, "kn": "单词 ear（耳朵）", "lv": 3}, {"q": "「nose」的意思是？", "options": ["鼻子", "手", "头"], "a": 0, "kn": "单词 nose（鼻子）", "lv": 3}, {"q": "「鼻子」用英语怎么说？", "options": ["nose", "ear", "eye"], "a": 0, "kn": "单词 nose（鼻子）", "lv": 3}, {"q": "「mouth」的意思是？", "options": ["头", "嘴巴", "手"], "a": 1, "kn": "单词 mouth（嘴巴）", "lv": 3}, {"q": "「嘴巴」用英语怎么说？", "options": ["head", "mouth", "nose"], "a": 1, "kn": "单词 mouth（嘴巴）", "lv": 3}, {"q": "「hand」的意思是？", "options": ["手", "眼睛", "头"], "a": 0, "kn": "单词 hand（手）", "lv": 3}, {"q": "「手」用英语怎么说？", "options": ["mouth", "ear", "hand"], "a": 2, "kn": "单词 hand（手）", "lv": 3}, {"q": "补全句子：Touch your ____.（摸摸你的头。）", "options": ["hand", "ear", "head"], "a": 2, "kn": "句型 Touch your ____.", "lv": 3}, {"q": "补全句子：Clap your ____!（拍拍你的头！）", "options": ["head", "eye", "nose"], "a": 0, "kn": "句型 Clap your ____!", "lv": 3}, {"q": "「dad」的意思是？", "options": ["妈妈", "爸爸", "哥哥"], "a": 1, "kn": "单词 dad（爸爸）", "lv": 4}, {"q": "「爸爸」用英语怎么说？", "options": ["dad", "mum", "grandpa"], "a": 0, "kn": "单词 dad（爸爸）", "lv": 4}, {"q": "「mum」的意思是？", "options": ["奶奶", "爷爷", "妈妈"], "a": 2, "kn": "单词 mum（妈妈）", "lv": 4}, {"q": "「妈妈」用英语怎么说？", "options": ["brother", "mum", "grandpa"], "a": 1, "kn": "单词 mum（妈妈）", "lv": 4}, {"q": "「grandpa」的意思是？", "options": ["爸爸", "哥哥", "爷爷"], "a": 2, "kn": "单词 grandpa（爷爷）", "lv": 4}, {"q": "「爷爷」用英语怎么说？", "options": ["grandpa", "mum", "dad"], "a": 0, "kn": "单词 grandpa（爷爷）", "lv": 4}, {"q": "「grandma」的意思是？", "options": ["爸爸", "姐姐", "奶奶"], "a": 2, "kn": "单词 grandma（奶奶）", "lv": 4}, {"q": "「奶奶」用英语怎么说？", "options": ["grandma", "mum", "grandpa"], "a": 0, "kn": "单词 grandma（奶奶）", "lv": 4}, {"q": "「brother」的意思是？", "options": ["妈妈", "爷爷", "哥哥"], "a": 2, "kn": "单词 brother（哥哥）", "lv": 4}, {"q": "「哥哥」用英语怎么说？", "options": ["grandpa", "mum", "brother"], "a": 2, "kn": "单词 brother（哥哥）", "lv": 4}, {"q": "「sister」的意思是？", "options": ["爸爸", "姐姐", "哥哥"], "a": 1, "kn": "单词 sister（姐姐）", "lv": 4}, {"q": "「姐姐」用英语怎么说？", "options": ["dad", "sister", "brother"], "a": 1, "kn": "单词 sister（姐姐）", "lv": 4}, {"q": "补全句子：This is my ____.（这是我的爸爸。）", "options": ["grandma", "sister", "dad"], "a": 2, "kn": "句型 This is my ____.", "lv": 4}, {"q": "补全句子：I love my ____.（我爱我的爸爸。）", "options": ["dad", "brother", "sister"], "a": 0, "kn": "句型 I love my ____.", "lv": 4}]
+  },
+  g3: {
+    cn: [{"q": "\"称\"在\"称重\"中读：", "options": ["chěng", "chèng", "chēng"], "a": 2, "kn": "字音字形", "lv": 0}, {"q": "\"分明\"的近义词是：", "options": ["清楚", "模糊", "黑暗"], "a": 0, "kn": "近义词与反义词", "lv": 1}, {"q": "\"霜叶红于二月花\"出自：", "options": ["《夜书所见》", "《望天门山》", "《山行》"], "a": 2, "kn": "古诗三首", "lv": 2}, {"q": "\"天门中断楚江开\"的\"楚江\"指：", "options": ["黄河", "长江", "淮河"], "a": 1, "kn": "语文基础", "lv": 2}, {"q": "\"画蛇添足\"比喻：", "options": ["画技高超", "多此一举", "锦上添花"], "a": 1, "kn": "修辞手法", "lv": 3}, {"q": "《夜书所见》的作者是：", "options": ["杜牧", "叶绍翁", "苏轼"], "a": 1, "kn": "作者与作品", "lv": 3}, {"q": "\"二人同心，___\"", "options": ["万事如意", "其利断金", "其利断银"], "a": 1, "kn": "语文基础", "lv": 4}, {"q": "\"灯不拨不亮，___\"", "options": ["火不吹不灭", "话不说不明", "理不辩不明"], "a": 2, "kn": "语文基础", "lv": 4}],
+    sci: [{"q": "人体最大的器官是：", "options": ["皮肤", "心脏", "大脑"], "a": 0, "kn": "人体与健康", "lv": 1}, {"q": "标准大气压下水的沸点是：", "options": ["100℃", "50℃", "200℃"], "a": 0, "kn": "水沸腾", "lv": 1}, {"q": "声音在___中传播最快：", "options": ["液体", "气体", "固体"], "a": 2, "kn": "声音由振动产生", "lv": 2}, {"q": "地球绕太阳转一圈是：", "options": ["一天", "一月", "一年"], "a": 2, "kn": "地球与宇宙", "lv": 3}],
+    eth: [{"q": "升国旗时应该：", "options": ["大声聊天", "继续玩耍", "肃立敬礼"], "a": 2, "kn": "国家认同", "lv": 1}, {"q": "遇到火灾应拨打电话：", "options": ["119", "120", "110"], "a": 0, "kn": "消防安全", "lv": 2}],
+    en: [{"q": "「book」的意思是？", "options": ["书", "钢笔", "尺子"], "a": 0, "kn": "单词 book（书）", "lv": 0}, {"q": "「书」用英语怎么说？", "options": ["ruler", "pen", "book"], "a": 2, "kn": "单词 book（书）", "lv": 0}, {"q": "「pencil」的意思是？", "options": ["铅笔", "尺子", "书包"], "a": 0, "kn": "单词 pencil（铅笔）", "lv": 0}, {"q": "「铅笔」用英语怎么说？", "options": ["pencil", "pen", "book"], "a": 0, "kn": "单词 pencil（铅笔）", "lv": 0}, {"q": "「ruler」的意思是？", "options": ["尺子", "铅笔", "钢笔"], "a": 0, "kn": "单词 ruler（尺子）", "lv": 0}, {"q": "「尺子」用英语怎么说？", "options": ["eraser", "ruler", "schoolbag"], "a": 1, "kn": "单词 ruler（尺子）", "lv": 0}, {"q": "「eraser」的意思是？", "options": ["橡皮", "钢笔", "书"], "a": 0, "kn": "单词 eraser（橡皮）", "lv": 0}, {"q": "「橡皮」用英语怎么说？", "options": ["book", "eraser", "schoolbag"], "a": 1, "kn": "单词 eraser（橡皮）", "lv": 0}, {"q": "「pen」的意思是？", "options": ["书包", "铅笔", "钢笔"], "a": 2, "kn": "单词 pen（钢笔）", "lv": 0}, {"q": "「钢笔」用英语怎么说？", "options": ["eraser", "pen", "pencil"], "a": 1, "kn": "单词 pen（钢笔）", "lv": 0}, {"q": "「schoolbag」的意思是？", "options": ["书包", "铅笔", "书"], "a": 0, "kn": "单词 schoolbag（书包）", "lv": 0}, {"q": "「书包」用英语怎么说？", "options": ["schoolbag", "eraser", "ruler"], "a": 0, "kn": "单词 schoolbag（书包）", "lv": 0}, {"q": "补全句子：This is my ____.（这是我的书。）", "options": ["pencil", "book", "eraser"], "a": 1, "kn": "句型 This is my ____.", "lv": 0}, {"q": "补全句子：May I borrow your ____?（我可以借你的书吗？）", "options": ["pen", "book", "ruler"], "a": 1, "kn": "句型 May I borrow your ____?", "lv": 0}, {"q": "「red」的意思是？", "options": ["白色", "蓝色", "红色"], "a": 2, "kn": "单词 red（红色）", "lv": 1}, {"q": "「红色」用英语怎么说？", "options": ["yellow", "blue", "red"], "a": 2, "kn": "单词 red（红色）", "lv": 1}, {"q": "「blue」的意思是？", "options": ["黄色", "黑色", "蓝色"], "a": 2, "kn": "单词 blue（蓝色）", "lv": 1}, {"q": "「蓝色」用英语怎么说？", "options": ["red", "black", "blue"], "a": 2, "kn": "单词 blue（蓝色）", "lv": 1}, {"q": "「yellow」的意思是？", "options": ["黄色", "绿色", "蓝色"], "a": 0, "kn": "单词 yellow（黄色）", "lv": 1}, {"q": "「黄色」用英语怎么说？", "options": ["black", "red", "yellow"], "a": 2, "kn": "单词 yellow（黄色）", "lv": 1}, {"q": "「green」的意思是？", "options": ["绿色", "蓝色", "黑色"], "a": 0, "kn": "单词 green（绿色）", "lv": 1}, {"q": "「绿色」用英语怎么说？", "options": ["green", "white", "black"], "a": 0, "kn": "单词 green（绿色）", "lv": 1}, {"q": "「black」的意思是？", "options": ["黑色", "绿色", "蓝色"], "a": 0, "kn": "单词 black（黑色）", "lv": 1}, {"q": "「黑色」用英语怎么说？", "options": ["green", "black", "yellow"], "a": 1, "kn": "单词 black（黑色）", "lv": 1}, {"q": "「white」的意思是？", "options": ["红色", "绿色", "白色"], "a": 2, "kn": "单词 white（白色）", "lv": 1}, {"q": "「白色」用英语怎么说？", "options": ["red", "green", "white"], "a": 2, "kn": "单词 white（白色）", "lv": 1}, {"q": "补全句子：The sky is ____.（天空是红色的。）", "options": ["white", "yellow", "red"], "a": 2, "kn": "句型 The sky is ____.", "lv": 1}, {"q": "补全句子：I like the ____ one.（我喜欢红色的那个。）", "options": ["red", "white", "black"], "a": 0, "kn": "句型 I like the ____ one.", "lv": 1}, {"q": "「banana」的意思是？", "options": ["香蕉", "西瓜", "苹果"], "a": 0, "kn": "单词 banana（香蕉）", "lv": 2}, {"q": "「香蕉」用英语怎么说？", "options": ["grape", "banana", "apple"], "a": 1, "kn": "单词 banana（香蕉）", "lv": 2}, {"q": "「apple」的意思是？", "options": ["桃子", "苹果", "梨"], "a": 1, "kn": "单词 apple（苹果）", "lv": 2}, {"q": "「苹果」用英语怎么说？", "options": ["watermelon", "banana", "apple"], "a": 2, "kn": "单词 apple（苹果）", "lv": 2}, {"q": "「pear」的意思是？", "options": ["香蕉", "葡萄", "梨"], "a": 2, "kn": "单词 pear（梨）", "lv": 2}, {"q": "「梨」用英语怎么说？", "options": ["apple", "grape", "pear"], "a": 2, "kn": "单词 pear（梨）", "lv": 2}, {"q": "「grape」的意思是？", "options": ["葡萄", "梨", "桃子"], "a": 0, "kn": "单词 grape（葡萄）", "lv": 2}, {"q": "「葡萄」用英语怎么说？", "options": ["grape", "apple", "pear"], "a": 0, "kn": "单词 grape（葡萄）", "lv": 2}, {"q": "「watermelon」的意思是？", "options": ["葡萄", "西瓜", "梨"], "a": 1, "kn": "单词 watermelon（西瓜）", "lv": 2}, {"q": "「西瓜」用英语怎么说？", "options": ["watermelon", "apple", "banana"], "a": 0, "kn": "单词 watermelon（西瓜）", "lv": 2}, {"q": "「peach」的意思是？", "options": ["梨", "桃子", "香蕉"], "a": 1, "kn": "单词 peach（桃子）", "lv": 2}, {"q": "「桃子」用英语怎么说？", "options": ["grape", "peach", "banana"], "a": 1, "kn": "单词 peach（桃子）", "lv": 2}, {"q": "补全句子：The ____ is sweet.（香蕉很甜。）", "options": ["grape", "watermelon", "banana"], "a": 2, "kn": "句型 The ____ is sweet.", "lv": 2}, {"q": "补全句子：Can I have a ____?（我能吃一个香蕉吗？）", "options": ["grape", "watermelon", "banana"], "a": 2, "kn": "句型 Can I have a ____?", "lv": 2}, {"q": "「ball」的意思是？", "options": ["球", "机器人", "小汽车"], "a": 0, "kn": "单词 ball（球）", "lv": 3}, {"q": "「球」用英语怎么说？", "options": ["robot", "kite", "ball"], "a": 2, "kn": "单词 ball（球）", "lv": 3}, {"q": "「doll」的意思是？", "options": ["娃娃", "球", "机器人"], "a": 0, "kn": "单词 doll（娃娃）", "lv": 3}, {"q": "「娃娃」用英语怎么说？", "options": ["robot", "ball", "doll"], "a": 2, "kn": "单词 doll（娃娃）", "lv": 3}, {"q": "「kite」的意思是？", "options": ["风筝", "机器人", "拼图"], "a": 0, "kn": "单词 kite（风筝）", "lv": 3}, {"q": "「风筝」用英语怎么说？", "options": ["kite", "ball", "doll"], "a": 0, "kn": "单词 kite（风筝）", "lv": 3}, {"q": "「robot」的意思是？", "options": ["球", "风筝", "机器人"], "a": 2, "kn": "单词 robot（机器人）", "lv": 3}, {"q": "「机器人」用英语怎么说？", "options": ["robot", "car", "ball"], "a": 0, "kn": "单词 robot（机器人）", "lv": 3}, {"q": "「car」的意思是？", "options": ["小汽车", "拼图", "球"], "a": 0, "kn": "单词 car（小汽车）", "lv": 3}, {"q": "「小汽车」用英语怎么说？", "options": ["car", "kite", "robot"], "a": 0, "kn": "单词 car（小汽车）", "lv": 3}, {"q": "「puzzle」的意思是？", "options": ["拼图", "风筝", "小汽车"], "a": 0, "kn": "单词 puzzle（拼图）", "lv": 3}, {"q": "「拼图」用英语怎么说？", "options": ["puzzle", "doll", "ball"], "a": 0, "kn": "单词 puzzle（拼图）", "lv": 3}, {"q": "补全句子：Let us play with the ____.（我们一起玩球吧。）", "options": ["car", "doll", "ball"], "a": 2, "kn": "句型 Let us play with the ____.", "lv": 3}, {"q": "补全句子：My ____ is new.（我的球是新的。）", "options": ["car", "ball", "kite"], "a": 1, "kn": "句型 My ____ is new.", "lv": 3}, {"q": "「sunny」的意思是？", "options": ["炎热", "晴天", "雨天"], "a": 1, "kn": "单词 sunny（晴天）", "lv": 4}, {"q": "「晴天」用英语怎么说？", "options": ["windy", "snowy", "sunny"], "a": 2, "kn": "单词 sunny（晴天）", "lv": 4}, {"q": "「rainy」的意思是？", "options": ["雪天", "雨天", "多云"], "a": 1, "kn": "单词 rainy（雨天）", "lv": 4}, {"q": "「雨天」用英语怎么说？", "options": ["sunny", "rainy", "snowy"], "a": 1, "kn": "单词 rainy（雨天）", "lv": 4}, {"q": "「windy」的意思是？", "options": ["炎热", "刮风", "雪天"], "a": 1, "kn": "单词 windy（刮风）", "lv": 4}, {"q": "「刮风」用英语怎么说？", "options": ["sunny", "snowy", "windy"], "a": 2, "kn": "单词 windy（刮风）", "lv": 4}, {"q": "「cloudy」的意思是？", "options": ["多云", "炎热", "刮风"], "a": 0, "kn": "单词 cloudy（多云）", "lv": 4}, {"q": "「多云」用英语怎么说？", "options": ["rainy", "windy", "cloudy"], "a": 2, "kn": "单词 cloudy（多云）", "lv": 4}, {"q": "「snowy」的意思是？", "options": ["雪天", "多云", "刮风"], "a": 0, "kn": "单词 snowy（雪天）", "lv": 4}, {"q": "「雪天」用英语怎么说？", "options": ["cloudy", "snowy", "rainy"], "a": 1, "kn": "单词 snowy（雪天）", "lv": 4}, {"q": "「hot」的意思是？", "options": ["雨天", "炎热", "晴天"], "a": 1, "kn": "单词 hot（炎热）", "lv": 4}, {"q": "「炎热」用英语怎么说？", "options": ["cloudy", "hot", "sunny"], "a": 1, "kn": "单词 hot（炎热）", "lv": 4}, {"q": "补全句子：It is ____ today.（今天是晴天。）", "options": ["snowy", "cloudy", "sunny"], "a": 2, "kn": "句型 It is ____ today.", "lv": 4}, {"q": "补全句子：On a ____ day, I stay home.（晴天的日子里我待在家。）", "options": ["sunny", "rainy", "cloudy"], "a": 0, "kn": "句型 On a ____ day, I stay home.", "lv": 4}]
+  },
+  g4: {
+    cn: [{"q": "\"雄伟\"的近义词是：", "options": ["宏伟", "渺小", "普通"], "a": 0, "kn": "近义词", "lv": 0}, {"q": "《题西林壁》的作者苏轼是___代人：", "options": ["明", "宋", "唐"], "a": 1, "kn": "作者与作品", "lv": 0}, {"q": "\"横看成岭侧成峰\"的下一句是：", "options": ["只缘身在此山中", "不识庐山真面目", "远近高低各不同"], "a": 2, "kn": "古诗三首", "lv": 1}, {"q": "\"锣鼓喧天\"的\"喧\"意思是：", "options": ["飞起来", "声音大", "吵闹打架"], "a": 1, "kn": "词语的感情色彩", "lv": 1}, {"q": "下面是比喻句的是：", "options": ["弯弯的月亮像一条小船", "月亮升起来了", "月亮真亮啊"], "a": 0, "kn": "修辞手法", "lv": 2}, {"q": "\"博学多通\"中\"通\"的意思是：", "options": ["通过", "通晓", "通行"], "a": 1, "kn": "词语的感情色彩", "lv": 2}, {"q": "\"精卫填海\"里精卫是：", "options": ["一只神鸟", "一位渔夫", "一块石头"], "a": 0, "kn": "语文基础", "lv": 3}, {"q": "\"嫦娥应悔偷灵药\"的作者是：", "options": ["李商隐", "王维", "李白"], "a": 0, "kn": "作者与作品", "lv": 3}, {"q": "\"但使龙城飞将在\"中\"飞将\"指：", "options": ["关羽", "李广", "岳飞"], "a": 1, "kn": "语文基础", "lv": 4}, {"q": "\"暮色\"的\"暮\"意思是：", "options": ["傍晚", "深夜", "早晨"], "a": 0, "kn": "词语的感情色彩", "lv": 4}],
+    sci: [{"q": "植物的光合作用吸收：", "options": ["氧气", "氮气", "二氧化碳"], "a": 2, "kn": "植物的光合作用", "lv": 1}, {"q": "力的大小的单位是：", "options": ["牛顿", "千克", "米"], "a": 0, "kn": "测量与单位", "lv": 2}, {"q": "食物中主要提供能量的是：", "options": ["糖类", "纤维", "维生素"], "a": 0, "kn": "食物的营养", "lv": 3}, {"q": "维生素C 含量最多的是：", "options": ["可乐", "新鲜蔬菜水果", "饼干"], "a": 1, "kn": "食物的营养", "lv": 3}],
+    eth: [{"q": "乘公交车应该：", "options": ["抢着上车", "排队先下后上", "从后门挤"], "a": 1, "kn": "乘车安全", "lv": 1}, {"q": "网上陌生人索要照片应：", "options": ["发给他", "拒绝并告诉家长", "聊着玩"], "a": 1, "kn": "网络文明用语", "lv": 2}],
+    en: [{"q": "「Chinese」的意思是？", "options": ["语文", "数学", "美术"], "a": 0, "kn": "单词 Chinese（语文）", "lv": 0}, {"q": "「语文」用英语怎么说？", "options": ["English", "art", "Chinese"], "a": 2, "kn": "单词 Chinese（语文）", "lv": 0}, {"q": "「maths」的意思是？", "options": ["数学", "英语", "音乐"], "a": 0, "kn": "单词 maths（数学）", "lv": 0}, {"q": "「数学」用英语怎么说？", "options": ["art", "maths", "Chinese"], "a": 1, "kn": "单词 maths（数学）", "lv": 0}, {"q": "「English」的意思是？", "options": ["英语", "音乐", "体育"], "a": 0, "kn": "单词 English（英语）", "lv": 0}, {"q": "「英语」用英语怎么说？", "options": ["art", "English", "Chinese"], "a": 1, "kn": "单词 English（英语）", "lv": 0}, {"q": "「music」的意思是？", "options": ["音乐", "英语", "美术"], "a": 0, "kn": "单词 music（音乐）", "lv": 0}, {"q": "「音乐」用英语怎么说？", "options": ["art", "music", "English"], "a": 1, "kn": "单词 music（音乐）", "lv": 0}, {"q": "「art」的意思是？", "options": ["英语", "美术", "数学"], "a": 1, "kn": "单词 art（美术）", "lv": 0}, {"q": "「美术」用英语怎么说？", "options": ["English", "art", "Chinese"], "a": 1, "kn": "单词 art（美术）", "lv": 0}, {"q": "「PE」的意思是？", "options": ["音乐", "语文", "体育"], "a": 2, "kn": "单词 PE（体育）", "lv": 0}, {"q": "「体育」用英语怎么说？", "options": ["PE", "maths", "art"], "a": 0, "kn": "单词 PE（体育）", "lv": 0}, {"q": "补全句子：We have ____ today.（我们今天有语文课。）", "options": ["music", "PE", "Chinese"], "a": 2, "kn": "句型 We have ____ today.", "lv": 0}, {"q": "补全句子：____ is my favourite.（语文是我最喜欢的。）", "options": ["art", "English", "Chinese"], "a": 2, "kn": "句型 ____ is my favourite.", "lv": 0}, {"q": "「morning」的意思是？", "options": ["夜晚", "早晨", "下午"], "a": 1, "kn": "单词 morning（早晨）", "lv": 1}, {"q": "「早晨」用英语怎么说？", "options": ["morning", "evening", "breakfast"], "a": 0, "kn": "单词 morning（早晨）", "lv": 1}, {"q": "「afternoon」的意思是？", "options": ["睡觉时间", "夜晚", "下午"], "a": 2, "kn": "单词 afternoon（下午）", "lv": 1}, {"q": "「下午」用英语怎么说？", "options": ["bedtime", "morning", "afternoon"], "a": 2, "kn": "单词 afternoon（下午）", "lv": 1}, {"q": "「evening」的意思是？", "options": ["傍晚", "下午", "早餐"], "a": 0, "kn": "单词 evening（傍晚）", "lv": 1}, {"q": "「傍晚」用英语怎么说？", "options": ["morning", "evening", "breakfast"], "a": 1, "kn": "单词 evening（傍晚）", "lv": 1}, {"q": "「night」的意思是？", "options": ["夜晚", "早餐", "早晨"], "a": 0, "kn": "单词 night（夜晚）", "lv": 1}, {"q": "「夜晚」用英语怎么说？", "options": ["morning", "evening", "night"], "a": 2, "kn": "单词 night（夜晚）", "lv": 1}, {"q": "「breakfast」的意思是？", "options": ["下午", "睡觉时间", "早餐"], "a": 2, "kn": "单词 breakfast（早餐）", "lv": 1}, {"q": "「早餐」用英语怎么说？", "options": ["night", "breakfast", "evening"], "a": 1, "kn": "单词 breakfast（早餐）", "lv": 1}, {"q": "「bedtime」的意思是？", "options": ["傍晚", "早餐", "睡觉时间"], "a": 2, "kn": "单词 bedtime（睡觉时间）", "lv": 1}, {"q": "「睡觉时间」用英语怎么说？", "options": ["morning", "evening", "bedtime"], "a": 2, "kn": "单词 bedtime（睡觉时间）", "lv": 1}, {"q": "补全句子：I get up in the ____.（我在早晨起床。）", "options": ["afternoon", "morning", "evening"], "a": 1, "kn": "句型 I get up in the ____.", "lv": 1}, {"q": "补全句子：It is ____ now.（现在是早晨。）", "options": ["breakfast", "bedtime", "morning"], "a": 2, "kn": "句型 It is ____ now.", "lv": 1}, {"q": "「shirt」的意思是？", "options": ["短裙", "外套", "衬衫"], "a": 2, "kn": "单词 shirt（衬衫）", "lv": 2}, {"q": "「衬衫」用英语怎么说？", "options": ["shoes", "skirt", "shirt"], "a": 2, "kn": "单词 shirt（衬衫）", "lv": 2}, {"q": "「skirt」的意思是？", "options": ["短裙", "鞋子", "裤子"], "a": 0, "kn": "单词 skirt（短裙）", "lv": 2}, {"q": "「短裙」用英语怎么说？", "options": ["shoes", "skirt", "pants"], "a": 1, "kn": "单词 skirt（短裙）", "lv": 2}, {"q": "「dress」的意思是？", "options": ["裤子", "衬衫", "连衣裙"], "a": 2, "kn": "单词 dress（连衣裙）", "lv": 2}, {"q": "「连衣裙」用英语怎么说？", "options": ["pants", "coat", "dress"], "a": 2, "kn": "单词 dress（连衣裙）", "lv": 2}, {"q": "「pants」的意思是？", "options": ["衬衫", "裤子", "短裙"], "a": 1, "kn": "单词 pants（裤子）", "lv": 2}, {"q": "「裤子」用英语怎么说？", "options": ["pants", "dress", "shirt"], "a": 0, "kn": "单词 pants（裤子）", "lv": 2}, {"q": "「shoes」的意思是？", "options": ["连衣裙", "鞋子", "短裙"], "a": 1, "kn": "单词 shoes（鞋子）", "lv": 2}, {"q": "「鞋子」用英语怎么说？", "options": ["shoes", "dress", "pants"], "a": 0, "kn": "单词 shoes（鞋子）", "lv": 2}, {"q": "「coat」的意思是？", "options": ["衬衫", "裤子", "外套"], "a": 2, "kn": "单词 coat（外套）", "lv": 2}, {"q": "「外套」用英语怎么说？", "options": ["coat", "skirt", "shirt"], "a": 0, "kn": "单词 coat（外套）", "lv": 2}, {"q": "补全句子：I am wearing a ____.（我穿着衬衫。）", "options": ["pants", "shirt", "coat"], "a": 1, "kn": "句型 I am wearing a ____.", "lv": 2}, {"q": "补全句子：The ____ is cool.（这件衬衫很酷。）", "options": ["shoes", "shirt", "pants"], "a": 1, "kn": "句型 The ____ is cool.", "lv": 2}, {"q": "「swim」的意思是？", "options": ["游泳", "跑步", "跳舞"], "a": 0, "kn": "单词 swim（游泳）", "lv": 3}, {"q": "「游泳」用英语怎么说？", "options": ["swim", "dance", "sing"], "a": 0, "kn": "单词 swim（游泳）", "lv": 3}, {"q": "「jump」的意思是？", "options": ["画画", "唱歌", "跳跃"], "a": 2, "kn": "单词 jump（跳跃）", "lv": 3}, {"q": "「跳跃」用英语怎么说？", "options": ["swim", "sing", "jump"], "a": 2, "kn": "单词 jump（跳跃）", "lv": 3}, {"q": "「run」的意思是？", "options": ["跑步", "游泳", "画画"], "a": 0, "kn": "单词 run（跑步）", "lv": 3}, {"q": "「跑步」用英语怎么说？", "options": ["run", "swim", "draw"], "a": 0, "kn": "单词 run（跑步）", "lv": 3}, {"q": "「dance」的意思是？", "options": ["唱歌", "跳舞", "游泳"], "a": 1, "kn": "单词 dance（跳舞）", "lv": 3}, {"q": "「跳舞」用英语怎么说？", "options": ["dance", "sing", "jump"], "a": 0, "kn": "单词 dance（跳舞）", "lv": 3}, {"q": "「sing」的意思是？", "options": ["跳舞", "跑步", "唱歌"], "a": 2, "kn": "单词 sing（唱歌）", "lv": 3}, {"q": "「唱歌」用英语怎么说？", "options": ["sing", "swim", "dance"], "a": 0, "kn": "单词 sing（唱歌）", "lv": 3}, {"q": "「draw」的意思是？", "options": ["画画", "跳跃", "跑步"], "a": 0, "kn": "单词 draw（画画）", "lv": 3}, {"q": "「画画」用英语怎么说？", "options": ["sing", "draw", "dance"], "a": 1, "kn": "单词 draw（画画）", "lv": 3}, {"q": "补全句子：I can ____ very well.（我游泳很棒。）", "options": ["swim", "sing", "run"], "a": 0, "kn": "句型 I can ____ very well.", "lv": 3}, {"q": "补全句子：Let us ____ together.（我们一起游泳吧。）", "options": ["draw", "swim", "jump"], "a": 1, "kn": "句型 Let us ____ together.", "lv": 3}, {"q": "「park」的意思是？", "options": ["动物园", "电影院", "公园"], "a": 2, "kn": "单词 park（公园）", "lv": 4}, {"q": "「公园」用英语怎么说？", "options": ["park", "hospital", "zoo"], "a": 0, "kn": "单词 park（公园）", "lv": 4}, {"q": "「zoo」的意思是？", "options": ["动物园", "图书馆", "公园"], "a": 0, "kn": "单词 zoo（动物园）", "lv": 4}, {"q": "「动物园」用英语怎么说？", "options": ["library", "hospital", "zoo"], "a": 2, "kn": "单词 zoo（动物园）", "lv": 4}, {"q": "「hospital」的意思是？", "options": ["电影院", "医院", "商店"], "a": 1, "kn": "单词 hospital（医院）", "lv": 4}, {"q": "「医院」用英语怎么说？", "options": ["zoo", "hospital", "shop"], "a": 1, "kn": "单词 hospital（医院）", "lv": 4}, {"q": "「cinema」的意思是？", "options": ["电影院", "商店", "公园"], "a": 0, "kn": "单词 cinema（电影院）", "lv": 4}, {"q": "「电影院」用英语怎么说？", "options": ["zoo", "cinema", "library"], "a": 1, "kn": "单词 cinema（电影院）", "lv": 4}, {"q": "「library」的意思是？", "options": ["图书馆", "商店", "动物园"], "a": 0, "kn": "单词 library（图书馆）", "lv": 4}, {"q": "「图书馆」用英语怎么说？", "options": ["hospital", "cinema", "library"], "a": 2, "kn": "单词 library（图书馆）", "lv": 4}, {"q": "「shop」的意思是？", "options": ["图书馆", "电影院", "商店"], "a": 2, "kn": "单词 shop（商店）", "lv": 4}, {"q": "「商店」用英语怎么说？", "options": ["cinema", "shop", "library"], "a": 1, "kn": "单词 shop（商店）", "lv": 4}, {"q": "补全句子：Let us go to the ____.（我们去公园吧。）", "options": ["cinema", "park", "zoo"], "a": 1, "kn": "句型 Let us go to the ____.", "lv": 4}, {"q": "补全句子：The ____ is near my home.（公园在我家附近。）", "options": ["shop", "zoo", "park"], "a": 2, "kn": "句型 The ____ is near my home.", "lv": 4}]
+  },
+  g5: {
+    cn: [{"q": "\"吩咐\"的近义词是：", "options": ["唠叨", "嘱咐", "训斥"], "a": 1, "kn": "近义词", "lv": 0}, {"q": "《白鹭》的作者是：", "options": ["巴金", "郭沫若", "老舍"], "a": 1, "kn": "作者与作品", "lv": 0}, {"q": "\"太阳揭开了面纱\"是___句：", "options": ["拟人", "比喻", "夸张"], "a": 0, "kn": "修辞手法", "lv": 1}, {"q": "《示儿》的作者陆游是___代诗人：", "options": ["清", "唐", "宋"], "a": 2, "kn": "作者与作品", "lv": 1}, {"q": "\"王师北定中原日\"的下一句是：", "options": ["遍插茱萸少一人", "但悲不见九州同", "家祭无忘告乃翁"], "a": 2, "kn": "古诗文积累", "lv": 2}, {"q": "\"津津有味\"中\"津津\"形容：", "options": ["汗水直流", "口水流出", "兴趣浓厚"], "a": 2, "kn": "语文基础", "lv": 2}, {"q": "\"及时雨\"是《水浒传》里___的绰号：", "options": ["宋江", "武松", "林冲"], "a": 0, "kn": "语文基础", "lv": 3}, {"q": "《少年中国说》的作者是：", "options": ["朱自清", "鲁迅", "梁启超"], "a": 2, "kn": "作者与作品", "lv": 3}, {"q": "\"问君能有几多愁\"的下一句是：", "options": ["只是朱颜改", "故国不堪回首月明中", "恰似一江春水向东流"], "a": 2, "kn": "古诗文积累", "lv": 4}, {"q": "《假如给我三天光明》的作者是：", "options": ["格林兄弟", "海伦·凯勒", "安徒生"], "a": 1, "kn": "作者与作品", "lv": 4}],
+    sci: [{"q": "地球自转产生：", "options": ["四季变化", "昼夜交替", "月相变化"], "a": 1, "kn": "地球与宇宙", "lv": 1}, {"q": "声音不能在___中传播：", "options": ["真空", "水", "空气"], "a": 0, "kn": "声音的传播", "lv": 2}, {"q": "种子萌发必需条件不包括：", "options": ["空气", "阳光", "水分"], "a": 1, "kn": "植物的繁殖方式", "lv": 3}, {"q": "人体需要的能量主要来自：", "options": ["食物", "睡觉", "晒太阳"], "a": 0, "kn": "食物链", "lv": 3}],
+    eth: [{"q": "\"诚信\"是指：", "options": ["什么都答应", "说话算数", "不说真话"], "a": 1, "kn": "品德与生活", "lv": 1}, {"q": "看见同学被欺负应该：", "options": ["告诉老师家长", "帮忙欺负", "围观起哄"], "a": 0, "kn": "同伴交往", "lv": 3}],
+    en: [{"q": "「get up」的意思是？", "options": ["起床", "刷牙", "做作业"], "a": 0, "kn": "单词 get up（起床）", "lv": 0}, {"q": "「起床」用英语怎么说？", "options": ["brush teeth", "go to bed", "get up"], "a": 2, "kn": "单词 get up（起床）", "lv": 0}, {"q": "「do homework」的意思是？", "options": ["起床", "刷牙", "做作业"], "a": 2, "kn": "单词 do homework（做作业）", "lv": 0}, {"q": "「做作业」用英语怎么说？", "options": ["do homework", "watch TV", "go to bed"], "a": 0, "kn": "单词 do homework（做作业）", "lv": 0}, {"q": "「watch TV」的意思是？", "options": ["上床睡觉", "看电视", "做作业"], "a": 1, "kn": "单词 watch TV（看电视）", "lv": 0}, {"q": "「看电视」用英语怎么说？", "options": ["watch TV", "have class", "brush teeth"], "a": 0, "kn": "单词 watch TV（看电视）", "lv": 0}, {"q": "「go to bed」的意思是？", "options": ["刷牙", "上床睡觉", "看电视"], "a": 1, "kn": "单词 go to bed（上床睡觉）", "lv": 0}, {"q": "「上床睡觉」用英语怎么说？", "options": ["brush teeth", "have class", "go to bed"], "a": 2, "kn": "单词 go to bed（上床睡觉）", "lv": 0}, {"q": "「brush teeth」的意思是？", "options": ["上课", "看电视", "刷牙"], "a": 2, "kn": "单词 brush teeth（刷牙）", "lv": 0}, {"q": "「刷牙」用英语怎么说？", "options": ["get up", "brush teeth", "do homework"], "a": 1, "kn": "单词 brush teeth（刷牙）", "lv": 0}, {"q": "「have class」的意思是？", "options": ["刷牙", "上课", "做作业"], "a": 1, "kn": "单词 have class（上课）", "lv": 0}, {"q": "「上课」用英语怎么说？", "options": ["have class", "go to bed", "get up"], "a": 0, "kn": "单词 have class（上课）", "lv": 0}, {"q": "补全句子：I ____ at six.（我六点起床。）", "options": ["watch TV", "brush teeth", "get up"], "a": 2, "kn": "句型 I ____ at six.", "lv": 0}, {"q": "补全句子：After school, I ____.（放学后我起床。）", "options": ["have class", "watch TV", "get up"], "a": 2, "kn": "句型 After school, I ____.", "lv": 0}, {"q": "「spring」的意思是？", "options": ["春天", "温暖", "秋天"], "a": 0, "kn": "单词 spring（春天）", "lv": 1}, {"q": "「春天」用英语怎么说？", "options": ["spring", "cold", "autumn"], "a": 0, "kn": "单词 spring（春天）", "lv": 1}, {"q": "「summer」的意思是？", "options": ["春天", "夏天", "温暖"], "a": 1, "kn": "单词 summer（夏天）", "lv": 1}, {"q": "「夏天」用英语怎么说？", "options": ["spring", "winter", "summer"], "a": 2, "kn": "单词 summer（夏天）", "lv": 1}, {"q": "「autumn」的意思是？", "options": ["夏天", "秋天", "温暖"], "a": 1, "kn": "单词 autumn（秋天）", "lv": 1}, {"q": "「秋天」用英语怎么说？", "options": ["cold", "autumn", "spring"], "a": 1, "kn": "单词 autumn（秋天）", "lv": 1}, {"q": "「winter」的意思是？", "options": ["夏天", "春天", "冬天"], "a": 2, "kn": "单词 winter（冬天）", "lv": 1}, {"q": "「冬天」用英语怎么说？", "options": ["spring", "winter", "warm"], "a": 1, "kn": "单词 winter（冬天）", "lv": 1}, {"q": "「warm」的意思是？", "options": ["夏天", "温暖", "春天"], "a": 1, "kn": "单词 warm（温暖）", "lv": 1}, {"q": "「温暖」用英语怎么说？", "options": ["warm", "spring", "cold"], "a": 0, "kn": "单词 warm（温暖）", "lv": 1}, {"q": "「cold」的意思是？", "options": ["寒冷", "秋天", "冬天"], "a": 0, "kn": "单词 cold（寒冷）", "lv": 1}, {"q": "「寒冷」用英语怎么说？", "options": ["autumn", "cold", "summer"], "a": 1, "kn": "单词 cold（寒冷）", "lv": 1}, {"q": "补全句子：It is warm in ____.（春天很温暖。）", "options": ["cold", "winter", "spring"], "a": 2, "kn": "句型 It is warm in ____.", "lv": 1}, {"q": "补全句子：I like ____ best.（我最喜欢春天。）", "options": ["winter", "warm", "spring"], "a": 2, "kn": "句型 I like ____ best.", "lv": 1}, {"q": "「reading」的意思是？", "options": ["骑行", "露营", "阅读"], "a": 2, "kn": "单词 reading（阅读）", "lv": 2}, {"q": "「阅读」用英语怎么说？", "options": ["fishing", "reading", "skating"], "a": 1, "kn": "单词 reading（阅读）", "lv": 2}, {"q": "「painting」的意思是？", "options": ["钓鱼", "绘画", "骑行"], "a": 1, "kn": "单词 painting（绘画）", "lv": 2}, {"q": "「绘画」用英语怎么说？", "options": ["skating", "painting", "camping"], "a": 1, "kn": "单词 painting（绘画）", "lv": 2}, {"q": "「skating」的意思是？", "options": ["骑行", "钓鱼", "滑冰"], "a": 2, "kn": "单词 skating（滑冰）", "lv": 2}, {"q": "「滑冰」用英语怎么说？", "options": ["reading", "skating", "camping"], "a": 1, "kn": "单词 skating（滑冰）", "lv": 2}, {"q": "「cycling」的意思是？", "options": ["绘画", "骑行", "阅读"], "a": 1, "kn": "单词 cycling（骑行）", "lv": 2}, {"q": "「骑行」用英语怎么说？", "options": ["fishing", "reading", "cycling"], "a": 2, "kn": "单词 cycling（骑行）", "lv": 2}, {"q": "「camping」的意思是？", "options": ["绘画", "钓鱼", "露营"], "a": 2, "kn": "单词 camping（露营）", "lv": 2}, {"q": "「露营」用英语怎么说？", "options": ["skating", "reading", "camping"], "a": 2, "kn": "单词 camping（露营）", "lv": 2}, {"q": "「fishing」的意思是？", "options": ["滑冰", "钓鱼", "骑行"], "a": 1, "kn": "单词 fishing（钓鱼）", "lv": 2}, {"q": "「钓鱼」用英语怎么说？", "options": ["skating", "reading", "fishing"], "a": 2, "kn": "单词 fishing（钓鱼）", "lv": 2}, {"q": "补全句子：I like ____ very much.（我非常喜欢阅读。）", "options": ["fishing", "painting", "reading"], "a": 2, "kn": "句型 I like ____ very much.", "lv": 2}, {"q": "补全句子：____ makes me happy.（阅读让我开心。）", "options": ["camping", "cycling", "reading"], "a": 2, "kn": "句型 ____ makes me happy.", "lv": 2}, {"q": "「left」的意思是？", "options": ["左边", "直走", "在旁边"], "a": 0, "kn": "单词 left（左边）", "lv": 3}, {"q": "「左边」用英语怎么说？", "options": ["left", "near", "next to"], "a": 0, "kn": "单词 left（左边）", "lv": 3}, {"q": "「right」的意思是？", "options": ["在旁边", "右边", "在后面"], "a": 1, "kn": "单词 right（右边）", "lv": 3}, {"q": "「右边」用英语怎么说？", "options": ["right", "near", "straight"], "a": 0, "kn": "单词 right（右边）", "lv": 3}, {"q": "「straight」的意思是？", "options": ["直走", "在附近", "右边"], "a": 0, "kn": "单词 straight（直走）", "lv": 3}, {"q": "「直走」用英语怎么说？", "options": ["straight", "behind", "near"], "a": 0, "kn": "单词 straight（直走）", "lv": 3}, {"q": "「near」的意思是？", "options": ["在后面", "在附近", "右边"], "a": 1, "kn": "单词 near（在附近）", "lv": 3}, {"q": "「在附近」用英语怎么说？", "options": ["straight", "near", "right"], "a": 1, "kn": "单词 near（在附近）", "lv": 3}, {"q": "「behind」的意思是？", "options": ["在旁边", "左边", "在后面"], "a": 2, "kn": "单词 behind（在后面）", "lv": 3}, {"q": "「在后面」用英语怎么说？", "options": ["left", "right", "behind"], "a": 2, "kn": "单词 behind（在后面）", "lv": 3}, {"q": "「next to」的意思是？", "options": ["在旁边", "在后面", "左边"], "a": 0, "kn": "单词 next to（在旁边）", "lv": 3}, {"q": "「在旁边」用英语怎么说？", "options": ["next to", "straight", "behind"], "a": 0, "kn": "单词 next to（在旁边）", "lv": 3}, {"q": "补全句子：Walk ____ for two minutes.（向左边走两分钟。）", "options": ["near", "behind", "left"], "a": 2, "kn": "句型 Walk ____ for two minutes.", "lv": 3}, {"q": "补全句子：The bus stop is ____ the school.（公交站左边学校。）", "options": ["straight", "behind", "left"], "a": 2, "kn": "句型 The bus stop is ____ the school.", "lv": 3}, {"q": "「cook」的意思是？", "options": ["打篮球", "练功夫", "做饭"], "a": 2, "kn": "单词 cook（做饭）", "lv": 4}, {"q": "「做饭」用英语怎么说？", "options": ["do kung fu", "play the piano", "cook"], "a": 2, "kn": "单词 cook（做饭）", "lv": 4}, {"q": "「play the piano」的意思是？", "options": ["弹钢琴", "打篮球", "做饭"], "a": 0, "kn": "单词 play the piano（弹钢琴）", "lv": 4}, {"q": "「弹钢琴」用英语怎么说？", "options": ["do kung fu", "play basketball", "play the piano"], "a": 2, "kn": "单词 play the piano（弹钢琴）", "lv": 4}, {"q": "「do kung fu」的意思是？", "options": ["做饭", "打篮球", "练功夫"], "a": 2, "kn": "单词 do kung fu（练功夫）", "lv": 4}, {"q": "「练功夫」用英语怎么说？", "options": ["play football", "play the piano", "do kung fu"], "a": 2, "kn": "单词 do kung fu（练功夫）", "lv": 4}, {"q": "「play basketball」的意思是？", "options": ["打篮球", "做饭", "练功夫"], "a": 0, "kn": "单词 play basketball（打篮球）", "lv": 4}, {"q": "「打篮球」用英语怎么说？", "options": ["play basketball", "cook", "play the piano"], "a": 0, "kn": "单词 play basketball（打篮球）", "lv": 4}, {"q": "「play football」的意思是？", "options": ["练功夫", "做饭", "踢足球"], "a": 2, "kn": "单词 play football（踢足球）", "lv": 4}, {"q": "「踢足球」用英语怎么说？", "options": ["play basketball", "play football", "do kung fu"], "a": 1, "kn": "单词 play football（踢足球）", "lv": 4}, {"q": "「play the violin」的意思是？", "options": ["练功夫", "拉小提琴", "打篮球"], "a": 1, "kn": "单词 play the violin（拉小提琴）", "lv": 4}, {"q": "「拉小提琴」用英语怎么说？", "options": ["do kung fu", "play the violin", "play basketball"], "a": 1, "kn": "单词 play the violin（拉小提琴）", "lv": 4}, {"q": "补全句子：I can ____.（我会做饭。）", "options": ["play the violin", "play basketball", "cook"], "a": 2, "kn": "句型 I can ____.", "lv": 4}, {"q": "补全句子：Can you ____?（你会做饭吗？）", "options": ["do kung fu", "play the violin", "cook"], "a": 2, "kn": "句型 Can you ____?", "lv": 4}]
+  },
+  g6: {
+    cn: [{"q": "《草原》的作者是：", "options": ["巴金", "冰心", "老舍"], "a": 2, "kn": "作者与作品", "lv": 0}, {"q": "\"截然不同\"的\"截\"在这里表示：", "options": ["界限分明", "阻拦", "切断"], "a": 0, "kn": "词义理解", "lv": 0}, {"q": "\"千里莺啼绿映红\"出自：", "options": ["《泊船瓜洲》", "《江南春》", "《春日》"], "a": 1, "kn": "古诗词三首", "lv": 1}, {"q": "\"操千曲而后晓声\"的下一句是：", "options": ["观千剑而后识器", "行万里而后明道", "读万卷而后知理"], "a": 0, "kn": "古诗词三首", "lv": 1}, {"q": "\"昔我往矣，杨柳依依\"的下一句是：", "options": ["今我来思，雨雪霏霏", "路漫漫其修远", "风萧萧兮易水寒"], "a": 0, "kn": "古诗词三首", "lv": 2}, {"q": "\"五行\"不包括下面哪个：", "options": ["风", "火", "水"], "a": 0, "kn": "文言文二则", "lv": 2}, {"q": "\"弈秋，通国之___弈者也\"填：", "options": ["会", "善", "好"], "a": 1, "kn": "文言文二则", "lv": 3}, {"q": "《两小儿辩日》中两小儿在争论：", "options": ["太阳是什么颜色", "太阳有多大", "太阳什么时候离人近"], "a": 2, "kn": "文言文二则", "lv": 3}, {"q": "\"少壮不努力\"的下一句是：", "options": ["岁月不待人", "老大徒伤悲", "悔恨泪满襟"], "a": 1, "kn": "古诗词三首", "lv": 4}, {"q": "\"苟利国家生死以\"的作者是：", "options": ["陆游", "文天祥", "林则徐"], "a": 2, "kn": "作者与作品", "lv": 4}],
+    sci: [{"q": "地球绕太阳公转产生：", "options": ["昼夜交替", "四季变化", "潮汐"], "a": 1, "kn": "太阳系", "lv": 2}, {"q": "太阳系中最大的行星是：", "options": ["地球", "木星", "土星"], "a": 1, "kn": "太阳系", "lv": 2}, {"q": "光在真空中的速度约：", "options": ["300 公里/秒", "30 万公里/秒", "3 万公里/秒"], "a": 1, "kn": "光与影", "lv": 3}, {"q": "生物体的基本单位是：", "options": ["细胞", "组织", "器官"], "a": 0, "kn": "测量与单位", "lv": 4}],
+    eth: [{"q": "\"己所不欲，勿施于人\"意思是：", "options": ["自己想要就抢", "别人给就要", "自己不想要的别强加给人"], "a": 2, "kn": "品德与生活", "lv": 2}, {"q": "下面属于公民基本义务的是：", "options": ["必须游泳", "每天锻炼", "依法纳税"], "a": 2, "kn": "品德与生活", "lv": 3}],
+    en: [{"q": "「taller」的意思是？", "options": ["更壮", "更快", "更高"], "a": 2, "kn": "单词 taller（更高）", "lv": 0}, {"q": "「更高」用英语怎么说？", "options": ["faster", "taller", "bigger"], "a": 1, "kn": "单词 taller（更高）", "lv": 0}, {"q": "「shorter」的意思是？", "options": ["更壮", "更矮", "更快"], "a": 1, "kn": "单词 shorter（更矮）", "lv": 0}, {"q": "「更矮」用英语怎么说？", "options": ["shorter", "bigger", "older"], "a": 0, "kn": "单词 shorter（更矮）", "lv": 0}, {"q": "「stronger」的意思是？", "options": ["更壮", "更矮", "更快"], "a": 0, "kn": "单词 stronger（更壮）", "lv": 0}, {"q": "「更壮」用英语怎么说？", "options": ["taller", "bigger", "stronger"], "a": 2, "kn": "单词 stronger（更壮）", "lv": 0}, {"q": "「faster」的意思是？", "options": ["更年长", "更快", "更大"], "a": 1, "kn": "单词 faster（更快）", "lv": 0}, {"q": "「更快」用英语怎么说？", "options": ["older", "taller", "faster"], "a": 2, "kn": "单词 faster（更快）", "lv": 0}, {"q": "「older」的意思是？", "options": ["更高", "更年长", "更快"], "a": 1, "kn": "单词 older（更年长）", "lv": 0}, {"q": "「更年长」用英语怎么说？", "options": ["stronger", "taller", "older"], "a": 2, "kn": "单词 older（更年长）", "lv": 0}, {"q": "「bigger」的意思是？", "options": ["更快", "更壮", "更大"], "a": 2, "kn": "单词 bigger（更大）", "lv": 0}, {"q": "「更大」用英语怎么说？", "options": ["stronger", "bigger", "shorter"], "a": 1, "kn": "单词 bigger（更大）", "lv": 0}, {"q": "补全句子：I am ____ than you.（我比你更高。）", "options": ["taller", "bigger", "older"], "a": 0, "kn": "句型 I am ____ than you.", "lv": 0}, {"q": "补全句子：A cheetah runs ____ than a dog.（猎豹跑得比狗更高。）", "options": ["bigger", "shorter", "taller"], "a": 2, "kn": "句型 A cheetah runs ____ than a dog.", "lv": 0}, {"q": "「went」的意思是？", "options": ["看了", "去了（go 的过去式）", "吃了（eat 的过去式）"], "a": 1, "kn": "单词 went（去了（go 的过去式））", "lv": 1}, {"q": "「去了（go 的过去式）」用英语怎么说？", "options": ["ate", "had", "went"], "a": 2, "kn": "单词 went（去了（go 的过去式））", "lv": 1}, {"q": "「ate」的意思是？", "options": ["看见了（see 的过去式）", "玩了", "吃了（eat 的过去式）"], "a": 2, "kn": "单词 ate（吃了（eat 的过去式））", "lv": 1}, {"q": "「吃了（eat 的过去式）」用英语怎么说？", "options": ["watched", "ate", "went"], "a": 1, "kn": "单词 ate（吃了（eat 的过去式））", "lv": 1}, {"q": "「saw」的意思是？", "options": ["看了", "有了（have 的过去式）", "看见了（see 的过去式）"], "a": 2, "kn": "单词 saw（看见了（see 的过去式））", "lv": 1}, {"q": "「看见了（see 的过去式）」用英语怎么说？", "options": ["watched", "played", "saw"], "a": 2, "kn": "单词 saw（看见了（see 的过去式））", "lv": 1}, {"q": "「played」的意思是？", "options": ["看了", "看见了（see 的过去式）", "玩了"], "a": 2, "kn": "单词 played（玩了）", "lv": 1}, {"q": "「玩了」用英语怎么说？", "options": ["watched", "played", "saw"], "a": 1, "kn": "单词 played（玩了）", "lv": 1}, {"q": "「watched」的意思是？", "options": ["吃了（eat 的过去式）", "看了", "有了（have 的过去式）"], "a": 1, "kn": "单词 watched（看了）", "lv": 1}, {"q": "「看了」用英语怎么说？", "options": ["went", "ate", "watched"], "a": 2, "kn": "单词 watched（看了）", "lv": 1}, {"q": "「had」的意思是？", "options": ["有了（have 的过去式）", "去了（go 的过去式）", "看见了（see 的过去式）"], "a": 0, "kn": "单词 had（有了（have 的过去式））", "lv": 1}, {"q": "「有了（have 的过去式）」用英语怎么说？", "options": ["saw", "had", "went"], "a": 1, "kn": "单词 had（有了（have 的过去式））", "lv": 1}, {"q": "补全句子：Yesterday I ____ to the park.（昨天我去了（go 的过去式）公园。）", "options": ["saw", "went", "watched"], "a": 1, "kn": "句型 Yesterday I ____ to the park.", "lv": 1}, {"q": "补全句子：We ____ a film last night.（我们昨晚去了（go 的过去式）电影。）", "options": ["played", "ate", "went"], "a": 2, "kn": "句型 We ____ a film last night.", "lv": 1}, {"q": "「trip」的意思是？", "options": ["旅行", "徒步", "野餐"], "a": 0, "kn": "单词 trip（旅行）", "lv": 2}, {"q": "「旅行」用英语怎么说？", "options": ["hiking", "trip", "party"], "a": 1, "kn": "单词 trip（旅行）", "lv": 2}, {"q": "「picnic」的意思是？", "options": ["野餐", "露营", "音乐会"], "a": 0, "kn": "单词 picnic（野餐）", "lv": 2}, {"q": "「野餐」用英语怎么说？", "options": ["camp", "party", "picnic"], "a": 2, "kn": "单词 picnic（野餐）", "lv": 2}, {"q": "「camp」的意思是？", "options": ["派对", "音乐会", "露营"], "a": 2, "kn": "单词 camp（露营）", "lv": 2}, {"q": "「露营」用英语怎么说？", "options": ["party", "camp", "concert"], "a": 1, "kn": "单词 camp（露营）", "lv": 2}, {"q": "「party」的意思是？", "options": ["露营", "音乐会", "派对"], "a": 2, "kn": "单词 party（派对）", "lv": 2}, {"q": "「派对」用英语怎么说？", "options": ["concert", "hiking", "party"], "a": 2, "kn": "单词 party（派对）", "lv": 2}, {"q": "「concert」的意思是？", "options": ["露营", "音乐会", "派对"], "a": 1, "kn": "单词 concert（音乐会）", "lv": 2}, {"q": "「音乐会」用英语怎么说？", "options": ["camp", "concert", "picnic"], "a": 1, "kn": "单词 concert（音乐会）", "lv": 2}, {"q": "「hiking」的意思是？", "options": ["野餐", "露营", "徒步"], "a": 2, "kn": "单词 hiking（徒步）", "lv": 2}, {"q": "「徒步」用英语怎么说？", "options": ["party", "hiking", "trip"], "a": 1, "kn": "单词 hiking（徒步）", "lv": 2}, {"q": "补全句子：I will join the ____.（我将参加旅行。）", "options": ["trip", "concert", "camp"], "a": 0, "kn": "句型 I will join the ____.", "lv": 2}, {"q": "补全句子：The ____ is on Sunday.（旅行在周日。）", "options": ["party", "trip", "concert"], "a": 1, "kn": "句型 The ____ is on Sunday.", "lv": 2}, {"q": "「Spring Festival」的意思是？", "options": ["中秋节", "生日", "春节"], "a": 2, "kn": "单词 Spring Festival（春节）", "lv": 3}, {"q": "「春节」用英语怎么说？", "options": ["Spring Festival", "Halloween", "Christmas"], "a": 0, "kn": "单词 Spring Festival（春节）", "lv": 3}, {"q": "「Christmas」的意思是？", "options": ["儿童节", "中秋节", "圣诞节"], "a": 2, "kn": "单词 Christmas（圣诞节）", "lv": 3}, {"q": "「圣诞节」用英语怎么说？", "options": ["birthday", "Christmas", "Mid-Autumn Day"], "a": 1, "kn": "单词 Christmas（圣诞节）", "lv": 3}, {"q": "「Mid-Autumn Day」的意思是？", "options": ["中秋节", "圣诞节", "儿童节"], "a": 0, "kn": "单词 Mid-Autumn Day（中秋节）", "lv": 3}, {"q": "「中秋节」用英语怎么说？", "options": ["Halloween", "Children's Day", "Mid-Autumn Day"], "a": 2, "kn": "单词 Mid-Autumn Day（中秋节）", "lv": 3}, {"q": "「Halloween」的意思是？", "options": ["生日", "圣诞节", "万圣节"], "a": 2, "kn": "单词 Halloween（万圣节）", "lv": 3}, {"q": "「万圣节」用英语怎么说？", "options": ["birthday", "Halloween", "Children's Day"], "a": 1, "kn": "单词 Halloween（万圣节）", "lv": 3}, {"q": "「Children's Day」的意思是？", "options": ["中秋节", "万圣节", "儿童节"], "a": 2, "kn": "单词 Children's Day（儿童节）", "lv": 3}, {"q": "「儿童节」用英语怎么说？", "options": ["Children's Day", "Spring Festival", "Mid-Autumn Day"], "a": 0, "kn": "单词 Children's Day（儿童节）", "lv": 3}, {"q": "「birthday」的意思是？", "options": ["万圣节", "中秋节", "生日"], "a": 2, "kn": "单词 birthday（生日）", "lv": 3}, {"q": "「生日」用英语怎么说？", "options": ["Halloween", "birthday", "Christmas"], "a": 1, "kn": "单词 birthday（生日）", "lv": 3}, {"q": "补全句子：____ is coming!（春节快到了！）", "options": ["Mid-Autumn Day", "Christmas", "Spring Festival"], "a": 2, "kn": "句型 ____ is coming!", "lv": 3}, {"q": "补全句子：I love ____.（我爱春节。）", "options": ["Spring Festival", "Mid-Autumn Day", "Halloween"], "a": 0, "kn": "句型 I love ____.", "lv": 3}, {"q": "「train」的意思是？", "options": ["飞机", "宾馆", "火车"], "a": 2, "kn": "单词 train（火车）", "lv": 4}, {"q": "「火车」用英语怎么说？", "options": ["plane", "train", "map"], "a": 1, "kn": "单词 train（火车）", "lv": 4}, {"q": "「plane」的意思是？", "options": ["地图", "相机", "飞机"], "a": 2, "kn": "单词 plane（飞机）", "lv": 4}, {"q": "「飞机」用英语怎么说？", "options": ["ticket", "train", "plane"], "a": 2, "kn": "单词 plane（飞机）", "lv": 4}, {"q": "「hotel」的意思是？", "options": ["相机", "宾馆", "火车"], "a": 1, "kn": "单词 hotel（宾馆）", "lv": 4}, {"q": "「宾馆」用英语怎么说？", "options": ["hotel", "train", "ticket"], "a": 0, "kn": "单词 hotel（宾馆）", "lv": 4}, {"q": "「ticket」的意思是？", "options": ["相机", "票", "地图"], "a": 1, "kn": "单词 ticket（票）", "lv": 4}, {"q": "「票」用英语怎么说？", "options": ["camera", "plane", "ticket"], "a": 2, "kn": "单词 ticket（票）", "lv": 4}, {"q": "「map」的意思是？", "options": ["票", "地图", "火车"], "a": 1, "kn": "单词 map（地图）", "lv": 4}, {"q": "「地图」用英语怎么说？", "options": ["map", "train", "ticket"], "a": 0, "kn": "单词 map（地图）", "lv": 4}, {"q": "「camera」的意思是？", "options": ["票", "相机", "地图"], "a": 1, "kn": "单词 camera（相机）", "lv": 4}, {"q": "「相机」用英语怎么说？", "options": ["train", "camera", "ticket"], "a": 1, "kn": "单词 camera（相机）", "lv": 4}, {"q": "补全句子：The ____ is fast.（火车很快。）", "options": ["hotel", "train", "map"], "a": 1, "kn": "句型 The ____ is fast.", "lv": 4}, {"q": "补全句子：Do not forget the ____.（别忘记火车。）", "options": ["train", "camera", "ticket"], "a": 0, "kn": "句型 Do not forget the ____.", "lv": 4}]
+  }
+};
+
+window.KG_TOTAL = (function(){var n=0;for(var g in window.KG_NAMES){for(var s in window.KG_NAMES[g])n+=window.KG_NAMES[g][s].length;}return n;})();
+window.KG_BANK_TOTAL = (function(){var n=0;for(var g in window.KG_BANK){for(var s in window.KG_BANK[g])n+=window.KG_BANK[g][s].length;}return n;})();
+
+</script>
+<script>
+/* ============================================================
+ * 《知识大陆 · 宠物远征》v2 —— 年级知识图谱 × 多宠物编队 × 属性克制
+ * 状态：select(选年级/组队) → battle → levelClear → (boss) → result / defeat
+ * 零外部依赖：Canvas 粒子 + DOM 界面 + Web Audio 合成音效
+ * ============================================================ */
+'use strict';
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const rand = n => Math.floor(Math.random() * n);
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=rand(i+1); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+
+const GRADES = window.GRADES, PETS = window.BATTLE_PETS;
+const ELEMENTS = window.ELEMENTS, ELEM_ADV = window.ELEM_ADV;
+const ELEM_ADV_MULT = window.ELEM_ADV_MULT, ELEM_WEAK_MULT = window.ELEM_WEAK_MULT;
+const RAR_BONUS = window.RAR_BONUS, RAR_COLOR = window.RAR_COLOR;
+const KG_BANK = window.KG_BANK, KG_NAMES = window.KG_NAMES;
+
+const SUBJ_META = {
+  math: { name:'数学', icon:'🧮' },
+  cn:   { name:'语文', icon:'📖' },
+  en:   { name:'英语', icon:'🔤' },
+  sci:  { name:'科学', icon:'🔬' },
+  eth:  { name:'道德与法治', icon:'⚖️' }
+};
+
+/* ---------- 关卡：敌人属性与队伍属性形成策略约束 ---------- */
+const LEVELS = [
+  { name:'石板路',   enemy:'苔球怪',   emoji:'🪴', elem:'wood',  hp:110, lv:1, boss:false },
+  { name:'雾林',     enemy:'潮汐蟹',   emoji:'🦀', elem:'water', hp:140, lv:2, boss:false },
+  { name:'问答桥',   enemy:'焰尾鸦',   emoji:'🦅', elem:'fire',  hp:170, lv:3, boss:false },
+  { name:'书山王座', enemy:'知识魔王', emoji:'📚', elem:'dark',  hp:110, lv:4, boss:true  }
+];
+
+/* ---------- 全局状态 ---------- */
+const G = {
+  state:'select',
+  grade:'g3',
+  team:[],            // [{ pet, hp, maxHp }]
+  active:0,
+  level:0, bossPhase:1,
+  enemyHp:110, enemyMax:110,
+  combo:0, maxCombo:0, correctCount:0, wrongCount:0, questionNo:0,
+  notes:2, usedThisQ:[],
+  currentQ:null, currentOpts:[], currentAnswer:0,
+  bags:{}, usedQ:new Set(), wrongPool:[], knHit:{}, startTime:0, lock:false
+};
+
+/* ---------- 安全存储：无痕模式 / file:// / 微信受限环境下 localStorage 会抛错 ---------- */
+const LS = {
+  mem: {},
+  get(k){
+    try { const v = window.localStorage.getItem(k); return v === null ? (k in this.mem ? this.mem[k] : null) : v; }
+    catch(e){ return k in this.mem ? this.mem[k] : null; }
+  },
+  set(k, v){
+    this.mem[k] = v;
+    try { window.localStorage.setItem(k, v); } catch(e){ /* 忽略：退化为内存 */ }
+  }
+};
+
+/* ============================================================
+ * 1. 音效（Web Audio 合成，无外部文件）
+ * ============================================================ */
+const SND = {
+  ctx:null, master:null,
+  muted: LS.get('battle.muted') === '1',
+  ensure(){
+    if (this.muted) return null;
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      this.ctx = new AC();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.5;
+      this.master.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  tone(freq, dur, opt){
+    opt = opt || {};
+    const c = this.ensure(); if (!c) return;
+    const t0 = c.currentTime + (opt.delay || 0);
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = opt.type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (opt.to) o.frequency.exponentialRampToValueAtTime(Math.max(40, opt.to), t0 + dur);
+    const v = opt.vol == null ? 0.11 : opt.vol;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(v, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(this.master);
+    o.start(t0); o.stop(t0 + dur + 0.03);
+  },
+  noise(dur, vol, freq){
+    const c = this.ensure(); if (!c) return;
+    const len = Math.max(1, Math.floor(c.sampleRate * dur));
+    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+    const s = c.createBufferSource(); s.buffer = buf;
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq || 1000;
+    const g = c.createGain(); g.gain.value = vol == null ? 0.16 : vol;
+    s.connect(f); f.connect(g); g.connect(this.master); s.start();
+  },
+  tap(){ this.tone(620, 0.07, { type:'triangle', vol:.06 }); },
+  correct(combo){
+    const base = 520 + Math.min(combo, 6) * 34;
+    [0, 70, 140].forEach((d, i) => this.tone(base * (1 + i * 0.22), 0.1, { type:'triangle', vol:.085, delay:d/1000 }));
+  },
+  crit(){
+    [0, 60, 120, 190].forEach((d, i) => this.tone(760 * (1 + i * 0.25), 0.12, { type:'sine', vol:.08, delay:d/1000 }));
+  },
+  hit(){ this.noise(0.16, 0.2, 1400); this.tone(180, 0.14, { type:'square', vol:.05, to:90 }); },
+  hurt(){ this.tone(220, 0.22, { type:'sine', vol:.09, to:120 }); this.noise(0.12, 0.1, 600); },
+  wrong(){ this.tone(300, 0.16, { type:'sine', vol:.075, to:200 }); this.tone(240, 0.2, { type:'sine', vol:.06, to:170, delay:.1 }); },
+  swap(){ this.tone(480, 0.08, { type:'triangle', vol:.07, to:640 }); },
+  faint(){ this.tone(300, 0.4, { type:'sine', vol:.09, to:120 }); this.noise(0.3, 0.1, 700); },
+  clear(){
+    [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.22, { type:'triangle', vol:.09, delay:i * 0.11 }));
+  },
+  boss(){
+    this.noise(0.5, 0.16, 320);
+    this.tone(110, 0.55, { type:'sawtooth', vol:.07, to:70 });
+  },
+  victory(){
+    [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.3, { type:'triangle', vol:.085, delay:i * 0.13 }));
+  },
+  defeat(){
+    [392, 330, 262].forEach((f, i) => this.tone(f, 0.36, { type:'sine', vol:.08, delay:i * 0.16 }));
+  },
+  toggle(){
+    this.muted = !this.muted;
+    LS.set('battle.muted', this.muted ? '1' : '0');
+    $('soundBtn').textContent = this.muted ? '🔇' : '🔊';
+    $('soundBtn').classList.toggle('off', this.muted);
+    if (!this.muted) this.tap();
+  }
+};
+/* 手机浏览器要求首次触摸后才能出声 */
+window.addEventListener('pointerdown', () => SND.ensure(), { once:true });
+
+/* ============================================================
+ * 2. Canvas 演出
+ * ============================================================ */
+const fx = $('fx'), ctx = fx.getContext('2d');
+let FW = 390, FH = 844;
+function resize(){
+  FW = $('stage').clientWidth; FH = $('stage').clientHeight;
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  fx.width = FW * DPR; fx.height = FH * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+let particles = [], flashes = [];
+function burst(x, y, color, n){
+  n = n || 18;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 5;
+    particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s - 1, life:1, color, r:2 + Math.random()*4 });
+  }
+}
+function pages(x, y, n){
+  n = n || 14;
+  for (let i = 0; i < n; i++) {
+    particles.push({ x, y, vx:(Math.random()-.5)*6, vy:-2-Math.random()*4, life:1.4,
+      color:i%2?'#fff3cf':'#ffe08a', r:3+Math.random()*5, page:true, rot:Math.random()*6, vr:(Math.random()-.5)*.3 });
+  }
+}
+function flash(color){ flashes.push({ a:1, color:color || 'rgba(255,220,140,.5)' }); }
+function drawFx(dt){
+  ctx.clearRect(0, 0, FW, FH);
+  for (const f of flashes) {
+    f.a -= dt * 2.4;
+    if (f.a > 0) { ctx.fillStyle = f.color; ctx.globalAlpha = f.a; ctx.fillRect(0, 0, FW, FH); }
+    ctx.globalAlpha = 1;
+  }
+  flashes = flashes.filter(f => f.a > 0);
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life -= dt * 1.1;
+    if (p.life <= 0) continue;
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    if (p.page) {
+      ctx.save(); ctx.translate(p.x, p.y); p.rot += p.vr; ctx.rotate(p.rot);
+      ctx.fillRect(-p.r, -p.r * .7, p.r * 2, p.r * 1.4); ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  particles = particles.filter(p => p.life > 0);
+}
+let lastT = performance.now();
+function loop(t){
+  const dt = Math.min(.05, (t - lastT) / 1000); lastT = t;
+  drawFx(dt);
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================
+ * 3. 出题：年级知识图谱
+ * ============================================================ */
+/* 数学题按年级现场生成（无限题量），并标注真实知识点名 */
+function genMath(g, lv){
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  let q, r, step = 1, tag = '四则运算';
+  if (g === 'g1') {
+    if (lv <= 0) { const a = R(1,9), b = R(1,10-a); q = a+' + '+b+' = ?'; r = a+b; tag = '10以内加法'; }
+    else if (lv === 1) { const a = R(2,15), b = R(1,Math.min(9,20-a)); q = a+' + '+b+' = ?'; r = a+b; tag = '20以内加法'; }
+    else if (lv === 2) { const a = R(5,20), b = R(1,a-1); q = a+' − '+b+' = ?'; r = a-b; tag = '20以内减法'; }
+    else if (lv === 3) { const a = R(2,12), b = R(1,8), c = R(1,Math.min(5,a+b-1)); q = a+' + '+b+' − '+c+' = ?'; r = a+b-c; tag = '加减混合'; }
+    else { const a = R(1,8)*10, b = R(1,8)*10; q = a+' + '+b+' = ?'; r = a+b; tag = '整十数加法'; }
+  } else if (g === 'g2') {
+    if (lv <= 0) { const a = R(10,80), b = R(1,99-a); q = a+' + '+b+' = ?'; r = a+b; tag = '两位数加法'; }
+    else if (lv === 1) { const a = R(1,5), b = R(1,9); q = a+' × '+b+' = ?'; r = a*b; tag = '乘法口诀'; }
+    else if (lv === 2) { const a = R(2,9), b = R(2,9); q = a+' × '+b+' = ?'; r = a*b; tag = '乘法口诀'; }
+    else if (lv === 3) { const b = R(2,9), qq = R(2,9); q = (b*qq)+' ÷ '+b+' = ?'; r = qq; tag = '表内除法'; }
+    else { const a = R(2,9), b = R(2,9), c = R(1,20); q = a+' × '+b+' + '+c+' = ?'; r = a*b+c; tag = '乘加混合'; }
+  } else if (g === 'g3') {
+    if (lv <= 0) { const a = R(100,800), b = R(10,99); q = a+' + '+b+' = ?'; r = a+b; tag = '三位数加法'; }
+    else if (lv === 1) { const a = R(12,49), b = R(2,9); q = a+' × '+b+' = ?'; r = a*b; tag = '两位数乘一位数'; }
+    else if (lv === 2) { const b = R(2,9), qq = R(12,49); q = (b*qq)+' ÷ '+b+' = ?'; r = qq; tag = '除法竖式'; }
+    else if (lv === 3) { const a = R(2,9), b = R(2,9), c = R(2,9); q = '('+a+' + '+b+') × '+c+' = ?'; r = (a+b)*c; tag = '混合运算'; }
+    else { const a = R(1,8), b = R(1,10-a); q = a+'/10 + '+b+'/10 = ?（填分子，分母仍是 10）'; r = a+b; tag = '分数初步'; }
+  } else if (g === 'g4') {
+    if (lv <= 0) { const a = R(1000,5000), b = R(100,999); q = a+' + '+b+' = ?'; r = a+b; tag = '大数加法'; }
+    else if (lv === 1) { const a = R(12,29), b = R(11,19); q = a+' × '+b+' = ?'; r = a*b; tag = '两位数乘两位数'; }
+    else if (lv === 2) { const b = R(11,29), qq = R(5,20); q = (b*qq)+' ÷ '+b+' = ?'; r = qq; tag = '除数是两位数的除法'; }
+    else if (lv === 3) { const a = R(2,9), b = R(2,9), c = R(2,9), d = R(2,9); q = a+' × '+b+' + '+c+' × '+d+' = ?'; r = a*b+c*d; tag = '四则混合运算'; }
+    else { const a = R(2,9); q = a+' × 25 × 4 = ?（用简便算法）'; r = a*100; tag = '运算定律'; }
+  } else if (g === 'g5') {
+    if (lv <= 0) { const a = R(1,20)+R(1,9)/10, b = R(1,20)+R(1,9)/10; q = fmt(a)+' + '+fmt(b)+' = ?'; r = Math.round((a+b)*10)/10; step = 0.1; tag = '小数加法'; }
+    else if (lv === 1) { const a = R(5,30)/10, b = R(2,5); q = fmt(a)+' × '+b+' = ?'; r = Math.round(a*b*10)/10; step = 0.1; tag = '小数乘法'; }
+    else if (lv === 2) { const a = R(3,9)/10, b = R(2,9); q = fmt(a*b)+' ÷ '+fmt(a)+' = ?'; r = b; tag = '小数除法'; }
+    else if (lv === 3) { const b = R(2,9), x = R(2,20); q = 'x + '+b+' = '+(x+b)+'，x = ?'; r = x; tag = '简易方程'; }
+    else { const a = R(2,9), b = R(3,9); q = a+'/'+b+' ≈ ?（保留两位小数）'; r = Math.round(a/b*100)/100; step = 0.01; tag = '分数化小数'; }
+  } else {
+    if (lv <= 0) { const a = R(2,9), b = R(2,9); q = a+'/'+b+' 化成百分数约是？'; r = Math.round(a/b*1000)/10; step = 0.1; tag = '分数与百分数'; }
+    else if (lv === 1) { const a = R(1,9)*10, b = R(2,9)*10; q = b+' 的 '+a+'% = ?'; r = b*a/100; tag = '百分数应用'; }
+    else if (lv === 2) { const a = R(2,6), b = R(2,6), c = a*R(2,5); q = a+' : '+b+' = '+c+' : ?'; r = b*c/a; tag = '比例'; }
+    else if (lv === 3) { const p = R(2,9)*50; q = '原价 '+p+' 元的商品打八折，现价多少元？'; r = p*0.8; step = 5; tag = '折扣问题'; }
+    else { const r0 = R(2,9), h = R(2,9); q = '底面半径 '+r0+'、高 '+h+' 的圆柱体积是 π 的多少倍？'; r = r0*r0*h; tag = '圆柱体积'; }
+  }
+  const ws = wrongs(r, step);
+  const opts = shuffle([fmt(r), fmt(ws[0]), fmt(ws[1])]);
+  return { q, options:opts, a:opts.indexOf(fmt(r)), kn:mathKn(g, tag, r), subj:'math', lv };
+}
+function fmt(x){ return String(Math.round(x * 100) / 100); }
+function wrongs(r, step){
+  step = step || 1;
+  const seen = [Math.round(r*1000)/1000], out = [];
+  const cands = [r+step, r-step, r+step*2, r-step*2, r+step*5, r-step*5, r+step*10];
+  for (const v of cands) {
+    if (v < 0) continue;
+    const k = Math.round(v*1000)/1000;
+    if (seen.indexOf(k) >= 0) continue;
+    seen.push(k); out.push(k);
+    if (out.length >= 2) break;
+  }
+  while (out.length < 2) { const k = Math.round((r + step*(3+out.length))*1000)/1000; seen.push(k); out.push(k); }
+  return out;
+}
+/* 把生成题的操作类型对到该年级真实知识点名：
+ * 只在「节点名完整包含题目标签」时才采用图谱节点，避免张冠李戴；
+ * 否则直接显示题目自身的准确描述（如「20以内加法」） */
+function mathKn(g, tag){
+  const names = (KG_NAMES[g] || {}).math || [];
+  const exact = names.find(n => n === tag);
+  if (exact) return exact;
+  const contains = names.find(n => n.indexOf(tag) >= 0);
+  if (contains) return contains;
+  const inside = names.find(n => n.length >= 5 && tag.indexOf(n) >= 0);
+  return inside || tag;
+}
+
+/* 题库抽题：年级内各科循环取，不连续重复 */
+function pickBankQ(kind, maxLv){
+  const bank = (KG_BANK[G.grade] || {})[kind] || [];
+  if (!bank.length) return null;
+  if (!G.bags[kind] || !G.bags[kind].length) G.bags[kind] = shuffle(bank.map((_, i) => i));
+  let guard = 0;
+  /* 同一局内不重复出题；本科题目用完则返回 null，由调用方换科 */
+  while (G.bags[kind].length && guard++ < 80) {
+    const idx = G.bags[kind].pop();
+    const q = bank[idx];
+    if (q.lv > maxLv) continue;
+    if (G.usedQ.has(q.q)) continue;
+    G.usedQ.add(q.q);
+    return q;
+  }
+  return null;
+}
+function pickQuestion(){
+  const cfg = LEVELS[G.level];
+  const roll = Math.random();
+  let q = null, subj = 'math';
+  if (roll < 0.26) {
+    subj = 'en'; q = pickBankQ('en', cfg.lv);
+  } else if (roll < 0.44) {
+    subj = 'cn'; q = pickBankQ('cn', cfg.lv);
+  } else if (roll < 0.58) {
+    subj = 'sci'; q = pickBankQ('sci', cfg.lv);
+  } else if (roll < 0.66) {
+    subj = 'eth'; q = pickBankQ('eth', cfg.lv);
+  } else {
+    subj = 'math';
+    /* 难度在关卡值上下浮动，且尽量避免与已出题目重复 */
+    const mlv = clamp(cfg.lv + rand(2) - 1, 0, 4);
+    for (let t = 0; t < 8; t++) {
+      q = genMath(G.grade, mlv);
+      if (!G.usedQ.has(q.q)) break;
+    }
+    G.usedQ.add(q.q);
+  }
+  /* 该科题用完（尤其道德与法治每年级只有 2 题）→ 退回数学题，保证不重复 */
+  if (!q) {
+    subj = 'math';
+    for (let t = 0; t < 8; t++) {
+      q = genMath(G.grade, cfg.lv);
+      if (!G.usedQ.has(q.q)) break;
+    }
+    G.usedQ.add(q.q);
+  }
+  q.subj = subj;
+  G.currentQ = q;
+  G.currentOpts = q.options;
+  G.currentAnswer = q.a;
+  G.usedThisQ = [];
+  G.questionNo++;
+  G.pickedLog = G.pickedLog || [];
+  G.pickedLog.push(subj + '|' + q.q);
+  renderQuestion();
+}
+
+/* ============================================================
+ * 4. 选年级 / 组队
+ * ============================================================ */
+function renderGrades(){
+  const row = $('gradeRow'); row.innerHTML = '';
+  GRADES.forEach(g => {
+    const b = document.createElement('button');
+    b.className = 'grade-pill' + (G.grade === g.id ? ' on' : '');
+    b.textContent = g.name;
+    b.dataset.g = g.id;
+    b.addEventListener('click', () => {
+      G.grade = g.id;
+      SND.tap();
+      [...row.children].forEach(c => c.classList.toggle('on', c.dataset.g === g.id));
+      renderGradeInfo();
+    });
+    row.appendChild(b);
+  });
+  renderGradeInfo();
+}
+function renderGradeInfo(){
+  const g = GRADES.find(x => x.id === G.grade);
+  const kn = KG_NAMES[G.grade] || {};
+  const total = ['math','cn','sci','eth'].reduce((s, k) => s + (kn[k] || []).length, 0);
+  const bank = KG_BANK[G.grade] || {};
+  const qn = Object.keys(bank).reduce((s, k) => s + bank[k].length, 0) + 200;
+  $('gradeInfo').innerHTML = `${g.name} · 图谱 <b>${total}</b> 个知识点 · <b>${qn}+</b> 道题 · 语文/数学/英语/科学/道德与法治`;
+}
+function renderPets(){
+  const grid = $('petGrid'); grid.innerHTML = '';
+  PETS.forEach(p => {
+    const idx = G.team.findIndex(t => t.pet.id === p.id);
+    const card = document.createElement('div');
+    card.className = 'pet-card' + (idx >= 0 ? ' sel' : '');
+    card.dataset.id = p.id;
+    const el = ELEMENTS[p.elem];
+    card.innerHTML =
+      (idx >= 0 ? `<div class="order-tag">${idx + 1}</div>` : '') +
+      `<div class="pemoji">${p.emoji}</div>
+       <div class="pname">${p.name}</div>
+       <div class="prar" style="background:${RAR_COLOR[p.rar]}22;color:${RAR_COLOR[p.rar]};border:1px solid ${RAR_COLOR[p.rar]}">${p.rar}</div>
+       <div class="elem-mini" style="color:${el.color}">${el.icon} ${el.name}</div>
+       <div class="pskill">${p.skill}</div>`;
+    card.addEventListener('click', () => togglePet(p));
+    grid.appendChild(card);
+  });
+}
+function togglePet(p){
+  const i = G.team.findIndex(t => t.pet.id === p.id);
+  if (i >= 0) G.team.splice(i, 1);
+  else if (G.team.length < 3) G.team.push({ pet:p, hp:100, maxHp:100 });
+  else { SND.tap(); $('startBtn').textContent = '最多 3 只 · 点已选的可以取消'; return; }
+  SND.tap();
+  renderPets(); renderTeamPreview();
+  const btn = $('startBtn');
+  if (G.team.length === 3) {
+    btn.disabled = false;
+    btn.textContent = `带 ${G.team.map(t => t.pet.emoji).join('')} 出发！`;
+  } else {
+    btn.disabled = true;
+    btn.textContent = `再选 ${3 - G.team.length} 只宠物出发`;
+  }
+}
+function renderTeamPreview(){
+  const bar = $('teamBar'); bar.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const t = G.team[i];
+    const d = document.createElement('div');
+    if (t) {
+      const el = ELEMENTS[t.pet.elem];
+      d.className = 'team-slot filled';
+      d.innerHTML = `<span class="semoji">${t.pet.emoji}</span><span>${t.pet.name}<br><span class="elem-mini" style="color:${el.color}">${el.icon}${el.name}</span></span>`;
+    } else {
+      d.className = 'team-slot';
+      d.textContent = `空位 ${i + 1}`;
+    }
+    bar.appendChild(d);
+  }
+  // 四关敌人属性 + 队伍是否带克制
+  const els = G.team.map(t => t.pet.elem);
+  const parts = LEVELS.map(L => {
+    const el = ELEMENTS[L.elem];
+    const ok = els.some(e => ELEM_ADV[e] === L.elem);
+    return `<span class="${ok ? 'ok' : 'no'}">${el.icon}${el.name}${ok ? '✓' : '×'}</span>`;
+  });
+  const left = 3 - G.team.length;
+  const tip = left > 0
+    ? `<b style="color:#ffd98a">还差 ${left} 只</b> · 点上面的宠物卡片加入队伍`
+    : '队伍已满 · 点已选的可以取消';
+  $('rosterHint').innerHTML = `远征路线：${parts.join(' → ')}<br>${tip} · <span style="opacity:.7">✓ = 队里有克制它的宠物</span>`;
+}
+
+/* ============================================================
+ * 5. 战斗界面
+ * ============================================================ */
+function activeT(){ return G.team[G.active]; }
+function elemMult(atk, def){
+  if (ELEM_ADV[atk] === def) return ELEM_ADV_MULT;
+  if (ELEM_ADV[def] === atk) return ELEM_WEAK_MULT;
+  return 1;
+}
+function advTag(petElem, enemyElem){
+  if (ELEM_ADV[petElem] === enemyElem) return '▲';
+  if (ELEM_ADV[enemyElem] === petElem) return '▼';
+  return '';
+}
+function renderQuestion(){
+  const q = G.currentQ, cfg = LEVELS[G.level];
+  const meta = SUBJ_META[q.subj] || SUBJ_META.math;
+  $('qSubj').textContent = `${meta.icon} ${meta.name}`;
+  $('qKn').textContent = q.kn ? `知识点 · ${q.kn}` : '';
+  $('qProgress').textContent = `第 ${G.questionNo} 题 · ${cfg.name}`;
+  $('qText').textContent = q.q;
+  const box = $('qOptions'); box.innerHTML = '';
+  G.currentOpts.forEach((txt, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = txt;
+    b.dataset.i = i;
+    b.addEventListener('click', () => answerQuestion(i, b));
+    box.appendChild(b);
+  });
+  updateNoteBtn();
+}
+function updateNoteBtn(){
+  const b = $('noteBtn');
+  b.textContent = `📓 米娅的笔记 ×${G.notes}`;
+  b.disabled = G.notes <= 0;
+}
+function updateHUD(){
+  const cfg = LEVELS[G.level], t = activeT();
+  const gname = (GRADES.find(x => x.id === G.grade) || {}).name || '';
+  $('chapter').textContent = `${gname} · 第 ${G.level + 1} 关 ${cfg.name}`;
+  $('enemyName').textContent = cfg.enemy;
+  $('enemyEmoji').textContent = cfg.emoji;
+  const ee = ELEMENTS[cfg.elem];
+  $('enemyElem').innerHTML = `<span class="elem-chip" style="color:${ee.color}">${ee.icon} ${ee.name}</span>`;
+  $('enemyElem').style.color = ee.color;
+  const ep = clamp(G.enemyHp / G.enemyMax * 100, 0, 100);
+  $('enemyHpFill').style.width = ep + '%';
+  $('enemyHpTxt').textContent = `${Math.max(0, Math.ceil(G.enemyHp))}/${G.enemyMax}`;
+  if (t) {
+    const pp = clamp(t.hp / t.maxHp * 100, 0, 100);
+    $('playerHpFill').style.width = pp + '%';
+    $('playerHpTxt').textContent = `${Math.max(0, Math.ceil(t.hp))}/${t.maxHp}`;
+    const pe = ELEMENTS[t.pet.elem];
+    const at = advTag(t.pet.elem, cfg.elem);
+    $('playerName').innerHTML = `${t.pet.name}` +
+      `<small style="background:${RAR_COLOR[t.pet.rar]}22;color:${RAR_COLOR[t.pet.rar]}">${t.pet.rar}</small>` +
+      `<span class="elem-mini" style="color:${pe.color};margin-left:4px">${pe.icon}${pe.name}${at ? ' ' + at : ''}</span>`;
+    $('playerEmoji').textContent = t.pet.emoji;
+  }
+  const cb = $('combo');
+  if (G.combo >= 2) {
+    cb.classList.remove('hidden');
+    $('comboNum').textContent = G.combo;
+    cb.style.color = G.combo >= 5 ? '#ff7a4d' : G.combo >= 3 ? '#f5b301' : '#fff';
+  } else cb.classList.add('hidden');
+  const bp = $('bossPhase');
+  if (cfg.boss) { bp.classList.remove('hidden'); bp.textContent = `第 ${G.bossPhase} / 3 阶段`; }
+  else bp.classList.add('hidden');
+  syncTeamRow();
+  renderArena(cfg, t);
+}
+/* 战场中部：4 关进度点 + 当前属性关系（克制/被克/平） */
+function renderArena(cfg, t){
+  const dots = $('lvDots');
+  dots.innerHTML = '';
+  for (let i = 0; i < LEVELS.length; i++) {
+    const d = document.createElement('div');
+    d.className = 'lv-dot' + (i < G.level ? ' done' : i === G.level ? ' now' : '');
+    dots.appendChild(d);
+  }
+  if (!t) { $('elemHint').textContent = ''; return; }
+  const pe = ELEMENTS[t.pet.elem], ee = ELEMENTS[cfg.elem];
+  const m = elemMult(t.pet.elem, cfg.elem);
+  let txt, cls;
+  if (m > 1.2) { txt = `属性克制 · 伤害 ×${ELEM_ADV_MULT}`; cls = 'adv'; }
+  else if (m < 0.9) { txt = `被克制 · 伤害只有 ×${ELEM_WEAK_MULT}，换只宠物试试`; cls = 'weak'; }
+  else { txt = '平属性 · 正常伤害'; cls = 'even'; }
+  $('elemHint').innerHTML =
+    `<span style="color:${pe.color}">${pe.icon}${pe.name}</span> 打 ` +
+    `<span style="color:${ee.color}">${ee.icon}${ee.name}</span> → <b class="${cls}">${txt}</b>`;
+}
+function buildTeamRow(){
+  const row = $('teamRow'); row.innerHTML = '';
+  G.team.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.className = 'tm-btn';
+    b.dataset.i = i;
+    b.innerHTML = `<span class="temoji">${t.pet.emoji}</span>
+      <span class="tmeta"><span class="tname">${t.pet.name}</span><span class="thp"><i></i></span></span>
+      <span class="tadv"></span>`;
+    b.addEventListener('click', () => switchPet(i));
+    row.appendChild(b);
+  });
+  syncTeamRow();
+}
+function syncTeamRow(){
+  const cfg = LEVELS[G.level];
+  [...$('teamRow').children].forEach((b, i) => {
+    const t = G.team[i]; if (!t) return;
+    b.classList.toggle('active', i === G.active);
+    b.classList.toggle('down', t.hp <= 0);
+    b.querySelector('.thp i').style.width = clamp(t.hp / t.maxHp * 100, 0, 100) + '%';
+    const adv = advTag(t.pet.elem, cfg.elem);
+    b.querySelector('.tadv').textContent = t.hp > 0 ? adv : '';
+  });
+}
+
+/* ============================================================
+ * 6. 裁决
+ * ============================================================ */
+function floatDmg(text, kind, nearEnemy){
+  const d = document.createElement('div');
+  d.className = 'dmg ' + kind;
+  d.textContent = text;
+  const r = (nearEnemy ? $('enemyEmoji') : $('playerEmoji')).getBoundingClientRect();
+  const s = $('stage').getBoundingClientRect();
+  d.style.left = (r.left - s.left + r.width / 2 - 22) + 'px';
+  d.style.top = (r.top - s.top + 8) + 'px';
+  $('stage').appendChild(d);
+  setTimeout(() => d.remove(), 1000);
+}
+function bigVerdict(text, cls){
+  const d = document.createElement('div');
+  d.className = 'verdict ' + cls;
+  d.textContent = text;
+  d.style.top = (FH * 0.545) + 'px';   // 落在换宠条与题卡之间，不压住血条、日志和头像条
+  $('stage').appendChild(d);
+  setTimeout(() => d.remove(), 1100);
+}
+function answerQuestion(i, btn){
+  if (G.lock || G.state !== 'battle') return;
+  G.lock = true;
+  const correct = i === G.currentAnswer;
+  const opts = [...$('qOptions').children];
+  opts.forEach((b, idx) => {
+    b.style.pointerEvents = 'none';
+    if (idx === G.currentAnswer) b.classList.add('right');
+  });
+  if (correct) {
+    const t = activeT();
+    G.combo++;
+    G.maxCombo = Math.max(G.maxCombo, G.combo);
+    G.correctCount++;
+    const meta = SUBJ_META[G.currentQ.subj] || SUBJ_META.math;
+    if (G.currentQ.kn) G.knHit[`${meta.name} · ${G.currentQ.kn}`] = 1;
+    const em = elemMult(t.pet.elem, LEVELS[G.level].elem);
+    const comboMult = 1 + 0.25 * Math.min(G.combo - 1, 4);
+    const base = 20 + (RAR_BONUS[t.pet.rar] || 0);
+    const dmg = Math.max(6, Math.round(base * em * comboMult));
+    const isCrit = em > 1.2;
+    if (isCrit) { bigVerdict('克制！', 'v-crit'); SND.crit(); }
+    else if (G.combo >= 3) { bigVerdict(`连击 ×${G.combo}！`, 'v-good'); SND.correct(G.combo); }
+    else { bigVerdict('命中！', 'v-good'); SND.correct(G.combo); }
+    $('battleLog').textContent = `${t.pet.skill}！${isCrit ? '属性克制，' : ''}造成 ${dmg} 点伤害${G.combo >= 2 ? `（连击 ×${G.combo}）` : ''}`;
+    enemyCast(dmg, isCrit);
+  } else {
+    btn.classList.add('wrong');
+    G.combo = 0;
+    G.wrongCount++;
+    const t = activeT();
+    const dmg = LEVELS[G.level].boss ? 20 : 16;
+    t.hp = clamp(t.hp - dmg, 0, t.maxHp);
+    if (G.currentQ) G.wrongPool.push({ q:G.currentQ.q, a:G.currentOpts[G.currentAnswer] });
+    bigVerdict('再想想～', 'v-bad');
+    SND.wrong();
+    $('battleLog').textContent = '答错了，' + t.pet.name + '被反击，掉了 ' + dmg + ' 点体力。看看正确答案，下一题再来！';
+    enemyAttack(dmg);
+  }
+  updateHUD();
+}
+function enemyCast(dmg, crit){
+  const pe = $('playerEmoji');
+  pe.classList.remove('cast'); void pe.offsetWidth; pe.classList.add('cast');
+  setTimeout(() => {
+    G.enemyHp = clamp(G.enemyHp - dmg, 0, G.enemyMax);
+    const ee = $('enemyEmoji');
+    ee.classList.remove('hit'); void ee.offsetWidth; ee.classList.add('hit');
+    const r = ee.getBoundingClientRect(), s = $('stage').getBoundingClientRect();
+    burst(r.left - s.left + r.width/2, r.top - s.top + r.height/2, crit ? '#7ae0ff' : '#ffd23f', crit ? 28 : 20);
+    floatDmg('-' + dmg, crit ? 'crit' : 'good', true);
+    flash(crit ? 'rgba(140,220,255,.35)' : 'rgba(255,220,140,.32)');
+    SND.hit();
+    updateHUD();
+    afterHit();
+  }, 300);
+}
+function enemyAttack(dmg){
+  setTimeout(() => {
+    const ee = $('enemyEmoji');
+    ee.classList.remove('grow'); void ee.offsetWidth; ee.classList.add('grow');
+    const pe = $('playerEmoji');
+    pe.classList.remove('hurt'); void pe.offsetWidth; pe.classList.add('hurt');
+    const r = pe.getBoundingClientRect(), s = $('stage').getBoundingClientRect();
+    burst(r.left - s.left + r.width/2, r.top - s.top + r.height/2, '#ff8fa8', 14);
+    floatDmg('-' + dmg, 'bad', false);
+    SND.hurt();
+    updateHUD();
+    afterHit();
+  }, 260);
+}
+function afterHit(){
+  const cfg = LEVELS[G.level];
+  /* 敌人倒下 */
+  if (G.enemyHp <= 0) {
+    if (cfg.boss && G.bossPhase < 3) {
+      G.bossPhase++;
+      /* 三阶段等量 110/110/110，节奏均匀不拖 */
+      G.enemyMax = 110;
+      G.enemyHp = 110;
+      pages(FW/2, FH*0.32, 16);
+      flash('rgba(255,230,160,.6)');
+      SND.boss();
+      $('battleLog').textContent = ['', '', '它散成书页，又重新聚起来了——还有两下！', '最后一段了，别放松！'][G.bossPhase] || '它又变了！';
+      updateHUD(); G.lock = false; setTimeout(nextQ, 900); return;
+    }
+    pages(FW/2, FH*0.32, 22);
+    flash('rgba(255,230,160,.7)');
+    G.state = 'levelClear';
+    SND.clear();
+    $('clearTitle').textContent = cfg.boss ? '知识魔王散成书页了！' : '过关！';
+    $('clearSub').textContent = cfg.boss ? '“你们真的学会了。”' : '敌人碎成了书页';
+    setTimeout(() => $('levelClear').classList.remove('hidden'), 420);
+    return;
+  }
+  /* 我方倒下 */
+  if (activeT().hp <= 0) {
+    SND.faint();
+    const down = G.team.map((t, i) => t.hp <= 0 ? i : -1).filter(i => i >= 0);
+    if (down.length >= G.team.length) {
+      G.state = 'defeat';
+      SND.defeat();
+      setTimeout(() => $('defeat').classList.remove('hidden'), 400);
+      return;
+    }
+    /* 优先接给「下一只还站着的」宠物，保持队伍轮转 */
+    let next = -1;
+    for (let k = 1; k <= G.team.length; k++) {
+      const j = (G.active + k) % G.team.length;
+      if (G.team[j].hp > 0) { next = j; break; }
+    }
+    G.active = next;
+    $('battleLog').textContent = `${G.team[next].pet.name} 接棒上场！继续答题。`;
+    updateHUD();
+    G.lock = false;
+    setTimeout(nextQ, 760);
+    return;
+  }
+  G.lock = false;
+  setTimeout(nextQ, 480);
+}
+function nextQ(){
+  if (G.state !== 'battle' || G.lock) return;
+  pickQuestion();
+}
+function switchPet(i){
+  if (G.state !== 'battle') return;
+  const t = G.team[i];
+  if (!t || t.hp <= 0 || i === G.active) return;
+  G.active = i;
+  SND.swap();
+  const el = ELEMENTS[t.pet.elem], ee = ELEMENTS[LEVELS[G.level].elem];
+  const at = advTag(t.pet.elem, LEVELS[G.level].elem);
+  $('battleLog').textContent = `${t.pet.name} 上场！` +
+    (at === '▲' ? `属性克制 ${ee.name}，伤害 ×${ELEM_ADV_MULT}` : at === '▼' ? `被 ${ee.name} 克制，伤害只有 ×${ELEM_WEAK_MULT}` : '平属性，正常伤害');
+  updateHUD();
+}
+
+/* ============================================================
+ * 7. 流程
+ * ============================================================ */
+function startGame(){
+  if (G.team.length !== 3) return;
+  G.team.forEach(t => { t.hp = t.maxHp; });
+  G.state = 'battle';
+  G.level = 0; G.bossPhase = 1;
+  G.combo = 0; G.maxCombo = 0; G.correctCount = 0; G.wrongCount = 0;
+  G.questionNo = 0; G.notes = 2; G.bags = {}; G.usedQ = new Set(); G.pickedLog = []; G.wrongPool = []; G.knHit = {};
+  G.active = 0; G.lock = false; G.startTime = performance.now();
+  particles = []; flashes = [];
+  const cfg = LEVELS[0];
+  G.enemyMax = cfg.hp; G.enemyHp = cfg.hp;
+  $('selectView').classList.add('hidden');
+  $('resultView').classList.add('hidden');
+  $('defeat').classList.add('hidden');
+  $('levelClear').classList.add('hidden');
+  $('battleView').classList.remove('hidden');
+  buildTeamRow();
+  updateHUD();
+  $('battleLog').textContent = `${cfg.enemy}（${ELEMENTS[cfg.elem].name}）挡在前面，答对题目让宠物出招！`;
+  nextQ();
+  SND.tap();
+}
+function goNextLevel(){
+  $('levelClear').classList.add('hidden');
+  G.level++;
+  if (G.level >= LEVELS.length) { showResult(); return; }
+  const cfg = LEVELS[G.level];
+  G.team.forEach(t => { if (t.hp > 0) t.hp = clamp(t.hp + 18, 0, t.maxHp); });
+  G.enemyMax = cfg.hp; G.enemyHp = cfg.hp;
+  G.bossPhase = 1; G.combo = 0;
+  G.notes = Math.min(3, G.notes + 1);
+  G.state = 'battle'; G.lock = false;
+  updateHUD();
+  const hasCounter = G.team.some(t => t.hp > 0 && ELEM_ADV[t.pet.elem] === cfg.elem);
+  $('battleLog').textContent = cfg.boss
+    ? '最终关：知识魔王（暗）！答对削它，答错它反击。'
+    : `${cfg.enemy} 是 ${ELEMENTS[cfg.elem].name} 属性` + (hasCounter ? '，换克制的宠物上场伤害更高！' : '，队伍里没有克制它的属性，靠连击硬打！');
+  if (cfg.boss) SND.boss();
+  nextQ();
+}
+function showResult(){
+  G.state = 'result';
+  $('chapter').textContent = '远征完成';
+  $('battleView').classList.add('hidden');
+  $('resultView').classList.remove('hidden');
+  const sec = Math.max(0, Math.round((performance.now() - G.startTime) / 1000));
+  const total = G.correctCount + G.wrongCount;
+  const acc = total ? Math.round(G.correctCount / total * 100) : 0;
+  $('resStats').innerHTML =
+    `用时 <b>${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}</b><br>` +
+    `答对 <b>${G.correctCount}</b> 题 · 答错 ${G.wrongCount} 题<br>` +
+    `正确率 <b>${acc}%</b> · 最高连击 <b>${G.maxCombo}</b><br>` +
+    `年级 <b>${(GRADES.find(g => g.id === G.grade) || {}).name || ''}</b> · 队伍 ${G.team.map(t => t.pet.emoji).join('')}`;
+  const kns = Object.keys(G.knHit);
+  $('resKn').innerHTML = kns.length
+    ? '<h3>本局点亮的知识点（答对即掌握）</h3>' + kns.slice(0, 14).map(k => `<span class="kn-chip">${k}</span>`).join('')
+    : '';
+  const uniq = [];
+  const seenQ = {};
+  G.wrongPool.forEach(x => { if (!seenQ[x.q]) { seenQ[x.q] = 1; uniq.push(x); } });
+  $('resWrong').innerHTML = uniq.length
+    ? '<h3>这几题值得再看一眼（附正确答案）</h3>' +
+      uniq.slice(0, 6).map(x => `· ${x.q}<br><span style="color:#8fe3a8">　 正确答案：${x.a}</span>`).join('<br>')
+    : '';
+  SND.victory();
+}
+function retry(){
+  $('defeat').classList.add('hidden');
+  startGame();
+}
+function again(){
+  $('resultView').classList.add('hidden');
+  G.team = [];
+  G.state = 'select';
+  $('startBtn').disabled = true;
+  $('startBtn').textContent = '再选 3 只宠物出发';
+  $('selectView').classList.remove('hidden');
+  renderPets(); renderTeamPreview();
+  SND.tap();
+}
+function useNote(){
+  if (G.state !== 'battle' || G.lock || G.notes <= 0) return;
+  const cands = [];
+  G.currentOpts.forEach((_, i) => {
+    if (i !== G.currentAnswer && !G.usedThisQ.includes(i)) cands.push(i);
+  });
+  if (!cands.length) return;
+  const pick = cands[rand(cands.length)];
+  G.usedThisQ.push(pick);
+  G.notes--;
+  const b = $('qOptions').children[pick];
+  if (b) b.classList.add('removed');
+  $('battleLog').textContent = '米娅帮你划掉了一个错误答案！';
+  SND.tap();
+  updateNoteBtn(); updateHUD();
+}
+
+/* ============================================================
+ * 8. 怎么玩
+ * ============================================================ */
+function showHowto(force){
+  if (!force && LS.get('battle.howto.seen') === '1') return;
+  $('howto').classList.remove('hidden');
+}
+function hideHowto(){
+  LS.set('battle.howto.seen', '1');
+  $('howto').classList.add('hidden');
+}
+
+/* ============================================================
+ * 9. 事件绑定
+ * ============================================================ */
+$('startBtn').addEventListener('click', startGame);
+$('nextBtn').addEventListener('click', goNextLevel);
+$('retryBtn').addEventListener('click', retry);
+$('againBtn').addEventListener('click', again);
+$('noteBtn').addEventListener('click', useNote);
+$('soundBtn').addEventListener('click', () => SND.toggle());
+$('helpBtn').addEventListener('click', () => { SND.tap(); showHowto(true); });
+$('howtoGo').addEventListener('click', () => { SND.tap(); hideHowto(); });
+
+/* ============================================================
+ * 10. 调试接口（QA 用）
+ * ============================================================ */
+window.__battle = {
+  get state(){ return G.state; },
+  get grade(){ return G.grade; },
+  get team(){ return G.team.map(t => ({ id:t.pet.id, name:t.pet.name, elem:t.pet.elem, hp:t.hp })); },
+  get active(){ return G.active; },
+  get hp(){ return activeT() ? activeT().hp : 0; },
+  get enemyHp(){ return G.enemyHp; },
+  get enemyElem(){ return LEVELS[G.level].elem; },
+  get combo(){ return G.combo; },
+  get level(){ return G.level; },
+  get notes(){ return G.notes; },
+  get question(){ return G.currentQ ? { q:G.currentQ.q, kn:G.currentQ.kn, subj:G.currentQ.subj, opts:G.currentOpts } : null; },
+  get picked(){ return (G.pickedLog || []).slice(); },
+  get answer(){ return G.currentAnswer; },
+  setGrade(g){ G.grade = g; renderGrades(); },
+  setTeam(ids){ G.team = ids.map(id => { const p = PETS.find(x => x.id === id); return p ? { pet:p, hp:100, maxHp:100 } : null; }).filter(Boolean); renderPets(); renderTeamPreview(); $('startBtn').disabled = G.team.length !== 3; },
+  start(){ startGame(); },
+  correct(){ answerQuestion(G.currentAnswer, $('qOptions').children[G.currentAnswer]); },
+  wrong(){ const i = [...Array(G.currentOpts.length).keys()].find(x => x !== G.currentAnswer); answerQuestion(i, $('qOptions').children[i]); },
+  next(){ goNextLevel(); },
+  swap(i){ switchPet(i); },
+  restart(){ startGame(); },
+  setMute(m){ SND.muted = !!m; LS.set('battle.muted', m ? '1' : '0'); }
+};
+
+/* ============================================================
+ * 11. 启动
+ * ============================================================ */
+function boot(){
+  // 数据缺失时给出明确提示，而不是白屏
+  if (!Array.isArray(window.BATTLE_PETS) || !window.KG_BANK) {
+    throw new Error('知识图谱数据未加载（data/knowledge.js）');
+  }
+  resize();
+  $('soundBtn').textContent = SND.muted ? '🔇' : '🔊';
+  $('soundBtn').classList.toggle('off', SND.muted);
+  renderGrades();
+  renderPets();
+  renderTeamPreview();
+  requestAnimationFrame(loop);
+  setTimeout(() => showHowto(false), 400);
+}
+function safeBoot(){
+  try { boot(); }
+  catch (e) {
+    console.error('[启动失败]', e);
+    if (window.__errPanel) window.__errPanel(e && e.message ? e.message : String(e));
+    else {
+      const d = document.createElement('div');
+      d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99999;background:#7a1f1f;color:#fff;font:13px/1.5 sans-serif;padding:10px 14px';
+      d.textContent = '页面没跑起来：' + (e && e.message ? e.message : e) + '（请换个浏览器打开或刷新）';
+      document.body.appendChild(d);
+    }
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', safeBoot);
+else safeBoot();
+
+</script>
+</body>
+</html>

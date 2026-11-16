@@ -4,7 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>知识大陆 · 宠物远征</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
+<script>
+/* 加载守护：任何未捕获的错误都显示出来，而不是静默白屏 */
+(function(){
+  window.__bootErr = [];
+  function panel(msg){
+    try{
+      var d = document.getElementById('__errbar');
+      if(!d){
+        d = document.createElement('div'); d.id = '__errbar';
+        d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99999;background:#7a1f1f;color:#fff;font:13px/1.6 -apple-system,sans-serif;padding:10px 14px;white-space:pre-wrap';
+        (document.body || document.documentElement).appendChild(d);
+      }
+      d.textContent = '页面没跑起来：' + msg + '\n换个浏览器打开（微信里点右上角「···」→ 在浏览器打开），或截图发给开发者。';
+    }catch(e){}
+  }
+  window.__errPanel = panel;
+  window.addEventListener('error', function(e){
+    var m = (e && e.message) || '资源加载失败';
+    if(e && e.target && e.target.tagName){
+      m = '资源加载失败：' + (e.target.src || e.target.href || e.target.tagName);
+    }
+    window.__bootErr.push(m); panel(m);
+  }, true);
+  setTimeout(function(){
+    if(!document.querySelector('#petGrid .pet-card')){
+      var w = (window.__bootErr && window.__bootErr[0]) || '未知原因';
+      panel(w + '（宠物列表没渲染出来）');
+    }
+  }, 2500);
+})();
+</script>
 </head>
 <body>
 <div id="stage">
@@ -130,7 +161,7 @@
     </div>
   </div>
 </div>
-<script src="data/knowledge.js"></script>
-<script src="game.js"></script>
+<script src="data/knowledge.js?v=3"></script>
+<script src="game.js?v=3"></script>
 </body>
 </html>

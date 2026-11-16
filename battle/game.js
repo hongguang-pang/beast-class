@@ -45,12 +45,25 @@ const G = {
   bags:{}, usedQ:new Set(), wrongPool:[], knHit:{}, startTime:0, lock:false
 };
 
+/* ---------- 安全存储：无痕模式 / file:// / 微信受限环境下 localStorage 会抛错 ---------- */
+const LS = {
+  mem: {},
+  get(k){
+    try { const v = window.localStorage.getItem(k); return v === null ? (k in this.mem ? this.mem[k] : null) : v; }
+    catch(e){ return k in this.mem ? this.mem[k] : null; }
+  },
+  set(k, v){
+    this.mem[k] = v;
+    try { window.localStorage.setItem(k, v); } catch(e){ /* 忽略：退化为内存 */ }
+  }
+};
+
 /* ============================================================
  * 1. 音效（Web Audio 合成，无外部文件）
  * ============================================================ */
 const SND = {
   ctx:null, master:null,
-  muted: localStorage.getItem('battle.muted') === '1',
+  muted: LS.get('battle.muted') === '1',
   ensure(){
     if (this.muted) return null;
     if (!this.ctx) {
@@ -117,7 +130,7 @@ const SND = {
   },
   toggle(){
     this.muted = !this.muted;
-    localStorage.setItem('battle.muted', this.muted ? '1' : '0');
+    LS.set('battle.muted', this.muted ? '1' : '0');
     $('soundBtn').textContent = this.muted ? '🔇' : '🔊';
     $('soundBtn').classList.toggle('off', this.muted);
     if (!this.muted) this.tap();
@@ -793,11 +806,11 @@ function useNote(){
  * 8. 怎么玩
  * ============================================================ */
 function showHowto(force){
-  if (!force && localStorage.getItem('battle.howto.seen') === '1') return;
+  if (!force && LS.get('battle.howto.seen') === '1') return;
   $('howto').classList.remove('hidden');
 }
 function hideHowto(){
-  localStorage.setItem('battle.howto.seen', '1');
+  LS.set('battle.howto.seen', '1');
   $('howto').classList.add('hidden');
 }
 
@@ -838,13 +851,17 @@ window.__battle = {
   next(){ goNextLevel(); },
   swap(i){ switchPet(i); },
   restart(){ startGame(); },
-  setMute(m){ SND.muted = !!m; localStorage.setItem('battle.muted', m ? '1' : '0'); }
+  setMute(m){ SND.muted = !!m; LS.set('battle.muted', m ? '1' : '0'); }
 };
 
 /* ============================================================
  * 11. 启动
  * ============================================================ */
 function boot(){
+  // 数据缺失时给出明确提示，而不是白屏
+  if (!Array.isArray(window.BATTLE_PETS) || !window.KG_BANK) {
+    throw new Error('知识图谱数据未加载（data/knowledge.js）');
+  }
   resize();
   $('soundBtn').textContent = SND.muted ? '🔇' : '🔊';
   $('soundBtn').classList.toggle('off', SND.muted);
@@ -854,4 +871,18 @@ function boot(){
   requestAnimationFrame(loop);
   setTimeout(() => showHowto(false), 400);
 }
-boot();
+function safeBoot(){
+  try { boot(); }
+  catch (e) {
+    console.error('[启动失败]', e);
+    if (window.__errPanel) window.__errPanel(e && e.message ? e.message : String(e));
+    else {
+      const d = document.createElement('div');
+      d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99999;background:#7a1f1f;color:#fff;font:13px/1.5 sans-serif;padding:10px 14px';
+      d.textContent = '页面没跑起来：' + (e && e.message ? e.message : e) + '（请换个浏览器打开或刷新）';
+      document.body.appendChild(d);
+    }
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', safeBoot);
+else safeBoot();

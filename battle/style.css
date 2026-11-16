@@ -405,3 +405,43 @@ body { background:#0e1220; }
   .map-node .mn-seq { width:17px; height:17px; line-height:17px; font-size:9.5px; }
   .map-tip { display:none; }
 }
+
+/* ============================================================
+   v5 新增：无限远征 / 学习进度 / 多题型输入 / 自评
+   ============================================================ */
+.endless-btn { margin-top:8px; background:linear-gradient(135deg,#7b5cff,#b14bff); box-shadow:0 6px 18px #7b5cff55; }
+.endless-btn:disabled { background:#5a5566; box-shadow:none; opacity:.6; }
+.gi-subj { color:#b9a7d8; font-size:11px; }
+.learn-stats { background:#ffffff0d; border:1px solid #ffffff1a; border-radius:14px; padding:10px 14px; margin:8px 18px 2px; }
+.ls-title { color:#ffd777; font-size:12.5px; font-weight:700; margin-bottom:6px; }
+.ls-row { display:flex; justify-content:space-between; color:#cfc6e8; font-size:11.5px; padding:2px 0; }
+.ls-row b { color:#fff; }
+.ls-row b.ok { color:#8fe3a8; }
+.ls-row b.no { color:#ff9db1; }
+.ls-bar { height:6px; border-radius:6px; background:#ffffff1a; overflow:hidden; margin-top:6px; }
+.ls-bar i { display:block; height:100%; background:linear-gradient(90deg,#8fe3a8,#ffd777); border-radius:6px; transition:width .5s; }
+.ls-hint { color:#9a8fbf; font-size:10px; line-height:1.5; margin:6px 0 0; }
+.endless-map-btn { display:block; width:calc(100% - 36px); margin:8px 18px; padding:11px; border:none; border-radius:13px;
+  background:linear-gradient(135deg,#7b5cff,#b14bff); color:#fff; font-size:14px; font-weight:700; letter-spacing:1px;
+  box-shadow:0 6px 18px #7b5cff55; cursor:pointer; }
+
+/* 题卡：填空/简答输入 */
+.q-input-wrap { display:flex; flex-direction:column; gap:8px; }
+.q-input { width:100%; box-sizing:border-box; padding:12px 14px; border-radius:12px; border:2px solid #c9b98e;
+  background:#fffdf6; color:#3a2c10; font-size:16px; outline:none; }
+.q-input:focus { border-color:#e0a93b; box-shadow:0 0 0 3px #e0a93b22; }
+.q-input.shake { animation:qshake .35s; }
+@keyframes qshake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-7px);} 75%{transform:translateX(7px);} }
+.q-hint { color:#a08a5c; font-size:10.5px; text-align:center; }
+.q-submit { display:block; margin:2px auto 0; padding:9px 30px; border:none; border-radius:11px;
+  background:linear-gradient(135deg,#e8b53f,#d18a1f); color:#4a2f00; font-size:14px; font-weight:700; cursor:pointer; }
+.q-submit:disabled { opacity:.5; }
+
+/* 简答自评弹层（内嵌在题卡选项区） */
+.self-grade { margin-top:8px; padding:10px 12px; border-radius:12px; background:#fff8e6; border:1px solid #e6cf9a; }
+.self-grade p { margin:2px 0 6px; color:#6b4a12; font-size:12.5px; line-height:1.5; }
+.self-grade p b { color:#a3283f; word-break:break-word; }
+.self-grade .self-exp { color:#8a7650; font-size:11px; }
+.self-btn { padding:8px 16px; margin:2px 6px 0 0; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; }
+.self-btn.yes { background:#5fbf72; color:#fff; }
+.self-btn.no { background:#e08a90; color:#fff; }

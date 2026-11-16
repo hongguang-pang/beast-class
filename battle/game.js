@@ -4,6 +4,20 @@
  * 零外部依赖：Canvas 粒子 + DOM 界面 + Web Audio 合成音效
  * ============================================================ */
 'use strict';
+/* ---------- 老内核兜底：Android 微信 X5 / 旧 WebView 缺这两个方法 ---------- */
+if (!Array.prototype.includes) {
+  Array.prototype.includes = function (x) { return this.indexOf(x) !== -1; };
+}
+if (!String.prototype.padStart) {
+  String.prototype.padStart = function (n, c) {
+    var s = String(this); c = c === undefined ? ' ' : String(c);
+    while (s.length < n) s = c + s;
+    return s;
+  };
+}
+/* NodeList 转数组（旧 WebView 的 NodeList 没有迭代器） */
+const toArr = n => Array.prototype.slice.call(n);
+
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const rand = n => Math.floor(Math.random() * n);
@@ -345,7 +359,7 @@ function renderGrades(){
     b.addEventListener('click', () => {
       G.grade = g.id;
       SND.tap();
-      [...row.children].forEach(c => c.classList.toggle('on', c.dataset.g === g.id));
+      toArr(row.children).forEach(c => c.classList.toggle('on', c.dataset.g === g.id));
       renderGradeInfo();
     });
     row.appendChild(b);
@@ -532,7 +546,7 @@ function buildTeamRow(){
 }
 function syncTeamRow(){
   const cfg = LEVELS[G.level];
-  [...$('teamRow').children].forEach((b, i) => {
+  toArr($('teamRow').children).forEach((b, i) => {
     const t = G.team[i]; if (!t) return;
     b.classList.toggle('active', i === G.active);
     b.classList.toggle('down', t.hp <= 0);
@@ -568,7 +582,7 @@ function answerQuestion(i, btn){
   if (G.lock || G.state !== 'battle') return;
   G.lock = true;
   const correct = i === G.currentAnswer;
-  const opts = [...$('qOptions').children];
+  const opts = toArr($('qOptions').children);
   opts.forEach((b, idx) => {
     b.style.pointerEvents = 'none';
     if (idx === G.currentAnswer) b.classList.add('right');
@@ -847,7 +861,7 @@ window.__battle = {
   setTeam(ids){ G.team = ids.map(id => { const p = PETS.find(x => x.id === id); return p ? { pet:p, hp:100, maxHp:100 } : null; }).filter(Boolean); renderPets(); renderTeamPreview(); $('startBtn').disabled = G.team.length !== 3; },
   start(){ startGame(); },
   correct(){ answerQuestion(G.currentAnswer, $('qOptions').children[G.currentAnswer]); },
-  wrong(){ const i = [...Array(G.currentOpts.length).keys()].find(x => x !== G.currentAnswer); answerQuestion(i, $('qOptions').children[i]); },
+  wrong(){ const i = toArr(Array(G.currentOpts.length).keys()).find(x => x !== G.currentAnswer); answerQuestion(i, $('qOptions').children[i]); },
   next(){ goNextLevel(); },
   swap(i){ switchPet(i); },
   restart(){ startGame(); },
@@ -872,7 +886,7 @@ function boot(){
   setTimeout(() => showHowto(false), 400);
 }
 function safeBoot(){
-  try { boot(); }
+  try { boot(); window.__bootOk = true; }
   catch (e) {
     console.error('[启动失败]', e);
     if (window.__errPanel) window.__errPanel(e && e.message ? e.message : String(e));

@@ -29,10 +29,14 @@
     window.__bootErr.push(m); panel(m);
   }, true);
   setTimeout(function(){
-    if(!document.querySelector('#petGrid .pet-card')){
-      var w = (window.__bootErr && window.__bootErr[0]) || '未知原因';
-      panel(w + '（宠物列表没渲染出来）');
-    }
+    if(document.querySelector('#petGrid .pet-card')) return;   // 正常
+    if(window.__bootOk) return;                               // 已启动
+    var w;
+    if(window.__bootErr && window.__bootErr.length) w = window.__bootErr[0];
+    else if(typeof window.BATTLE_PETS === 'undefined') w = '知识图谱数据没加载（data/knowledge.js）';
+    else if(typeof window.__battle === 'undefined') w = '主脚本没执行（game.js 被拦截或语法不被当前浏览器支持）';
+    else w = '启动时中断（详见控制台）';
+    panel(w);
   }, 2500);
 })();
 </script>

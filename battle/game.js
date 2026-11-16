@@ -1,7 +1,7 @@
 /* ============================================================
- * 《知识大陆 · 宠物远征》v2 —— 年级知识图谱 × 多宠物编队 × 属性克制
- * 状态：select(选年级/组队) → battle → levelClear → (boss) → result / defeat
- * 零外部依赖：Canvas 粒子 + DOM 界面 + Web Audio 合成音效
+ * 《知识大陆 · 宠物远征》v4 —— 大图谱 × 编队 × 克制 × 地图 × 掉落 × BGM
+ * 状态：select → map(8 关远征路线) → battle → levelClear → map/… → result/defeat
+ * 零外部依赖：Canvas 粒子 + DOM 界面 + Web Audio 合成音效与背景音乐
  * ============================================================ */
 'use strict';
 /* ---------- 老内核兜底：Android 微信 X5 / 旧 WebView 缺这两个方法 ---------- */
@@ -39,10 +39,14 @@ const SUBJ_META = {
 
 /* ---------- 关卡：敌人属性与队伍属性形成策略约束 ---------- */
 const LEVELS = [
-  { name:'石板路',   enemy:'苔球怪',   emoji:'🪴', elem:'wood',  hp:110, lv:1, boss:false },
-  { name:'雾林',     enemy:'潮汐蟹',   emoji:'🦀', elem:'water', hp:140, lv:2, boss:false },
-  { name:'问答桥',   enemy:'焰尾鸦',   emoji:'🦅', elem:'fire',  hp:170, lv:3, boss:false },
-  { name:'书山王座', enemy:'知识魔王', emoji:'📚', elem:'dark',  hp:110, lv:4, boss:true  }
+  { name:'石板路',   enemy:'苔球怪',   emoji:'🪴', elem:'wood',  hp:90,  lv:1, boss:false },
+  { name:'雾林',     enemy:'潮汐蟹',   emoji:'🦀', elem:'water', hp:105, lv:1, boss:false },
+  { name:'问答桥',   enemy:'焰尾鸦',   emoji:'🦅', elem:'fire',  hp:120, lv:2, boss:false },
+  { name:'微光坡',   enemy:'萤火灵',   emoji:'✨', elem:'light', hp:130, lv:2, boss:false },
+  { name:'回声谷',   enemy:'暗影蝠',   emoji:'🦇', elem:'dark',  hp:140, lv:3, boss:false },
+  { name:'藤蔓迷宫', enemy:'巨口花',   emoji:'🌺', elem:'wood',  hp:150, lv:3, boss:false },
+  { name:'结晶洞',   enemy:'水晶兽',   emoji:'💎', elem:'water', hp:160, lv:3, boss:false },
+  { name:'书山王座', enemy:'知识魔王', emoji:'📚', elem:'dark',  hp:100, lv:4, boss:true  }
 ];
 
 /* ---------- 全局状态 ---------- */
@@ -56,7 +60,8 @@ const G = {
   combo:0, maxCombo:0, correctCount:0, wrongCount:0, questionNo:0,
   notes:2, usedThisQ:[],
   currentQ:null, currentOpts:[], currentAnswer:0,
-  bags:{}, usedQ:new Set(), wrongPool:[], knHit:{}, startTime:0, lock:false
+  bags:{}, usedQ:new Set(), wrongPool:[], knHit:{}, startTime:0, lock:false,
+  chosenLevel:0, lvCorrect:0, lvWrong:0, lvSubj:{}, bag:{}, runDrops:[], sessionDrops:[]
 };
 
 /* ---------- 安全存储：无痕模式 / file:// / 微信受限环境下 localStorage 会抛错 ---------- */
@@ -148,10 +153,111 @@ const SND = {
     $('soundBtn').textContent = this.muted ? '🔇' : '🔊';
     $('soundBtn').classList.toggle('off', this.muted);
     if (!this.muted) this.tap();
+    BGM.toggleMute();
   }
 };
+/* ============================================================
+ * 1b. 背景音乐（Web Audio 合成，8 小节循环，与音效共用上下文）
+ * ============================================================ */
+const BGM = {
+  playing:false, theme:'map', timer:null, nextTime:0, step:0, gain:null, wasPlaying:false,
+  themes:{
+    map:{ bpm:92, notes:[
+      [261.63,1],[329.63,1],[392,1],[523.25,1], [440,1],[392,1],[329.63,1],null,
+      [293.66,1],[349.23,1],[440,1],[587.33,1], [523.25,1],[440,1],[392,1],null
+    ]},
+    battle:{ bpm:136, notes:[
+      [220,.5],[261.63,.5],[329.63,.5],[392,.5], [440,.5],[392,.5],[329.63,.5],[261.63,.5],
+      [220,.5],[261.63,.5],[329.63,.5],[440,.5], [392,.5],[329.63,.5],[261.63,.5],[196,.5]
+    ]}
+  },
+  init(){
+    const c = SND.ensure(); if (!c) return false;
+    if (!this.gain){ this.gain = c.createGain(); this.gain.gain.value = 0.16; this.gain.connect(SND.master); }
+    return true;
+  },
+  note(freq, t0, dur){
+    const c = SND.ctx; if (!c || !this.gain) return;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.7, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(this.gain); o.start(t0); o.stop(t0 + dur + 0.02);
+  },
+  sched(){
+    const c = SND.ctx; if (!c || !this.playing) return;
+    const th = this.themes[this.theme] || this.themes.map;
+    const beat = 60 / th.bpm;
+    let guard = 0;
+    while (this.nextTime < c.currentTime + 0.35 && guard++ < 40){
+      const n = th.notes[this.step % th.notes.length];
+      if (n) this.note(n[0], this.nextTime, Math.max(0.08, n[1] * beat * 0.92));
+      this.step++; this.nextTime += (n ? n[1] : 0.5) * beat;
+    }
+  },
+  start(theme){
+    if (theme) this.theme = theme;
+    if (SND.muted) return;
+    if (!this.init()) return;
+    if (this.playing) return;
+    this.playing = true; this.step = 0; this.nextTime = SND.ctx.currentTime + 0.06;
+    this.timer = setInterval(() => this.sched(), 60); this.sched();
+  },
+  stop(){ this.playing = false; if (this.timer){ clearInterval(this.timer); this.timer = null; } },
+  setTheme(t){ if (this.theme === t) return; const was = this.playing; this.stop(); this.theme = t; if (was && !SND.muted) this.start(t); },
+  toggleMute(){ if (SND.muted) this.stop(); else this.start(this.theme); }
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden){ BGM.wasPlaying = BGM.playing; BGM.stop(); }
+  else if (BGM.wasPlaying && !SND.muted) BGM.start(BGM.theme);
+});
+
+/* ============================================================
+ * 1c. 掉落物与地图进度（localStorage 安全封装）
+ * ============================================================ */
+const DROP_ITEMS = {
+  shard_math:{ name:'数学碎片', emoji:'🧮', type:'shard' },
+  shard_cn:{ name:'语文碎片', emoji:'📖', type:'shard' },
+  shard_en:{ name:'英语碎片', emoji:'🔤', type:'shard' },
+  shard_sci:{ name:'科学碎片', emoji:'🔬', type:'shard' },
+  shard_eth:{ name:'道法碎片', emoji:'⚖️', type:'shard' },
+  cry_fire:{ name:'火之晶石', emoji:'🔥', type:'crystal' },
+  cry_water:{ name:'水之晶石', emoji:'💧', type:'crystal' },
+  cry_wood:{ name:'木之晶石', emoji:'🌿', type:'crystal' },
+  cry_light:{ name:'光之晶石', emoji:'✨', type:'crystal' },
+  cry_dark:{ name:'暗之晶石', emoji:'🌑', type:'crystal' },
+  crown:{ name:'知识王冠', emoji:'👑', type:'badge' }
+};
+for (let i = 1; i <= 8; i++) DROP_ITEMS['badge'+i] = { name:'第'+i+'关徽章', emoji: i === 8 ? '🏆' : ['🥉','🥈','🏅','🎖️','🏵️','🎗️','💠'][i-1], type:'badge' };
+function dropMeta(k){ return DROP_ITEMS[k] || { name:'神秘宝物', emoji:'🎁', type:'badge' }; }
+function loadBag(){ try { return JSON.parse(LS.get('battle.bag') || '{}') || {}; } catch(e){ return {}; } }
+function saveBag(){ LS.set('battle.bag', JSON.stringify(G.bag)); }
+function addDrop(k){ G.bag[k] = (G.bag[k] || 0) + 1; G.runDrops.push(k); G.sessionDrops.push(k); saveBag(); }
+function loadProgress(){ try { return JSON.parse(LS.get('battle.map.progress') || '{}') || {}; } catch(e){ return {}; } }
+function loadStars(){ try { return JSON.parse(LS.get('battle.map.stars') || '{}') || {}; } catch(e){ return {}; } }
+function nodeState(i){ const n = loadProgress()[G.grade] || 0; return i < n ? 'cleared' : i === n ? 'current' : 'locked'; }
+function markCleared(i){
+  const p = loadProgress(), st = loadStars();
+  if ((p[G.grade] || 0) < i + 1){ p[G.grade] = i + 1; LS.set('battle.map.progress', JSON.stringify(p)); }
+  const acc = (G.lvCorrect + G.lvWrong) ? G.lvCorrect / (G.lvCorrect + G.lvWrong) : 1;
+  const star = G.lvWrong === 0 ? 3 : acc >= 0.7 ? 2 : 1;
+  if (!st[G.grade]) st[G.grade] = {};
+  if ((st[G.grade][i] || 0) < star){ st[G.grade][i] = star; LS.set('battle.map.stars', JSON.stringify(st)); }
+}
+function rollDrops(idx){
+  const cfg = LEVELS[idx];
+  const subs = Object.keys(G.lvSubj);
+  let top = 'math';
+  if (subs.length) top = subs.reduce((a,b) => G.lvSubj[a] >= G.lvSubj[b] ? a : b);
+  addDrop('shard_' + top);
+  if (Math.random() < 0.34 + Math.min(G.maxCombo, 6) * 0.08) addDrop('cry_' + cfg.elem);
+  if ((loadProgress()[G.grade] || 0) <= idx) addDrop(cfg.boss ? 'crown' : 'badge' + (idx + 1));
+  return G.runDrops.slice();
+}
+
 /* 手机浏览器要求首次触摸后才能出声 */
-window.addEventListener('pointerdown', () => SND.ensure(), { once:true });
+window.addEventListener('pointerdown', () => { SND.ensure(); if (!SND.muted) BGM.start(BGM.theme); }, { once:true });
 
 /* ============================================================
  * 2. Canvas 演出
@@ -595,6 +701,8 @@ function answerQuestion(i, btn){
     G.combo++;
     G.maxCombo = Math.max(G.maxCombo, G.combo);
     G.correctCount++;
+    G.lvCorrect++;
+    G.lvSubj[G.currentQ.subj] = (G.lvSubj[G.currentQ.subj] || 0) + 1;
     const meta = SUBJ_META[G.currentQ.subj] || SUBJ_META.math;
     if (G.currentQ.kn) G.knHit[`${meta.name} · ${G.currentQ.kn}`] = 1;
     const em = elemMult(t.pet.elem, LEVELS[G.level].elem);
@@ -611,6 +719,7 @@ function answerQuestion(i, btn){
     btn.classList.add('wrong');
     G.combo = 0;
     G.wrongCount++;
+    G.lvWrong++;
     const t = activeT();
     const dmg = LEVELS[G.level].boss ? 20 : 16;
     t.hp = clamp(t.hp - dmg, 0, t.maxHp);
@@ -658,9 +767,9 @@ function afterHit(){
   if (G.enemyHp <= 0) {
     if (cfg.boss && G.bossPhase < 3) {
       G.bossPhase++;
-      /* 三阶段等量 110/110/110，节奏均匀不拖 */
-      G.enemyMax = 110;
-      G.enemyHp = 110;
+      /* 三阶段等量，节奏均匀不拖 */
+      G.enemyMax = cfg.hp;
+      G.enemyHp = cfg.hp;
       pages(FW/2, FH*0.32, 16);
       flash('rgba(255,230,160,.6)');
       SND.boss();
@@ -671,9 +780,14 @@ function afterHit(){
     flash('rgba(255,230,160,.7)');
     G.state = 'levelClear';
     SND.clear();
+    rollDrops(G.level);
+    const uniq = []; G.runDrops.forEach(d => { if (uniq.indexOf(d) < 0) uniq.push(d); });
+    $('clearDrops').innerHTML = uniq.length
+      ? '<div class="drop-line">本关战利品：' + uniq.map(k => { const m = dropMeta(k); return '<span class="drop-item">' + m.emoji + ' ' + m.name + '</span>'; }).join('') + '</div>'
+      : '';
     $('clearTitle').textContent = cfg.boss ? '知识魔王散成书页了！' : '过关！';
     $('clearSub').textContent = cfg.boss ? '“你们真的学会了。”' : '敌人碎成了书页';
-    setTimeout(() => $('levelClear').classList.remove('hidden'), 420);
+    setTimeout(() => { if (G.state === 'levelClear') $('levelClear').classList.remove('hidden'); }, 420);
     return;
   }
   /* 我方倒下 */
@@ -683,7 +797,7 @@ function afterHit(){
     if (down.length >= G.team.length) {
       G.state = 'defeat';
       SND.defeat();
-      setTimeout(() => $('defeat').classList.remove('hidden'), 400);
+      setTimeout(() => { if (G.state === 'defeat') $('defeat').classList.remove('hidden'); }, 400);
       return;
     }
     /* 优先接给「下一只还站着的」宠物，保持队伍轮转 */
@@ -726,14 +840,17 @@ function startGame(){
   if (G.team.length !== 3) return;
   G.team.forEach(t => { t.hp = t.maxHp; });
   G.state = 'battle';
-  G.level = 0; G.bossPhase = 1;
+  G.level = clamp(G.chosenLevel | 0, 0, LEVELS.length - 1); G.bossPhase = 1;
   G.combo = 0; G.maxCombo = 0; G.correctCount = 0; G.wrongCount = 0;
+  G.lvCorrect = 0; G.lvWrong = 0; G.lvSubj = {}; G.runDrops = [];
+  if (G.chosenLevel === 0) G.sessionDrops = [];
   G.questionNo = 0; G.notes = 2; G.bags = {}; G.usedQ = new Set(); G.pickedLog = []; G.wrongPool = []; G.knHit = {};
   G.active = 0; G.lock = false; G.startTime = performance.now();
   particles = []; flashes = [];
   const cfg = LEVELS[0];
   G.enemyMax = cfg.hp; G.enemyHp = cfg.hp;
   $('selectView').classList.add('hidden');
+  $('mapView').classList.add('hidden');
   $('resultView').classList.add('hidden');
   $('defeat').classList.add('hidden');
   $('levelClear').classList.add('hidden');
@@ -743,15 +860,18 @@ function startGame(){
   $('battleLog').textContent = `${cfg.enemy}（${ELEMENTS[cfg.elem].name}）挡在前面，答对题目让宠物出招！`;
   nextQ();
   SND.tap();
+  BGM.setTheme('battle');
 }
 function goNextLevel(){
   $('levelClear').classList.add('hidden');
+  markCleared(G.level);
+  G.chosenLevel = G.level + 1;
   G.level++;
   if (G.level >= LEVELS.length) { showResult(); return; }
   const cfg = LEVELS[G.level];
   G.team.forEach(t => { if (t.hp > 0) t.hp = clamp(t.hp + 18, 0, t.maxHp); });
   G.enemyMax = cfg.hp; G.enemyHp = cfg.hp;
-  G.bossPhase = 1; G.combo = 0;
+  G.bossPhase = 1; G.combo = 0; G.lvCorrect = 0; G.lvWrong = 0; G.lvSubj = {}; G.runDrops = [];
   G.notes = Math.min(3, G.notes + 1);
   G.state = 'battle'; G.lock = false;
   updateHUD();
@@ -762,11 +882,78 @@ function goNextLevel(){
   if (cfg.boss) SND.boss();
   nextQ();
 }
+function enterMap(){
+  G.state = 'map';
+  $('selectView').classList.add('hidden');
+  $('battleView').classList.add('hidden');
+  $('resultView').classList.add('hidden');
+  $('levelClear').classList.add('hidden');
+  $('mapView').classList.remove('hidden');
+  $('chapter').textContent = '远征地图 · ' + ((GRADES.find(g => g.id === G.grade) || {}).name || '');
+  renderMap();
+  BGM.setTheme('map');
+  SND.tap();
+}
+function renderMap(){
+  const wrap = $('mapPath'); wrap.innerHTML = '';
+  const prog = loadProgress()[G.grade] || 0;
+  const stars = loadStars()[G.grade] || {};
+  LEVELS.forEach((L, i) => {
+    const st = nodeState(i);
+    const b = document.createElement('button');
+    b.className = 'map-node ' + st + (i % 2 ? ' right' : ' left') + (L.boss ? ' boss' : '');
+    const el = ELEMENTS[L.elem];
+    b.innerHTML =
+      '<span class="mn-seq">' + (i + 1) + '</span>' +
+      '<span class="mn-face">' + (st === 'locked' ? '🔒' : L.emoji) + '</span>' +
+      '<span class="mn-info"><b>' + L.name + '</b>' +
+      '<span class="mn-element" style="color:' + el.color + '">' + el.icon + el.name + '</span>' +
+      '<span class="mn-stars">' + (st === 'cleared' ? '★'.repeat(stars[i] || 1) + '☆'.repeat(3 - (stars[i] || 1)) : st === 'current' ? '▶ 可挑战' : '未解锁') + '</span></span>';
+    b.addEventListener('click', () => {
+      SND.tap();
+      if (st === 'locked'){ $('mapTip').textContent = '先通过前面的关卡，才能解锁这里。'; return; }
+      beginLevel(i);
+    });
+    wrap.appendChild(b);
+  });
+  $('mapSub').textContent = '已通关 ' + Math.min(prog, LEVELS.length) + ' / ' + LEVELS.length + ' 关 · 通关解锁下一站';
+  $('mapTip').textContent = prog >= LEVELS.length ? '🏆 全部通关！可重刷任意关卡拿满星。' : '点亮金色据点开始挑战';
+  $('bagCount').textContent = Object.keys(G.bag).reduce((a, k) => a + G.bag[k], 0);
+}
+function beginLevel(i){ G.chosenLevel = clamp(i, 0, LEVELS.length - 1); startGame(); }
+function afterClearToMap(){
+  $('levelClear').classList.add('hidden');
+  markCleared(G.level);
+  G.chosenLevel = G.level + 1;
+  if (G.level >= LEVELS.length - 1){ showResult(); return; }
+  enterMap();
+}
+function showBag(){
+  const list = $('bagList'); list.innerHTML = '';
+  const groups = { shard:'📚 学科碎片', crystal:'💎 属性晶石', badge:'🏅 荣誉徽章' };
+  let any = false;
+  Object.keys(groups).forEach(tp => {
+    const items = Object.keys(G.bag).filter(k => dropMeta(k).type === tp && G.bag[k] > 0);
+    if (!items.length) return;
+    any = true;
+    const sec = document.createElement('div'); sec.className = 'bag-group';
+    sec.innerHTML = '<h4>' + groups[tp] + '</h4>' + items.map(k => {
+      const m = dropMeta(k);
+      return '<span class="bag-item">' + m.emoji + ' ' + m.name + ' <b>×' + G.bag[k] + '</b></span>';
+    }).join('');
+    list.appendChild(sec);
+  });
+  if (!any) list.innerHTML = '<p class="bag-empty">背包还是空的，去闯关收集战利品吧！</p>';
+  $('bagView').classList.remove('hidden');
+  SND.tap();
+}
 function showResult(){
   G.state = 'result';
   $('chapter').textContent = '远征完成';
   $('battleView').classList.add('hidden');
+  $('mapView').classList.add('hidden');
   $('resultView').classList.remove('hidden');
+  markCleared(G.level);
   const sec = Math.max(0, Math.round((performance.now() - G.startTime) / 1000));
   const total = G.correctCount + G.wrongCount;
   const acc = total ? Math.round(G.correctCount / total * 100) : 0;
@@ -775,6 +962,13 @@ function showResult(){
     `答对 <b>${G.correctCount}</b> 题 · 答错 ${G.wrongCount} 题<br>` +
     `正确率 <b>${acc}%</b> · 最高连击 <b>${G.maxCombo}</b><br>` +
     `年级 <b>${(GRADES.find(g => g.id === G.grade) || {}).name || ''}</b> · 队伍 ${G.team.map(t => t.pet.emoji).join('')}`;
+  const dcount = {};
+  (G.sessionDrops || []).forEach(k => { dcount[k] = (dcount[k] || 0) + 1; });
+  const dkeys = Object.keys(dcount);
+  $('resDrops').innerHTML = dkeys.length
+    ? '<h3>🎁 本局战利品</h3>' + dkeys.map(k => { const m = dropMeta(k); return '<span class="drop-chip">' + m.emoji + ' ' + m.name + ' ×' + dcount[k] + '</span>'; }).join('')
+    : '';
+  BGM.setTheme('map');
   const kns = Object.keys(G.knHit);
   $('resKn').innerHTML = kns.length
     ? '<h3>本局点亮的知识点（答对即掌握）</h3>' + kns.slice(0, 14).map(k => `<span class="kn-chip">${k}</span>`).join('')
@@ -794,6 +988,7 @@ function retry(){
 }
 function again(){
   $('resultView').classList.add('hidden');
+  $('mapView').classList.add('hidden');
   G.team = [];
   G.state = 'select';
   $('startBtn').disabled = true;
@@ -834,8 +1029,11 @@ function hideHowto(){
 /* ============================================================
  * 9. 事件绑定
  * ============================================================ */
-$('startBtn').addEventListener('click', startGame);
-$('nextBtn').addEventListener('click', goNextLevel);
+$('startBtn').addEventListener('click', enterMap);
+$('nextBtn').addEventListener('click', afterClearToMap);
+$('mapBackBtn').addEventListener('click', () => { SND.tap(); G.state = 'select'; $('mapView').classList.add('hidden'); $('selectView').classList.remove('hidden'); BGM.setTheme('map'); });
+$('bagBtn').addEventListener('click', showBag);
+$('bagClose').addEventListener('click', () => { SND.tap(); $('bagView').classList.add('hidden'); });
 $('retryBtn').addEventListener('click', retry);
 $('againBtn').addEventListener('click', again);
 $('noteBtn').addEventListener('click', useNote);
@@ -868,7 +1066,15 @@ window.__battle = {
   next(){ goNextLevel(); },
   swap(i){ switchPet(i); },
   restart(){ startGame(); },
-  setMute(m){ SND.muted = !!m; LS.set('battle.muted', m ? '1' : '0'); }
+  setMute(m){ SND.muted = !!m; LS.set('battle.muted', m ? '1' : '0'); BGM.toggleMute(); },
+  get bgm(){ return { theme:BGM.theme, playing:BGM.playing, muted:SND.muted }; },
+  get bag(){ return Object.assign({}, G.bag); },
+  get drops(){ return (G.runDrops || []).slice(); },
+  get sessionDrops(){ return (G.sessionDrops || []).slice(); },
+  get map(){ return { progress:loadProgress()[G.grade] || 0, stars:loadStars()[G.grade] || {}, nodes:LEVELS.map((L,i) => nodeState(i)) }; },
+  enterMap(){ enterMap(); },
+  beginLevel(i){ beginLevel(i); },
+  afterClear(){ afterClearToMap(); }
 };
 
 /* ============================================================
@@ -882,6 +1088,7 @@ function boot(){
   resize();
   $('soundBtn').textContent = SND.muted ? '🔇' : '🔊';
   $('soundBtn').classList.toggle('off', SND.muted);
+  G.bag = loadBag();
   renderGrades();
   renderPets();
   renderTeamPreview();

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>知识大陆 · 宠物远征</title>
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 <script>
 /* 加载守护：任何未捕获的错误都显示出来，而不是静默白屏 */
 (function(){
@@ -82,6 +82,19 @@
     <p class="sel-foot">答对＝宠物出招 · 属性克制伤害 ×1.6 · 答错不淘汰，换只宠物继续</p>
   </section>
 
+  <!-- 远征地图 -->
+  <section id="mapView" class="view hidden">
+    <div class="map-head">
+      <div class="sel-badge">远征路线</div>
+      <h1>知识大陆地图</h1>
+      <p id="mapSub">点亮据点 · 通关解锁下一站</p>
+    </div>
+    <button id="bagBtn" class="bag-btn">🎒 我的背包 <span id="bagCount" class="bag-count">0</span></button>
+    <div id="mapPath" class="map-path"></div>
+    <p id="mapTip" class="map-tip">点亮金色据点开始挑战</p>
+    <button id="mapBackBtn" class="ghost-btn">← 返回组队</button>
+  </section>
+
   <!-- 战斗页 -->
   <section id="battleView" class="view hidden">
     <div id="enemyZone">
@@ -132,6 +145,7 @@
       <div class="clear-star">⭐</div>
       <h2 id="clearTitle">过关！</h2>
       <p id="clearSub">敌人碎成了书页</p>
+      <div id="clearDrops" class="clear-drops"></div>
       <button id="nextBtn" class="big-btn">继续前进</button>
     </div>
   </div>
@@ -150,28 +164,41 @@
   <div id="resultView" class="view hidden">
     <div class="res-head"><div class="sel-badge">远征完成</div><h1>你真的学会了！</h1></div>
     <div id="resStats"></div>
+    <div id="resDrops"></div>
     <div id="resKn"></div>
     <div id="resWrong"></div>
     <button id="againBtn" class="big-btn">再玩一次</button>
     <p class="sel-foot">下次考试前，再来找知识大陆。</p>
   </div>
 
+  <!-- 背包 -->
+  <div id="bagView" class="overlay hidden">
+    <div class="bag-card">
+      <h2>🎒 我的背包</h2>
+      <p class="bag-sub">闯关掉落会自动收进这里</p>
+      <div id="bagList" class="bag-list"></div>
+      <button id="bagClose" class="big-btn">合上背包</button>
+    </div>
+  </div>
+
   <!-- 怎么玩 -->
   <div id="howto" class="overlay hidden">
     <div class="howto-card">
-      <h2>怎么玩 · 4 步</h2>
+      <h2>怎么玩 · 6 步</h2>
       <ol class="howto-steps">
         <li><b>选年级、组队</b>：先选 1-6 年级，再挑 3 只宠物（属性不同，克制不同敌人）。</li>
+        <li><b>看地图选关</b>：8 个据点连成远征路线，点亮金色的那一关开打，通关解锁下一站。</li>
         <li><b>读题点答案</b>：题目下方三个选项，点对的那一个。</li>
         <li><b>答对＝出招</b>：宠物冲向敌人，伤害＝基础×连击×属性克制（克制 ×1.6、被克 ×0.7）。</li>
-        <li><b>答错＝挨打</b>：当前这只宠物掉血，连击清零。倒下就换下一只，三只都倒下才会失败。</li>
+        <li><b>答错＝挨打</b>：当前宠物掉血、连击清零，倒下换下一只，三只全倒才失败。</li>
+        <li><b>捡战利品</b>：打赢掉知识碎片、属性晶石和徽章，回地图上点「背包」就能看到收获。</li>
       </ol>
-      <p class="howto-tip">战斗中随时点下方的宠物头像换人；卡住可点「米娅的笔记」划掉一个错项。</p>
+      <p class="howto-tip">右上 🔊 可开关音乐与音效；卡住可点「米娅的笔记」划掉一个错项。</p>
       <button id="howtoGo" class="big-btn">开始探索</button>
     </div>
   </div>
 </div>
-<script src="data/knowledge.js?v=5"></script>
-<script src="game.js?v=5"></script>
+<script src="data/knowledge.js?v=6"></script>
+<script src="game.js?v=6"></script>
 </body>
 </html>

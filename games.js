@@ -986,12 +986,40 @@
     return k.novel;
   }
   /* 阅读器：一页一页翻，进度自动记 */
+  /* v3.46 知识点全覆盖：在每章故事页后追加「知识长卷」页，
+     把本章 buildChapterKn 的全部知识点按学科分组写进正文，确保小说覆盖该年级所有知识点。
+     每页约 6 条，配场景旁白；imgFor 无关，纯文字，弱网/微信都能显示。 */
+  function expandPagesForKn(ctx, ch, pages) {
+    if (ch.u == null) return pages;                 // 序章/终章不加
+    const list = buildChapterKn(ctx.g, ch.u);
+    if (!list || !list.length) return pages;
+    const SUB = { en: ['单词 · 📖', '英语'], math: ['数学 · 🧮', '数学'], cn: ['语文 · 📖', '语文'], sci: ['科学 · 🔬', '科学'], eth: ['道法 · 🌱', '道法'] };
+    const groups = {};
+    list.forEach((x) => { (groups[x.s] = groups[x.s] || []).push(x.n); });
+    const rows = [];
+    Object.keys(groups).forEach((s) => {
+      const head = (SUB[s] ? SUB[s][0] : '📘') + '：';
+      rows.push('<b>' + head + '</b>' + groups[s].map((n) => esc(n)).join('　·　'));
+    });
+    const PER = 6;                                   // 每页最多行数，避免一页过长
+    const chunks = [];
+    for (let i = 0; i < rows.length; i += PER) chunks.push(rows.slice(i, i + PER));
+    const scene = ['米娅把书摊在石台上，每一页开始自己翻动，金色的字一行行浮起来——「记住这些，路才会往前。」',
+      '小胖举着火把凑近，石壁上刻满了这一程要学会的东西，他一个字一个字地念给大家听。',
+      ctx.name + '伸出手指，点过一行，那一行就亮一下，像在说「这个我已经会了」。',
+      '风把书页吹到这一章的最后一页，上面整整齐齐写着这一站的全部知识，等你们带走。'];
+    chunks.forEach((chunk, i) => {
+      pages.push([scene[i % scene.length]].concat(chunk));
+    });
+    return pages;
+  }
+
   function novelReader(k, ci, page) {
     const nv = ensureNovel(k);
     const ctx = novelCtx(k);
     const ch = NOVEL[ci];
     if (!ch) return;
-    const pages = ch.pages(ctx);
+    const pages = expandPagesForKn(ctx, ch, ch.pages(ctx));
     let p = Math.max(0, Math.min(pages.length - 1, page == null ? 0 : page));
     const title = typeof ch.t === 'function' ? ch.t(ctx) : ch.t;
     const m = document.createElement('div');

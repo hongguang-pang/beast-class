@@ -1,16 +1,16 @@
 /* 伴学宠物 · 离线缓存 Service Worker */
-const VERSION = 'beast-v3.45.2';
+const VERSION = 'beast-v3.46.0';
 const SHELL = [
   './',
   './index.html',
-  './app.css?v=3440',
+  './app.css?v=3460',
   './games.css?v=3440',
   './help.html',
   './migrate.html',
   './lib/lz.min.js',
   './lib/qrg.js',
   './lib/jsqr.js',
-  './app.js?v=3440',
+  './app.js?v=3460',
   './bigbank.js?v=3452',
   './bb/g1.js?v=3452',
   './bb/g2.js?v=3452',
@@ -18,7 +18,7 @@ const SHELL = [
   './bb/g4.js?v=3452',
   './bb/g5.js?v=3452',
   './bb/g6.js?v=3452',
-  './games.js?v=3452',
+  './games.js?v=3460',
   './cloud.js?v=3440',
   './auth.js?v=3440',
   './manifest.webmanifest',
@@ -29,9 +29,14 @@ const SHELL = [
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(VERSION)
-      .then((c) => c.addAll(SHELL))
+      .then((c) => Promise.all(SHELL.map((u) => c.add(u).catch(() => {}))))
       .then(() => self.skipWaiting())
   );
+});
+
+/* 页面点「立即更新」时，让等待中的新 SW 立即激活 */
+self.addEventListener('message', (e) => {
+  if (e && e.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

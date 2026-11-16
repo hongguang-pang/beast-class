@@ -28,7 +28,7 @@ const LEVELS = [
   { name:'石板路',   enemy:'苔球怪',   emoji:'🪴', elem:'wood',  hp:110, lv:1, boss:false },
   { name:'雾林',     enemy:'潮汐蟹',   emoji:'🦀', elem:'water', hp:140, lv:2, boss:false },
   { name:'问答桥',   enemy:'焰尾鸦',   emoji:'🦅', elem:'fire',  hp:170, lv:3, boss:false },
-  { name:'书山王座', enemy:'知识魔王', emoji:'📚', elem:'dark',  hp:240, lv:4, boss:true  }
+  { name:'书山王座', enemy:'知识魔王', emoji:'📚', elem:'dark',  hp:110, lv:4, boss:true  }
 ];
 
 /* ---------- 全局状态 ---------- */
@@ -404,7 +404,11 @@ function renderTeamPreview(){
     const ok = els.some(e => ELEM_ADV[e] === L.elem);
     return `<span class="${ok ? 'ok' : 'no'}">${el.icon}${el.name}${ok ? '✓' : '×'}</span>`;
   });
-  $('rosterHint').innerHTML = `远征路线：${parts.join(' → ')}<br><span style="opacity:.75">✓ = 队伍里有克制它的宠物</span>`;
+  const left = 3 - G.team.length;
+  const tip = left > 0
+    ? `<b style="color:#ffd98a">还差 ${left} 只</b> · 点上面的宠物卡片加入队伍`
+    : '队伍已满 · 点已选的可以取消';
+  $('rosterHint').innerHTML = `远征路线：${parts.join(' → ')}<br>${tip} · <span style="opacity:.7">✓ = 队里有克制它的宠物</span>`;
 }
 
 /* ============================================================
@@ -543,7 +547,7 @@ function bigVerdict(text, cls){
   const d = document.createElement('div');
   d.className = 'verdict ' + cls;
   d.textContent = text;
-  d.style.top = (FH * 0.45) + 'px';   // 落在战场中部空白处，不压住血条和战斗日志
+  d.style.top = (FH * 0.545) + 'px';   // 落在换宠条与题卡之间，不压住血条、日志和头像条
   $('stage').appendChild(d);
   setTimeout(() => d.remove(), 1100);
 }
@@ -580,7 +584,7 @@ function answerQuestion(i, btn){
     const t = activeT();
     const dmg = LEVELS[G.level].boss ? 20 : 16;
     t.hp = clamp(t.hp - dmg, 0, t.maxHp);
-    if (G.currentQ) G.wrongPool.push(G.currentQ.q);
+    if (G.currentQ) G.wrongPool.push({ q:G.currentQ.q, a:G.currentOpts[G.currentAnswer] });
     bigVerdict('再想想～', 'v-bad');
     SND.wrong();
     $('battleLog').textContent = '答错了，' + t.pet.name + '被反击，掉了 ' + dmg + ' 点体力。看看正确答案，下一题再来！';
@@ -624,8 +628,9 @@ function afterHit(){
   if (G.enemyHp <= 0) {
     if (cfg.boss && G.bossPhase < 3) {
       G.bossPhase++;
-      G.enemyMax = Math.max(60, Math.round(cfg.hp * (1 - G.bossPhase / 4)));
-      G.enemyHp = G.enemyMax;
+      /* 三阶段等量 110/110/110，节奏均匀不拖 */
+      G.enemyMax = 110;
+      G.enemyHp = 110;
       pages(FW/2, FH*0.32, 16);
       flash('rgba(255,230,160,.6)');
       SND.boss();
@@ -744,9 +749,12 @@ function showResult(){
   $('resKn').innerHTML = kns.length
     ? '<h3>本局点亮的知识点（答对即掌握）</h3>' + kns.slice(0, 14).map(k => `<span class="kn-chip">${k}</span>`).join('')
     : '';
-  const uniq = [...new Set(G.wrongPool)];
+  const uniq = [];
+  const seenQ = {};
+  G.wrongPool.forEach(x => { if (!seenQ[x.q]) { seenQ[x.q] = 1; uniq.push(x); } });
   $('resWrong').innerHTML = uniq.length
-    ? '<h3>这几题值得再看一眼</h3>' + uniq.slice(0, 6).map(x => '· ' + x).join('<br>')
+    ? '<h3>这几题值得再看一眼（附正确答案）</h3>' +
+      uniq.slice(0, 6).map(x => `· ${x.q}<br><span style="color:#8fe3a8">　 正确答案：${x.a}</span>`).join('<br>')
     : '';
   SND.victory();
 }

@@ -80,7 +80,7 @@ body { background:#0e1220; }
   background:linear-gradient(135deg,#f7c948,#e8950b); color:#4a3000; font-size:17px; font-weight:800; letter-spacing:2px;
   box-shadow:0 6px 20px rgba(245,179,1,.35); cursor:pointer;
 }
-.big-btn:disabled { background:#4a4a58; color:#8a8a98; box-shadow:none; cursor:default; }
+.big-btn:disabled { background:#3c3c4a; color:#b8b3c9; box-shadow:none; cursor:default; border:1px dashed rgba(255,255,255,.18); }
 .big-btn:active:not(:disabled) { transform:translateY(2px); }
 .sel-foot { text-align:center; color:#8f8aa3; font-size:11px; margin:0 20px 18px; line-height:1.6; }
 
@@ -276,4 +276,18 @@ body { background:#0e1220; }
   .roster-hint { margin-top:4px; font-size:10px; line-height:1.5; }
   .big-btn { margin:4px auto 2px; padding:11px; font-size:16px; }
   .sel-foot { margin-bottom:6px; font-size:10px; }
+}
+
+/* ---------- 大屏（≥780px 高）把战场撑满，避免题板贴底 ---------- */
+@media (min-height: 780px) {
+  #enemyZone { height:240px; padding-top:10px; }
+  #enemyEmoji { font-size:96px; }
+  #enemyName { font-size:15px; }
+  #playerEmoji { font-size:60px; }
+  #arena { min-height:110px; gap:14px; }
+  #questionCard { margin:auto 12px max(16px, env(safe-area-inset-bottom)); padding:16px 16px 12px; }
+  .opt { min-height:54px; font-size:15.5px; }
+  #qText { min-height:52px; }
+  .tm-btn { padding:8px; }
+  .tm-btn .temoji { font-size:24px; }
 }

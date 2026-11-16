@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>知识大陆 · 宠物远征</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <!-- 战斗演出画布 -->
+  <canvas id="fx"></canvas>
+
+  <!-- 顶栏 -->
+  <div id="topbar">
+    <div id="chapter">第 1 关 · 石板路</div>
+    <div id="topright"><span id="notes">📓 ×2</span></div>
+  </div>
+
+  <!-- 选宠页 -->
+  <section id="selectView" class="view">
+    <div class="sel-head">
+      <div class="sel-badge">知识大陆</div>
+      <h1>宠物远征</h1>
+      <p>选一只宠物，答对题目就放技能打退敌人！</p>
+    </div>
+    <div id="petGrid" class="pet-grid"></div>
+    <button id="startBtn" class="big-btn" disabled>选择宠物后出发</button>
+    <p class="sel-foot">答对 = 出招伤害 · 连击越高打得越痛 · 答错不会淘汰，随时能重试</p>
+  </section>
+
+  <!-- 战斗页 -->
+  <section id="battleView" class="view hidden">
+    <!-- 敌方 -->
+    <div id="enemyZone">
+      <div id="enemyName">题块怪</div>
+      <div id="enemyEmoji">🧱</div>
+      <div class="hpbar enemy-hp"><div id="enemyHpFill" class="hpfill"></div><span id="enemyHpTxt">60/60</span></div>
+      <div id="bossPhase" class="hidden"></div>
+    </div>
+
+    <!-- 我方 -->
+    <div id="playerZone">
+      <div id="combo" class="hidden"><span id="comboNum">0</span> 连击!</div>
+      <div id="playerRow">
+        <div id="playerEmoji">🔥</div>
+        <div class="player-meta">
+          <div id="playerName">焰爪犬 <small id="petRar">R</small></div>
+          <div class="hpbar player-hp"><div id="playerHpFill" class="hpfill"></div><span id="playerHpTxt">100/100</span></div>
+        </div>
+      </div>
+      <div id="battleLog">选一道正确答案，让宠物出招！</div>
+    </div>
+
+    <!-- 题卡 -->
+    <div id="questionCard">
+      <div id="qHead"><span id="qSubj">🧮 数学</span><span id="qProgress">第 1 题</span></div>
+      <div id="qText">题目加载中…</div>
+      <div id="qOptions"></div>
+      <div id="qFoot"><button id="noteBtn">📓 米娅的笔记（去掉一个错项）</button></div>
+    </div>
+  </section>
+
+  <!-- 过关演出 -->
+  <div id="levelClear" class="overlay hidden">
+    <div class="clear-card">
+      <div class="clear-star">⭐</div>
+      <h2 id="clearTitle">过关！</h2>
+      <p id="clearSub">敌人碎成了书页</p>
+      <button id="nextBtn" class="big-btn">继续前进</button>
+    </div>
+  </div>
+
+  <!-- 失败页（温柔） -->
+  <div id="defeat" class="overlay hidden">
+    <div class="clear-card">
+      <div class="clear-star">🌱</div>
+      <h2>再试一次也没关系</h2>
+      <p>这次的题目，下次一定会。</p>
+      <button id="retryBtn" class="big-btn">重新挑战</button>
+    </div>
+  </div>
+
+  <!-- 结算页 -->
+  <div id="resultView" class="view hidden">
+    <div class="res-head"><div class="sel-badge">远征完成</div><h1>你真的学会了！</h1></div>
+    <div id="resStats"></div>
+    <div id="resWrong"></div>
+    <button id="againBtn" class="big-btn">再玩一次</button>
+    <p class="sel-foot">下次考试前，再来找知识大陆。</p>
+  </div>
+</div>
+<script src="data/knowledge.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

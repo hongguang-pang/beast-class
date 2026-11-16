@@ -8,60 +8,84 @@
 </head>
 <body>
 <div id="stage">
-  <!-- 战斗演出画布 -->
   <canvas id="fx"></canvas>
 
   <!-- 顶栏 -->
   <div id="topbar">
-    <div id="chapter">第 1 关 · 石板路</div>
-    <div id="topright"><span id="notes">📓 ×2</span></div>
+    <div id="chapter">宠物远征</div>
+    <div id="topright">
+      <button id="soundBtn" class="icon-btn" title="音效开关">🔊</button>
+      <button id="helpBtn" class="icon-btn" title="怎么玩">?</button>
+    </div>
   </div>
 
-  <!-- 选宠页 -->
+  <!-- 选年级 + 组队 -->
   <section id="selectView" class="view">
     <div class="sel-head">
       <div class="sel-badge">知识大陆</div>
       <h1>宠物远征</h1>
-      <p>选一只宠物，答对题目就放技能打退敌人！</p>
+      <p>选年级 · 组三只宠物 · 答对题就出招</p>
     </div>
+
+    <div class="sec-label">① 选择年级</div>
+    <div id="gradeRow" class="grade-row"></div>
+    <div id="gradeInfo" class="grade-info"></div>
+
+    <div class="sec-label">② 选 3 只宠物组队（首发在最左）</div>
     <div id="petGrid" class="pet-grid"></div>
-    <button id="startBtn" class="big-btn" disabled>选择宠物后出发</button>
-    <p class="sel-foot">答对 = 出招伤害 · 连击越高打得越痛 · 答错不会淘汰，随时能重试</p>
+
+    <div id="teamBar" class="team-bar"></div>
+    <div id="rosterHint" class="roster-hint"></div>
+
+    <button id="startBtn" class="big-btn" disabled>再选 3 只宠物出发</button>
+    <p class="sel-foot">答对＝宠物出招 · 属性克制伤害 ×1.6 · 答错不淘汰，换只宠物继续</p>
   </section>
 
   <!-- 战斗页 -->
   <section id="battleView" class="view hidden">
-    <!-- 敌方 -->
     <div id="enemyZone">
-      <div id="enemyName">题块怪</div>
-      <div id="enemyEmoji">🧱</div>
-      <div class="hpbar enemy-hp"><div id="enemyHpFill" class="hpfill"></div><span id="enemyHpTxt">60/60</span></div>
+      <div id="enemyName">苔球怪</div>
+      <div id="enemyElem" class="elem-chip">🌿 木</div>
+      <div id="enemyEmoji">🪴</div>
+      <div class="hpbar enemy-hp"><div id="enemyHpFill" class="hpfill"></div><span id="enemyHpTxt">110/110</span></div>
       <div id="bossPhase" class="hidden"></div>
     </div>
 
-    <!-- 我方 -->
     <div id="playerZone">
-      <div id="combo" class="hidden"><span id="comboNum">0</span> 连击!</div>
+      <div id="combo" class="hidden"><span id="comboNum">0</span> 连击</div>
       <div id="playerRow">
         <div id="playerEmoji">🔥</div>
         <div class="player-meta">
-          <div id="playerName">焰爪犬 <small id="petRar">R</small></div>
+          <div id="playerName">焰爪犬</div>
           <div class="hpbar player-hp"><div id="playerHpFill" class="hpfill"></div><span id="playerHpTxt">100/100</span></div>
         </div>
       </div>
-      <div id="battleLog">选一道正确答案，让宠物出招！</div>
+      <div id="battleLog">答对题目，宠物就会出招！</div>
+    </div>
+
+    <!-- 队伍切换 -->
+    <div id="teamRow" class="team-row"></div>
+
+    <!-- 战场中部：关卡进度 + 属性关系 -->
+    <div id="arena">
+      <div id="lvDots" class="lv-dots"></div>
+      <div id="elemHint" class="elem-hint"></div>
     </div>
 
     <!-- 题卡 -->
     <div id="questionCard">
-      <div id="qHead"><span id="qSubj">🧮 数学</span><span id="qProgress">第 1 题</span></div>
+      <div id="qHead">
+        <span id="qSubj">🧮 数学</span>
+        <span id="qKn" class="q-kn">两位数乘两位数</span>
+        <span id="qProgress">第 1 题</span>
+      </div>
       <div id="qText">题目加载中…</div>
       <div id="qOptions"></div>
-      <div id="qFoot"><button id="noteBtn">📓 米娅的笔记（去掉一个错项）</button></div>
+      <div id="qFoot"><button id="noteBtn">📓 米娅的笔记 ×2</button></div>
     </div>
   </section>
 
-  <!-- 过关演出 -->
+  <!-- 过关 -->
   <div id="levelClear" class="overlay hidden">
     <div class="clear-card">
       <div class="clear-star">⭐</div>
@@ -71,23 +95,39 @@
     </div>
   </div>
 
-  <!-- 失败页（温柔） -->
+  <!-- 失败（温柔） -->
   <div id="defeat" class="overlay hidden">
     <div class="clear-card">
       <div class="clear-star">🌱</div>
-      <h2>再试一次也没关系</h2>
-      <p>这次的题目，下次一定会。</p>
-      <button id="retryBtn" class="big-btn">重新挑战</button>
+      <h2>休息一下也没关系</h2>
+      <p>这些题目，下次一定会。</p>
+      <button id="retryBtn" class="big-btn">再挑战一次</button>
     </div>
   </div>
 
-  <!-- 结算页 -->
+  <!-- 结算 -->
   <div id="resultView" class="view hidden">
     <div class="res-head"><div class="sel-badge">远征完成</div><h1>你真的学会了！</h1></div>
     <div id="resStats"></div>
+    <div id="resKn"></div>
     <div id="resWrong"></div>
     <button id="againBtn" class="big-btn">再玩一次</button>
     <p class="sel-foot">下次考试前，再来找知识大陆。</p>
+  </div>
+
+  <!-- 怎么玩 -->
+  <div id="howto" class="overlay hidden">
+    <div class="howto-card">
+      <h2>怎么玩 · 4 步</h2>
+      <ol class="howto-steps">
+        <li><b>选年级、组队</b>：先选 1-6 年级，再挑 3 只宠物（属性不同，克制不同敌人）。</li>
+        <li><b>读题点答案</b>：题目下方四个选项，点对的那一个。</li>
+        <li><b>答对＝出招</b>：宠物冲向敌人，伤害＝基础×连击×属性克制（克制 ×1.6、被克 ×0.7）。</li>
+        <li><b>答错＝挨打</b>：当前这只宠物掉血，连击清零。倒下就换下一只，三只都倒下才会失败。</li>
+      </ol>
+      <p class="howto-tip">战斗中随时点下方的宠物头像换人；卡住可点「米娅的笔记」划掉一个错项。</p>
+      <button id="howtoGo" class="big-btn">开始探索</button>
+    </div>
   </div>
 </div>
 <script src="data/knowledge.js"></script>

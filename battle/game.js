@@ -1,310 +1,754 @@
 /* ============================================================
- * 《知识大陆 · 宠物远征》核心逻辑
- * 状态机：select → battle → levelClear → (boss) → victory / defeat → again
- * 零外部依赖。Canvas 画演出粒子，DOM 画血条/题卡。
+ * 《知识大陆 · 宠物远征》v2 —— 年级知识图谱 × 多宠物编队 × 属性克制
+ * 状态：select(选年级/组队) → battle → levelClear → (boss) → result / defeat
+ * 零外部依赖：Canvas 粒子 + DOM 界面 + Web Audio 合成音效
  * ============================================================ */
 'use strict';
 const $ = id => document.getElementById(id);
-const clamp = (v,a,b) => v<a?a:v>b?b:v;
-const rand = n => Math.floor(Math.random()*n);
-const QS = window.BATTLE_Q, PETS = window.BATTLE_PETS;
-const RAR_BONUS = window.RAR_BONUS, RAR_COLOR = window.RAR_COLOR;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const rand = n => Math.floor(Math.random() * n);
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=rand(i+1); const t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
 
-/* ---------- 关卡 ---------- */
+const GRADES = window.GRADES, PETS = window.BATTLE_PETS;
+const ELEMENTS = window.ELEMENTS, ELEM_ADV = window.ELEM_ADV;
+const ELEM_ADV_MULT = window.ELEM_ADV_MULT, ELEM_WEAK_MULT = window.ELEM_WEAK_MULT;
+const RAR_BONUS = window.RAR_BONUS, RAR_COLOR = window.RAR_COLOR;
+const KG_BANK = window.KG_BANK, KG_NAMES = window.KG_NAMES;
+
+const SUBJ_META = {
+  math: { name:'数学', icon:'🧮' },
+  cn:   { name:'语文', icon:'📖' },
+  en:   { name:'英语', icon:'🔤' },
+  sci:  { name:'科学', icon:'🔬' },
+  eth:  { name:'道德与法治', icon:'⚖️' }
+};
+
+/* ---------- 关卡：敌人属性与队伍属性形成策略约束 ---------- */
 const LEVELS = [
-  { name:'石板路', enemy:'题块怪',   emoji:'🧱', hp:60,  maxLevel:1, boss:false },
-  { name:'雾林',   enemy:'雾侍从',   emoji:'🌫️', hp:80,  maxLevel:2, boss:false },
-  { name:'问答桥', enemy:'守桥者',   emoji:'🦉', hp:100, maxLevel:2, boss:false },
-  { name:'书山王座', enemy:'知识魔王', emoji:'📚', hp:160, maxLevel:3, boss:true }
+  { name:'石板路',   enemy:'苔球怪',   emoji:'🪴', elem:'wood',  hp:110, lv:1, boss:false },
+  { name:'雾林',     enemy:'潮汐蟹',   emoji:'🦀', elem:'water', hp:140, lv:2, boss:false },
+  { name:'问答桥',   enemy:'焰尾鸦',   emoji:'🦅', elem:'fire',  hp:170, lv:3, boss:false },
+  { name:'书山王座', enemy:'知识魔王', emoji:'📚', elem:'dark',  hp:240, lv:4, boss:true  }
 ];
 
 /* ---------- 全局状态 ---------- */
 const G = {
-  state:'select',        // select | battle | anim | levelClear | defeat | result
-  level:0, playerHp:100, enemyHp:60, enemyMax:60,
+  state:'select',
+  grade:'g3',
+  team:[],            // [{ pet, hp, maxHp }]
+  active:0,
+  level:0, bossPhase:1,
+  enemyHp:110, enemyMax:110,
   combo:0, maxCombo:0, correctCount:0, wrongCount:0, questionNo:0,
-  pet:null, usedIds:[], wrongPool:[], notes:2, usedThisQ:[],
-  bossPhase:0, startTime:0, lock:false
+  notes:2, usedThisQ:[],
+  currentQ:null, currentOpts:[], currentAnswer:0,
+  bags:{}, usedQ:new Set(), wrongPool:[], knHit:{}, startTime:0, lock:false
 };
 
-/* ---------- Canvas 演出 ---------- */
+/* ============================================================
+ * 1. 音效（Web Audio 合成，无外部文件）
+ * ============================================================ */
+const SND = {
+  ctx:null, master:null,
+  muted: localStorage.getItem('battle.muted') === '1',
+  ensure(){
+    if (this.muted) return null;
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      this.ctx = new AC();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.5;
+      this.master.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  tone(freq, dur, opt){
+    opt = opt || {};
+    const c = this.ensure(); if (!c) return;
+    const t0 = c.currentTime + (opt.delay || 0);
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = opt.type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (opt.to) o.frequency.exponentialRampToValueAtTime(Math.max(40, opt.to), t0 + dur);
+    const v = opt.vol == null ? 0.11 : opt.vol;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(v, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(this.master);
+    o.start(t0); o.stop(t0 + dur + 0.03);
+  },
+  noise(dur, vol, freq){
+    const c = this.ensure(); if (!c) return;
+    const len = Math.max(1, Math.floor(c.sampleRate * dur));
+    const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+    const s = c.createBufferSource(); s.buffer = buf;
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq || 1000;
+    const g = c.createGain(); g.gain.value = vol == null ? 0.16 : vol;
+    s.connect(f); f.connect(g); g.connect(this.master); s.start();
+  },
+  tap(){ this.tone(620, 0.07, { type:'triangle', vol:.06 }); },
+  correct(combo){
+    const base = 520 + Math.min(combo, 6) * 34;
+    [0, 70, 140].forEach((d, i) => this.tone(base * (1 + i * 0.22), 0.1, { type:'triangle', vol:.085, delay:d/1000 }));
+  },
+  crit(){
+    [0, 60, 120, 190].forEach((d, i) => this.tone(760 * (1 + i * 0.25), 0.12, { type:'sine', vol:.08, delay:d/1000 }));
+  },
+  hit(){ this.noise(0.16, 0.2, 1400); this.tone(180, 0.14, { type:'square', vol:.05, to:90 }); },
+  hurt(){ this.tone(220, 0.22, { type:'sine', vol:.09, to:120 }); this.noise(0.12, 0.1, 600); },
+  wrong(){ this.tone(300, 0.16, { type:'sine', vol:.075, to:200 }); this.tone(240, 0.2, { type:'sine', vol:.06, to:170, delay:.1 }); },
+  swap(){ this.tone(480, 0.08, { type:'triangle', vol:.07, to:640 }); },
+  faint(){ this.tone(300, 0.4, { type:'sine', vol:.09, to:120 }); this.noise(0.3, 0.1, 700); },
+  clear(){
+    [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.22, { type:'triangle', vol:.09, delay:i * 0.11 }));
+  },
+  boss(){
+    this.noise(0.5, 0.16, 320);
+    this.tone(110, 0.55, { type:'sawtooth', vol:.07, to:70 });
+  },
+  victory(){
+    [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.3, { type:'triangle', vol:.085, delay:i * 0.13 }));
+  },
+  defeat(){
+    [392, 330, 262].forEach((f, i) => this.tone(f, 0.36, { type:'sine', vol:.08, delay:i * 0.16 }));
+  },
+  toggle(){
+    this.muted = !this.muted;
+    localStorage.setItem('battle.muted', this.muted ? '1' : '0');
+    $('soundBtn').textContent = this.muted ? '🔇' : '🔊';
+    $('soundBtn').classList.toggle('off', this.muted);
+    if (!this.muted) this.tap();
+  }
+};
+/* 手机浏览器要求首次触摸后才能出声 */
+window.addEventListener('pointerdown', () => SND.ensure(), { once:true });
+
+/* ============================================================
+ * 2. Canvas 演出
+ * ============================================================ */
 const fx = $('fx'), ctx = fx.getContext('2d');
-let FW=390, FH=844, DPR=1;
+let FW = 390, FH = 844;
 function resize(){
   FW = $('stage').clientWidth; FH = $('stage').clientHeight;
-  DPR = Math.min(2, window.devicePixelRatio||1);
-  fx.width = FW*DPR; fx.height = FH*DPR;
-  ctx.setTransform(DPR,0,0,DPR,0,0);
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  fx.width = FW * DPR; fx.height = FH * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 }
 window.addEventListener('resize', resize);
 let particles = [], flashes = [];
-function burst(x,y,color,n=18){
-  for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2, s=2+Math.random()*5;
-    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:1,color,r:2+Math.random()*4});
+function burst(x, y, color, n){
+  n = n || 18;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 5;
+    particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s - 1, life:1, color, r:2 + Math.random()*4 });
   }
 }
-function pages(x,y,n=14){
-  for(let i=0;i<n;i++){
-    particles.push({x,y,vx:(Math.random()-.5)*6,vy:-2-Math.random()*4,life:1.4,
-      color:i%2?'#fff3cf':'#ffe08a',r:3+Math.random()*5,page:true,rot:Math.random()*6,vr:(Math.random()-.5)*.3});
+function pages(x, y, n){
+  n = n || 14;
+  for (let i = 0; i < n; i++) {
+    particles.push({ x, y, vx:(Math.random()-.5)*6, vy:-2-Math.random()*4, life:1.4,
+      color:i%2?'#fff3cf':'#ffe08a', r:3+Math.random()*5, page:true, rot:Math.random()*6, vr:(Math.random()-.5)*.3 });
   }
 }
-function flash(color='rgba(255,220,140,.5)'){ flashes.push({a:1,color}); }
-function bigVerdict(text,good){
-  const d=document.createElement('div');
-  d.className='verdict '+(good?'v-good':'v-bad'); d.textContent=text;
-  const s=$('stage').getBoundingClientRect();
-  d.style.left='0'; d.style.top=(s.height*0.36)+'px';
-  $('stage').appendChild(d);
-  setTimeout(()=>d.remove(),1100);
-}
+function flash(color){ flashes.push({ a:1, color:color || 'rgba(255,220,140,.5)' }); }
 function drawFx(dt){
-  ctx.clearRect(0,0,FW,FH);
-  for(const f of flashes){ f.a-=dt*2.4; if(f.a>0){ ctx.fillStyle=f.color; ctx.globalAlpha=f.a; ctx.fillRect(0,0,FW,FH);} ctx.globalAlpha=1; }
-  flashes=flashes.filter(f=>f.a>0);
-  for(const p of particles){
-    p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.life-=dt*1.1;
-    if(p.life<=0) continue;
-    ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.color;
-    if(p.page){ ctx.save(); ctx.translate(p.x,p.y); p.rot+=p.vr; ctx.rotate(p.rot); ctx.fillRect(-p.r,-p.r*.7,p.r*2,p.r*1.4); ctx.restore(); }
-    else { ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
+  ctx.clearRect(0, 0, FW, FH);
+  for (const f of flashes) {
+    f.a -= dt * 2.4;
+    if (f.a > 0) { ctx.fillStyle = f.color; ctx.globalAlpha = f.a; ctx.fillRect(0, 0, FW, FH); }
+    ctx.globalAlpha = 1;
   }
-  ctx.globalAlpha=1;
-  particles=particles.filter(p=>p.life>0);
+  flashes = flashes.filter(f => f.a > 0);
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life -= dt * 1.1;
+    if (p.life <= 0) continue;
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    if (p.page) {
+      ctx.save(); ctx.translate(p.x, p.y); p.rot += p.vr; ctx.rotate(p.rot);
+      ctx.fillRect(-p.r, -p.r * .7, p.r * 2, p.r * 1.4); ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  particles = particles.filter(p => p.life > 0);
 }
-let lastT=performance.now();
+let lastT = performance.now();
 function loop(t){
-  const dt=Math.min(.05,(t-lastT)/1000); lastT=t;
+  const dt = Math.min(.05, (t - lastT) / 1000); lastT = t;
   drawFx(dt);
   requestAnimationFrame(loop);
 }
 
-/* ================= 选宠 ================= */
-function renderSelect(){
-  const grid=$('petGrid'); grid.innerHTML='';
-  PETS.forEach(p=>{
-    const card=document.createElement('div');
-    card.className='pet-card'+(G.pet&&G.pet.id===p.id?' sel':'');
-    card.dataset.id=p.id;
-    card.innerHTML=`<div class="pemoji">${p.emoji}</div>
-      <div class="pname">${p.name}</div>
-      <div class="prar" style="background:${RAR_COLOR[p.rar]}22;color:${RAR_COLOR[p.rar]};border:1px solid ${RAR_COLOR[p.rar]}">${p.rar}</div>
-      <div class="pskill">技能 · ${p.skill}</div>`;
-    card.addEventListener('click',()=>{
-      G.pet=p;
-      [...grid.children].forEach(c=>c.classList.toggle('sel',c.dataset.id===p.id));
-      const btn=$('startBtn'); btn.disabled=false; btn.textContent=`带 ${p.name} 出发！`;
+/* ============================================================
+ * 3. 出题：年级知识图谱
+ * ============================================================ */
+/* 数学题按年级现场生成（无限题量），并标注真实知识点名 */
+function genMath(g, lv){
+  const R = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  let q, r, step = 1, tag = '四则运算';
+  if (g === 'g1') {
+    if (lv <= 0) { const a = R(1,9), b = R(1,10-a); q = a+' + '+b+' = ?'; r = a+b; tag = '10以内加法'; }
+    else if (lv === 1) { const a = R(2,15), b = R(1,Math.min(9,20-a)); q = a+' + '+b+' = ?'; r = a+b; tag = '20以内加法'; }
+    else if (lv === 2) { const a = R(5,20), b = R(1,a-1); q = a+' − '+b+' = ?'; r = a-b; tag = '20以内减法'; }
+    else if (lv === 3) { const a = R(2,12), b = R(1,8), c = R(1,Math.min(5,a+b-1)); q = a+' + '+b+' − '+c+' = ?'; r = a+b-c; tag = '加减混合'; }
+    else { const a = R(1,8)*10, b = R(1,8)*10; q = a+' + '+b+' = ?'; r = a+b; tag = '整十数加法'; }
+  } else if (g === 'g2') {
+    if (lv <= 0) { const a = R(10,80), b = R(1,99-a); q = a+' + '+b+' = ?'; r = a+b; tag = '两位数加法'; }
+    else if (lv === 1) { const a = R(1,5), b = R(1,9); q = a+' × '+b+' = ?'; r = a*b; tag = '乘法口诀'; }
+    else if (lv === 2) { const a = R(2,9), b = R(2,9); q = a+' × '+b+' = ?'; r = a*b; tag = '乘法口诀'; }
+    else if (lv === 3) { const b = R(2,9), qq = R(2,9); q = (b*qq)+' ÷ '+b+' = ?'; r = qq; tag = '表内除法'; }
+    else { const a = R(2,9), b = R(2,9), c = R(1,20); q = a+' × '+b+' + '+c+' = ?'; r = a*b+c; tag = '乘加混合'; }
+  } else if (g === 'g3') {
+    if (lv <= 0) { const a = R(100,800), b = R(10,99); q = a+' + '+b+' = ?'; r = a+b; tag = '三位数加法'; }
+    else if (lv === 1) { const a = R(12,49), b = R(2,9); q = a+' × '+b+' = ?'; r = a*b; tag = '两位数乘一位数'; }
+    else if (lv === 2) { const b = R(2,9), qq = R(12,49); q = (b*qq)+' ÷ '+b+' = ?'; r = qq; tag = '除法竖式'; }
+    else if (lv === 3) { const a = R(2,9), b = R(2,9), c = R(2,9); q = '('+a+' + '+b+') × '+c+' = ?'; r = (a+b)*c; tag = '混合运算'; }
+    else { const a = R(1,8), b = R(1,10-a); q = a+'/10 + '+b+'/10 = ?（填分子，分母仍是 10）'; r = a+b; tag = '分数初步'; }
+  } else if (g === 'g4') {
+    if (lv <= 0) { const a = R(1000,5000), b = R(100,999); q = a+' + '+b+' = ?'; r = a+b; tag = '大数加法'; }
+    else if (lv === 1) { const a = R(12,29), b = R(11,19); q = a+' × '+b+' = ?'; r = a*b; tag = '两位数乘两位数'; }
+    else if (lv === 2) { const b = R(11,29), qq = R(5,20); q = (b*qq)+' ÷ '+b+' = ?'; r = qq; tag = '除数是两位数的除法'; }
+    else if (lv === 3) { const a = R(2,9), b = R(2,9), c = R(2,9), d = R(2,9); q = a+' × '+b+' + '+c+' × '+d+' = ?'; r = a*b+c*d; tag = '四则混合运算'; }
+    else { const a = R(2,9); q = a+' × 25 × 4 = ?（用简便算法）'; r = a*100; tag = '运算定律'; }
+  } else if (g === 'g5') {
+    if (lv <= 0) { const a = R(1,20)+R(1,9)/10, b = R(1,20)+R(1,9)/10; q = fmt(a)+' + '+fmt(b)+' = ?'; r = Math.round((a+b)*10)/10; step = 0.1; tag = '小数加法'; }
+    else if (lv === 1) { const a = R(5,30)/10, b = R(2,5); q = fmt(a)+' × '+b+' = ?'; r = Math.round(a*b*10)/10; step = 0.1; tag = '小数乘法'; }
+    else if (lv === 2) { const a = R(3,9)/10, b = R(2,9); q = fmt(a*b)+' ÷ '+fmt(a)+' = ?'; r = b; tag = '小数除法'; }
+    else if (lv === 3) { const b = R(2,9), x = R(2,20); q = 'x + '+b+' = '+(x+b)+'，x = ?'; r = x; tag = '简易方程'; }
+    else { const a = R(2,9), b = R(3,9); q = a+'/'+b+' ≈ ?（保留两位小数）'; r = Math.round(a/b*100)/100; step = 0.01; tag = '分数化小数'; }
+  } else {
+    if (lv <= 0) { const a = R(2,9), b = R(2,9); q = a+'/'+b+' 化成百分数约是？'; r = Math.round(a/b*1000)/10; step = 0.1; tag = '分数与百分数'; }
+    else if (lv === 1) { const a = R(1,9)*10, b = R(2,9)*10; q = b+' 的 '+a+'% = ?'; r = b*a/100; tag = '百分数应用'; }
+    else if (lv === 2) { const a = R(2,6), b = R(2,6), c = a*R(2,5); q = a+' : '+b+' = '+c+' : ?'; r = b*c/a; tag = '比例'; }
+    else if (lv === 3) { const p = R(2,9)*50; q = '原价 '+p+' 元的商品打八折，现价多少元？'; r = p*0.8; step = 5; tag = '折扣问题'; }
+    else { const r0 = R(2,9), h = R(2,9); q = '底面半径 '+r0+'、高 '+h+' 的圆柱体积是 π 的多少倍？'; r = r0*r0*h; tag = '圆柱体积'; }
+  }
+  const ws = wrongs(r, step);
+  const opts = shuffle([fmt(r), fmt(ws[0]), fmt(ws[1])]);
+  return { q, options:opts, a:opts.indexOf(fmt(r)), kn:mathKn(g, tag, r), subj:'math', lv };
+}
+function fmt(x){ return String(Math.round(x * 100) / 100); }
+function wrongs(r, step){
+  step = step || 1;
+  const seen = [Math.round(r*1000)/1000], out = [];
+  const cands = [r+step, r-step, r+step*2, r-step*2, r+step*5, r-step*5, r+step*10];
+  for (const v of cands) {
+    if (v < 0) continue;
+    const k = Math.round(v*1000)/1000;
+    if (seen.indexOf(k) >= 0) continue;
+    seen.push(k); out.push(k);
+    if (out.length >= 2) break;
+  }
+  while (out.length < 2) { const k = Math.round((r + step*(3+out.length))*1000)/1000; seen.push(k); out.push(k); }
+  return out;
+}
+/* 把生成题的操作类型对到该年级真实知识点名：
+ * 只在「节点名完整包含题目标签」时才采用图谱节点，避免张冠李戴；
+ * 否则直接显示题目自身的准确描述（如「20以内加法」） */
+function mathKn(g, tag){
+  const names = (KG_NAMES[g] || {}).math || [];
+  const exact = names.find(n => n === tag);
+  if (exact) return exact;
+  const contains = names.find(n => n.indexOf(tag) >= 0);
+  if (contains) return contains;
+  const inside = names.find(n => n.length >= 5 && tag.indexOf(n) >= 0);
+  return inside || tag;
+}
+
+/* 题库抽题：年级内各科循环取，不连续重复 */
+function pickBankQ(kind, maxLv){
+  const bank = (KG_BANK[G.grade] || {})[kind] || [];
+  if (!bank.length) return null;
+  if (!G.bags[kind] || !G.bags[kind].length) G.bags[kind] = shuffle(bank.map((_, i) => i));
+  let guard = 0;
+  /* 同一局内不重复出题；本科题目用完则返回 null，由调用方换科 */
+  while (G.bags[kind].length && guard++ < 80) {
+    const idx = G.bags[kind].pop();
+    const q = bank[idx];
+    if (q.lv > maxLv) continue;
+    if (G.usedQ.has(q.q)) continue;
+    G.usedQ.add(q.q);
+    return q;
+  }
+  return null;
+}
+function pickQuestion(){
+  const cfg = LEVELS[G.level];
+  const roll = Math.random();
+  let q = null, subj = 'math';
+  if (roll < 0.26) {
+    subj = 'en'; q = pickBankQ('en', cfg.lv);
+  } else if (roll < 0.44) {
+    subj = 'cn'; q = pickBankQ('cn', cfg.lv);
+  } else if (roll < 0.58) {
+    subj = 'sci'; q = pickBankQ('sci', cfg.lv);
+  } else if (roll < 0.66) {
+    subj = 'eth'; q = pickBankQ('eth', cfg.lv);
+  } else {
+    subj = 'math';
+    /* 难度在关卡值上下浮动，且尽量避免与已出题目重复 */
+    const mlv = clamp(cfg.lv + rand(2) - 1, 0, 4);
+    for (let t = 0; t < 8; t++) {
+      q = genMath(G.grade, mlv);
+      if (!G.usedQ.has(q.q)) break;
+    }
+    G.usedQ.add(q.q);
+  }
+  /* 该科题用完（尤其道德与法治每年级只有 2 题）→ 退回数学题，保证不重复 */
+  if (!q) {
+    subj = 'math';
+    for (let t = 0; t < 8; t++) {
+      q = genMath(G.grade, cfg.lv);
+      if (!G.usedQ.has(q.q)) break;
+    }
+    G.usedQ.add(q.q);
+  }
+  q.subj = subj;
+  G.currentQ = q;
+  G.currentOpts = q.options;
+  G.currentAnswer = q.a;
+  G.usedThisQ = [];
+  G.questionNo++;
+  G.pickedLog = G.pickedLog || [];
+  G.pickedLog.push(subj + '|' + q.q);
+  renderQuestion();
+}
+
+/* ============================================================
+ * 4. 选年级 / 组队
+ * ============================================================ */
+function renderGrades(){
+  const row = $('gradeRow'); row.innerHTML = '';
+  GRADES.forEach(g => {
+    const b = document.createElement('button');
+    b.className = 'grade-pill' + (G.grade === g.id ? ' on' : '');
+    b.textContent = g.name;
+    b.dataset.g = g.id;
+    b.addEventListener('click', () => {
+      G.grade = g.id;
+      SND.tap();
+      [...row.children].forEach(c => c.classList.toggle('on', c.dataset.g === g.id));
+      renderGradeInfo();
     });
+    row.appendChild(b);
+  });
+  renderGradeInfo();
+}
+function renderGradeInfo(){
+  const g = GRADES.find(x => x.id === G.grade);
+  const kn = KG_NAMES[G.grade] || {};
+  const total = ['math','cn','sci','eth'].reduce((s, k) => s + (kn[k] || []).length, 0);
+  const bank = KG_BANK[G.grade] || {};
+  const qn = Object.keys(bank).reduce((s, k) => s + bank[k].length, 0) + 200;
+  $('gradeInfo').innerHTML = `${g.name} · 图谱 <b>${total}</b> 个知识点 · <b>${qn}+</b> 道题 · 语文/数学/英语/科学/道德与法治`;
+}
+function renderPets(){
+  const grid = $('petGrid'); grid.innerHTML = '';
+  PETS.forEach(p => {
+    const idx = G.team.findIndex(t => t.pet.id === p.id);
+    const card = document.createElement('div');
+    card.className = 'pet-card' + (idx >= 0 ? ' sel' : '');
+    card.dataset.id = p.id;
+    const el = ELEMENTS[p.elem];
+    card.innerHTML =
+      (idx >= 0 ? `<div class="order-tag">${idx + 1}</div>` : '') +
+      `<div class="pemoji">${p.emoji}</div>
+       <div class="pname">${p.name}</div>
+       <div class="prar" style="background:${RAR_COLOR[p.rar]}22;color:${RAR_COLOR[p.rar]};border:1px solid ${RAR_COLOR[p.rar]}">${p.rar}</div>
+       <div class="elem-mini" style="color:${el.color}">${el.icon} ${el.name}</div>
+       <div class="pskill">${p.skill}</div>`;
+    card.addEventListener('click', () => togglePet(p));
     grid.appendChild(card);
   });
 }
-
-/* ================= 出题 ================= */
-function pickQuestion(){
-  const cfg=LEVELS[G.level];
-  let pool=QS.filter(q=>q.level<=cfg.maxLevel && !G.usedIds.includes(q.id));
-  // 错题回流（原著规矩#11）：30% 概率把错题重新混入
-  if(G.wrongPool.length && Math.random()<0.3){
-    const wid=G.wrongPool[rand(G.wrongPool.length)];
-    const wq=QS.find(q=>q.id===wid);
-    if(wq) pool=[wq, ...pool.filter(q=>q.id!==wid)];
+function togglePet(p){
+  const i = G.team.findIndex(t => t.pet.id === p.id);
+  if (i >= 0) G.team.splice(i, 1);
+  else if (G.team.length < 3) G.team.push({ pet:p, hp:100, maxHp:100 });
+  else { SND.tap(); $('startBtn').textContent = '最多 3 只 · 点已选的可以取消'; return; }
+  SND.tap();
+  renderPets(); renderTeamPreview();
+  const btn = $('startBtn');
+  if (G.team.length === 3) {
+    btn.disabled = false;
+    btn.textContent = `带 ${G.team.map(t => t.pet.emoji).join('')} 出发！`;
+  } else {
+    btn.disabled = true;
+    btn.textContent = `再选 ${3 - G.team.length} 只宠物出发`;
   }
-  if(!pool.length){ G.usedIds=[]; pool=QS.filter(q=>q.level<=cfg.maxLevel); }
-  const q=pool[rand(pool.length)];
-  G.usedIds.push(q.id);
-  // 生成选项（打乱），记录正确项新下标
-  const order=[0,1,2,3].sort(()=>Math.random()-.5);
-  const opts=order.map(i=>q.options[i]);
-  const answer=order.indexOf(q.a);
-  G.currentQ=q; G.currentOpts=opts; G.currentAnswer=answer;
-  G.usedThisQ=[];
-  G.questionNo++;
-  return q;
+}
+function renderTeamPreview(){
+  const bar = $('teamBar'); bar.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const t = G.team[i];
+    const d = document.createElement('div');
+    if (t) {
+      const el = ELEMENTS[t.pet.elem];
+      d.className = 'team-slot filled';
+      d.innerHTML = `<span class="semoji">${t.pet.emoji}</span><span>${t.pet.name}<br><span class="elem-mini" style="color:${el.color}">${el.icon}${el.name}</span></span>`;
+    } else {
+      d.className = 'team-slot';
+      d.textContent = `空位 ${i + 1}`;
+    }
+    bar.appendChild(d);
+  }
+  // 四关敌人属性 + 队伍是否带克制
+  const els = G.team.map(t => t.pet.elem);
+  const parts = LEVELS.map(L => {
+    const el = ELEMENTS[L.elem];
+    const ok = els.some(e => ELEM_ADV[e] === L.elem);
+    return `<span class="${ok ? 'ok' : 'no'}">${el.icon}${el.name}${ok ? '✓' : '×'}</span>`;
+  });
+  $('rosterHint').innerHTML = `远征路线：${parts.join(' → ')}<br><span style="opacity:.75">✓ = 队伍里有克制它的宠物</span>`;
+}
+
+/* ============================================================
+ * 5. 战斗界面
+ * ============================================================ */
+function activeT(){ return G.team[G.active]; }
+function elemMult(atk, def){
+  if (ELEM_ADV[atk] === def) return ELEM_ADV_MULT;
+  if (ELEM_ADV[def] === atk) return ELEM_WEAK_MULT;
+  return 1;
+}
+function advTag(petElem, enemyElem){
+  if (ELEM_ADV[petElem] === enemyElem) return '▲';
+  if (ELEM_ADV[enemyElem] === petElem) return '▼';
+  return '';
 }
 function renderQuestion(){
-  const q=G.currentQ, cfg=LEVELS[G.level];
-  $('qSubj').textContent=`${q.icon} ${q.subj}`;
-  $('qProgress').textContent=`第 ${G.questionNo} 题 · ${cfg.name}`;
-  $('qText').textContent=q.q;
-  const box=$('qOptions'); box.innerHTML='';
-  G.currentOpts.forEach((txt,i)=>{
-    const b=document.createElement('button');
-    b.className='opt'; b.textContent=txt; b.dataset.i=i;
-    b.addEventListener('click',()=>answerQuestion(i,b));
+  const q = G.currentQ, cfg = LEVELS[G.level];
+  const meta = SUBJ_META[q.subj] || SUBJ_META.math;
+  $('qSubj').textContent = `${meta.icon} ${meta.name}`;
+  $('qKn').textContent = q.kn ? `知识点 · ${q.kn}` : '';
+  $('qProgress').textContent = `第 ${G.questionNo} 题 · ${cfg.name}`;
+  $('qText').textContent = q.q;
+  const box = $('qOptions'); box.innerHTML = '';
+  G.currentOpts.forEach((txt, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = txt;
+    b.dataset.i = i;
+    b.addEventListener('click', () => answerQuestion(i, b));
     box.appendChild(b);
   });
   updateNoteBtn();
 }
 function updateNoteBtn(){
-  const b=$('noteBtn');
-  b.textContent=`📓 米娅的笔记（去掉一个错项） ×${G.notes}`;
-  b.disabled=G.notes<=0 || G.usedThisQ.includes(G.currentAnswer)===false && G.notes<=0;
-  b.disabled = G.notes<=0;
+  const b = $('noteBtn');
+  b.textContent = `📓 米娅的笔记 ×${G.notes}`;
+  b.disabled = G.notes <= 0;
 }
-
-/* ================= HUD 更新 ================= */
 function updateHUD(){
-  const cfg=LEVELS[G.level];
-  $('chapter').textContent=`第 ${G.level+1} 关 · ${cfg.name}`;
-  $('enemyName').textContent=cfg.enemy+(cfg.boss?` · 第${G.bossPhase+1}阶`:'');
-  $('enemyEmoji').textContent=cfg.emoji;
-  $('notes').textContent=`📓 ×${G.notes}`;
-  // 血条
-  const ep=clamp(G.enemyHp/G.enemyMax*100,0,100);
-  $('enemyHpFill').style.width=ep+'%';
-  $('enemyHpTxt').textContent=`${Math.max(0,Math.ceil(G.enemyHp))}/${G.enemyMax}`;
-  const pp=clamp(G.playerHp/100*100,0,100);
-  $('playerHpFill').style.width=pp+'%';
-  $('playerHpTxt').textContent=`${Math.max(0,Math.ceil(G.playerHp))}/100`;
-  $('playerName').innerHTML=`${G.pet.name} <small style="background:${RAR_COLOR[G.pet.rar]}22;color:${RAR_COLOR[G.pet.rar]}">${G.pet.rar}</small>`;
-  $('playerEmoji').textContent=G.pet.emoji;
-  // 连击
-  const cb=$('combo');
-  if(G.combo>=2){ cb.classList.remove('hidden'); $('comboNum').textContent=G.combo;
-    cb.style.color=G.combo>=5?'#ff7a4d':G.combo>=3?'#f5b301':'#fff'; }
-  else cb.classList.add('hidden');
-  // Boss 阶段提示
-  const bp=$('bossPhase');
-  if(cfg.boss){ bp.classList.remove('hidden'); bp.textContent=`第 ${G.bossPhase+1} / 3 阶段`; }
+  const cfg = LEVELS[G.level], t = activeT();
+  const gname = (GRADES.find(x => x.id === G.grade) || {}).name || '';
+  $('chapter').textContent = `${gname} · 第 ${G.level + 1} 关 ${cfg.name}`;
+  $('enemyName').textContent = cfg.enemy;
+  $('enemyEmoji').textContent = cfg.emoji;
+  const ee = ELEMENTS[cfg.elem];
+  $('enemyElem').innerHTML = `<span class="elem-chip" style="color:${ee.color}">${ee.icon} ${ee.name}</span>`;
+  $('enemyElem').style.color = ee.color;
+  const ep = clamp(G.enemyHp / G.enemyMax * 100, 0, 100);
+  $('enemyHpFill').style.width = ep + '%';
+  $('enemyHpTxt').textContent = `${Math.max(0, Math.ceil(G.enemyHp))}/${G.enemyMax}`;
+  if (t) {
+    const pp = clamp(t.hp / t.maxHp * 100, 0, 100);
+    $('playerHpFill').style.width = pp + '%';
+    $('playerHpTxt').textContent = `${Math.max(0, Math.ceil(t.hp))}/${t.maxHp}`;
+    const pe = ELEMENTS[t.pet.elem];
+    const at = advTag(t.pet.elem, cfg.elem);
+    $('playerName').innerHTML = `${t.pet.name}` +
+      `<small style="background:${RAR_COLOR[t.pet.rar]}22;color:${RAR_COLOR[t.pet.rar]}">${t.pet.rar}</small>` +
+      `<span class="elem-mini" style="color:${pe.color};margin-left:4px">${pe.icon}${pe.name}${at ? ' ' + at : ''}</span>`;
+    $('playerEmoji').textContent = t.pet.emoji;
+  }
+  const cb = $('combo');
+  if (G.combo >= 2) {
+    cb.classList.remove('hidden');
+    $('comboNum').textContent = G.combo;
+    cb.style.color = G.combo >= 5 ? '#ff7a4d' : G.combo >= 3 ? '#f5b301' : '#fff';
+  } else cb.classList.add('hidden');
+  const bp = $('bossPhase');
+  if (cfg.boss) { bp.classList.remove('hidden'); bp.textContent = `第 ${G.bossPhase} / 3 阶段`; }
   else bp.classList.add('hidden');
+  syncTeamRow();
+  renderArena(cfg, t);
+}
+/* 战场中部：4 关进度点 + 当前属性关系（克制/被克/平） */
+function renderArena(cfg, t){
+  const dots = $('lvDots');
+  dots.innerHTML = '';
+  for (let i = 0; i < LEVELS.length; i++) {
+    const d = document.createElement('div');
+    d.className = 'lv-dot' + (i < G.level ? ' done' : i === G.level ? ' now' : '');
+    dots.appendChild(d);
+  }
+  if (!t) { $('elemHint').textContent = ''; return; }
+  const pe = ELEMENTS[t.pet.elem], ee = ELEMENTS[cfg.elem];
+  const m = elemMult(t.pet.elem, cfg.elem);
+  let txt, cls;
+  if (m > 1.2) { txt = `属性克制 · 伤害 ×${ELEM_ADV_MULT}`; cls = 'adv'; }
+  else if (m < 0.9) { txt = `被克制 · 伤害只有 ×${ELEM_WEAK_MULT}，换只宠物试试`; cls = 'weak'; }
+  else { txt = '平属性 · 正常伤害'; cls = 'even'; }
+  $('elemHint').innerHTML =
+    `<span style="color:${pe.color}">${pe.icon}${pe.name}</span> 打 ` +
+    `<span style="color:${ee.color}">${ee.icon}${ee.name}</span> → <b class="${cls}">${txt}</b>`;
+}
+function buildTeamRow(){
+  const row = $('teamRow'); row.innerHTML = '';
+  G.team.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.className = 'tm-btn';
+    b.dataset.i = i;
+    b.innerHTML = `<span class="temoji">${t.pet.emoji}</span>
+      <span class="tmeta"><span class="tname">${t.pet.name}</span><span class="thp"><i></i></span></span>
+      <span class="tadv"></span>`;
+    b.addEventListener('click', () => switchPet(i));
+    row.appendChild(b);
+  });
+  syncTeamRow();
+}
+function syncTeamRow(){
+  const cfg = LEVELS[G.level];
+  [...$('teamRow').children].forEach((b, i) => {
+    const t = G.team[i]; if (!t) return;
+    b.classList.toggle('active', i === G.active);
+    b.classList.toggle('down', t.hp <= 0);
+    b.querySelector('.thp i').style.width = clamp(t.hp / t.maxHp * 100, 0, 100) + '%';
+    const adv = advTag(t.pet.elem, cfg.elem);
+    b.querySelector('.tadv').textContent = t.hp > 0 ? adv : '';
+  });
 }
 
-/* ================= 裁决 ================= */
-function floatDmg(text,good,nearEnemy=true){
-  const d=document.createElement('div');
-  d.className='dmg '+(good?'good':'bad'); d.textContent=text;
-  const r=(nearEnemy?$('enemyEmoji'):$('playerEmoji')).getBoundingClientRect();
-  const s=$('stage').getBoundingClientRect();
-  d.style.left=(r.left-s.left+r.width/2-20)+'px';
-  d.style.top=(r.top-s.top+10)+'px';
+/* ============================================================
+ * 6. 裁决
+ * ============================================================ */
+function floatDmg(text, kind, nearEnemy){
+  const d = document.createElement('div');
+  d.className = 'dmg ' + kind;
+  d.textContent = text;
+  const r = (nearEnemy ? $('enemyEmoji') : $('playerEmoji')).getBoundingClientRect();
+  const s = $('stage').getBoundingClientRect();
+  d.style.left = (r.left - s.left + r.width / 2 - 22) + 'px';
+  d.style.top = (r.top - s.top + 8) + 'px';
   $('stage').appendChild(d);
-  setTimeout(()=>d.remove(),1000);
+  setTimeout(() => d.remove(), 1000);
 }
-function answerQuestion(i,btn){
-  if(G.lock || G.state!=='battle') return;
-  G.lock=true;
-  const correct = i===G.currentAnswer;
-  const opts=[...$('qOptions').children];
-  // 标记答案
-  opts.forEach((b,idx)=>{ b.style.pointerEvents='none'; if(idx===G.currentAnswer) b.classList.add('right'); });
-  const cfg=LEVELS[G.level];
-  if(correct){
-    G.combo++; G.maxCombo=Math.max(G.maxCombo,G.combo); G.correctCount++;
-    const bonus=RAR_BONUS[G.pet.rar]||0;
-    const mult=1+0.25*Math.min(G.combo-1,4);
-    const dmg=Math.round((25+bonus)*mult);
-    bigVerdict(G.combo>=3?`连击 ×${G.combo}！漂亮！`:'命中！', true);
-    $('battleLog').textContent=`${G.pet.skill}！连击 ×${G.combo}，造成 ${dmg} 点伤害！`;
-    enemyCast(dmg);
-  }else{
+function bigVerdict(text, cls){
+  const d = document.createElement('div');
+  d.className = 'verdict ' + cls;
+  d.textContent = text;
+  d.style.top = (FH * 0.45) + 'px';   // 落在战场中部空白处，不压住血条和战斗日志
+  $('stage').appendChild(d);
+  setTimeout(() => d.remove(), 1100);
+}
+function answerQuestion(i, btn){
+  if (G.lock || G.state !== 'battle') return;
+  G.lock = true;
+  const correct = i === G.currentAnswer;
+  const opts = [...$('qOptions').children];
+  opts.forEach((b, idx) => {
+    b.style.pointerEvents = 'none';
+    if (idx === G.currentAnswer) b.classList.add('right');
+  });
+  if (correct) {
+    const t = activeT();
+    G.combo++;
+    G.maxCombo = Math.max(G.maxCombo, G.combo);
+    G.correctCount++;
+    const meta = SUBJ_META[G.currentQ.subj] || SUBJ_META.math;
+    if (G.currentQ.kn) G.knHit[`${meta.name} · ${G.currentQ.kn}`] = 1;
+    const em = elemMult(t.pet.elem, LEVELS[G.level].elem);
+    const comboMult = 1 + 0.25 * Math.min(G.combo - 1, 4);
+    const base = 20 + (RAR_BONUS[t.pet.rar] || 0);
+    const dmg = Math.max(6, Math.round(base * em * comboMult));
+    const isCrit = em > 1.2;
+    if (isCrit) { bigVerdict('克制！', 'v-crit'); SND.crit(); }
+    else if (G.combo >= 3) { bigVerdict(`连击 ×${G.combo}！`, 'v-good'); SND.correct(G.combo); }
+    else { bigVerdict('命中！', 'v-good'); SND.correct(G.combo); }
+    $('battleLog').textContent = `${t.pet.skill}！${isCrit ? '属性克制，' : ''}造成 ${dmg} 点伤害${G.combo >= 2 ? `（连击 ×${G.combo}）` : ''}`;
+    enemyCast(dmg, isCrit);
+  } else {
     btn.classList.add('wrong');
-    G.combo=0; G.wrongCount++;
-    G.wrongPool.push(G.currentQ.id);
-    const dmg=12;
-    G.playerHp=clamp(G.playerHp-dmg,0,100);
-    G.enemyHp=clamp(G.enemyHp+(cfg.boss?12:8),0,G.enemyMax);
-    bigVerdict('再想想～', false);
-    $('battleLog').textContent='再想想～ 这次没打中，宠物鼓励你继续！';
+    G.combo = 0;
+    G.wrongCount++;
+    const t = activeT();
+    const dmg = LEVELS[G.level].boss ? 20 : 16;
+    t.hp = clamp(t.hp - dmg, 0, t.maxHp);
+    if (G.currentQ) G.wrongPool.push(G.currentQ.q);
+    bigVerdict('再想想～', 'v-bad');
+    SND.wrong();
+    $('battleLog').textContent = '答错了，' + t.pet.name + '被反击，掉了 ' + dmg + ' 点体力。看看正确答案，下一题再来！';
     enemyAttack(dmg);
   }
   updateHUD();
 }
-function enemyCast(dmg){
-  const pe=$('playerEmoji'); pe.classList.remove('cast'); void pe.offsetWidth; pe.classList.add('cast');
-  setTimeout(()=>{
-    G.enemyHp=clamp(G.enemyHp-dmg,0,G.enemyMax);
-    const ee=$('enemyEmoji'); ee.classList.remove('hit'); void ee.offsetWidth; ee.classList.add('hit');
-    const r=ee.getBoundingClientRect(); const s=$('stage').getBoundingClientRect();
-    burst(r.left-s.left+r.width/2, r.top-s.top+r.height/2, '#ffd23f', 20);
-    floatDmg('-'+dmg,true,true); flash('rgba(255,220,140,.35)');
+function enemyCast(dmg, crit){
+  const pe = $('playerEmoji');
+  pe.classList.remove('cast'); void pe.offsetWidth; pe.classList.add('cast');
+  setTimeout(() => {
+    G.enemyHp = clamp(G.enemyHp - dmg, 0, G.enemyMax);
+    const ee = $('enemyEmoji');
+    ee.classList.remove('hit'); void ee.offsetWidth; ee.classList.add('hit');
+    const r = ee.getBoundingClientRect(), s = $('stage').getBoundingClientRect();
+    burst(r.left - s.left + r.width/2, r.top - s.top + r.height/2, crit ? '#7ae0ff' : '#ffd23f', crit ? 28 : 20);
+    floatDmg('-' + dmg, crit ? 'crit' : 'good', true);
+    flash(crit ? 'rgba(140,220,255,.35)' : 'rgba(255,220,140,.32)');
+    SND.hit();
     updateHUD();
     afterHit();
-  },320);
+  }, 300);
 }
 function enemyAttack(dmg){
-  setTimeout(()=>{
-    const ee=$('enemyEmoji'); ee.classList.remove('grow'); void ee.offsetWidth; ee.classList.add('grow');
-    const pe=$('playerEmoji'); pe.classList.remove('hurt'); void pe.offsetWidth; pe.classList.add('hurt');
-    const r=pe.getBoundingClientRect(); const s=$('stage').getBoundingClientRect();
-    burst(r.left-s.left+r.width/2, r.top-s.top+r.height/2, '#ff8fa8', 12);
-    floatDmg('-'+dmg,false,false);
+  setTimeout(() => {
+    const ee = $('enemyEmoji');
+    ee.classList.remove('grow'); void ee.offsetWidth; ee.classList.add('grow');
+    const pe = $('playerEmoji');
+    pe.classList.remove('hurt'); void pe.offsetWidth; pe.classList.add('hurt');
+    const r = pe.getBoundingClientRect(), s = $('stage').getBoundingClientRect();
+    burst(r.left - s.left + r.width/2, r.top - s.top + r.height/2, '#ff8fa8', 14);
+    floatDmg('-' + dmg, 'bad', false);
+    SND.hurt();
     updateHUD();
     afterHit();
-  },280);
+  }, 260);
 }
 function afterHit(){
-  const cfg=LEVELS[G.level];
-  if(G.enemyHp<=0){
-    // Boss 阶段推进
-    if(cfg.boss && G.bossPhase<2){
+  const cfg = LEVELS[G.level];
+  /* 敌人倒下 */
+  if (G.enemyHp <= 0) {
+    if (cfg.boss && G.bossPhase < 3) {
       G.bossPhase++;
-      G.enemyMax=cfg.hp; G.enemyHp=Math.round(cfg.hp*(1-G.bossPhase/3));
-      pages(FW/2,FH*0.35,16); flash('rgba(255,230,160,.6)');
-      $('battleLog').textContent=['','题目在变少，它也变小了！','就快成功了，再来！'][G.bossPhase];
-      updateHUD(); G.lock=false; nextQuestion(); return;
+      G.enemyMax = Math.max(60, Math.round(cfg.hp * (1 - G.bossPhase / 4)));
+      G.enemyHp = G.enemyMax;
+      pages(FW/2, FH*0.32, 16);
+      flash('rgba(255,230,160,.6)');
+      SND.boss();
+      $('battleLog').textContent = ['', '', '它散成书页，又重新聚起来了——还有两下！', '最后一段了，别放松！'][G.bossPhase] || '它又变了！';
+      updateHUD(); G.lock = false; setTimeout(nextQ, 900); return;
     }
-    // 过关
-    pages(FW/2,FH*0.35,22); flash('rgba(255,230,160,.7)');
-    G.state='levelClear';
-    $('clearTitle').textContent=cfg.boss?'知识魔王散成书页了！':'过关！';
-    $('clearSub').textContent=cfg.boss?'“你们真的学会了。”':'敌人碎成了书页';
-    setTimeout(()=>$('levelClear').classList.remove('hidden'),450);
+    pages(FW/2, FH*0.32, 22);
+    flash('rgba(255,230,160,.7)');
+    G.state = 'levelClear';
+    SND.clear();
+    $('clearTitle').textContent = cfg.boss ? '知识魔王散成书页了！' : '过关！';
+    $('clearSub').textContent = cfg.boss ? '“你们真的学会了。”' : '敌人碎成了书页';
+    setTimeout(() => $('levelClear').classList.remove('hidden'), 420);
     return;
   }
-  if(G.playerHp<=0){
-    G.state='defeat';
-    setTimeout(()=>$('defeat').classList.remove('hidden'),400);
+  /* 我方倒下 */
+  if (activeT().hp <= 0) {
+    SND.faint();
+    const down = G.team.map((t, i) => t.hp <= 0 ? i : -1).filter(i => i >= 0);
+    if (down.length >= G.team.length) {
+      G.state = 'defeat';
+      SND.defeat();
+      setTimeout(() => $('defeat').classList.remove('hidden'), 400);
+      return;
+    }
+    /* 优先接给「下一只还站着的」宠物，保持队伍轮转 */
+    let next = -1;
+    for (let k = 1; k <= G.team.length; k++) {
+      const j = (G.active + k) % G.team.length;
+      if (G.team[j].hp > 0) { next = j; break; }
+    }
+    G.active = next;
+    $('battleLog').textContent = `${G.team[next].pet.name} 接棒上场！继续答题。`;
+    updateHUD();
+    G.lock = false;
+    setTimeout(nextQ, 760);
     return;
   }
-  G.lock=false;
-  setTimeout(()=>{ if(G.state==='battle' && !G.lock) nextQuestion(); }, 520);
+  G.lock = false;
+  setTimeout(nextQ, 480);
 }
-function nextQuestion(){ pickQuestion(); renderQuestion(); }
+function nextQ(){
+  if (G.state !== 'battle' || G.lock) return;
+  pickQuestion();
+}
+function switchPet(i){
+  if (G.state !== 'battle') return;
+  const t = G.team[i];
+  if (!t || t.hp <= 0 || i === G.active) return;
+  G.active = i;
+  SND.swap();
+  const el = ELEMENTS[t.pet.elem], ee = ELEMENTS[LEVELS[G.level].elem];
+  const at = advTag(t.pet.elem, LEVELS[G.level].elem);
+  $('battleLog').textContent = `${t.pet.name} 上场！` +
+    (at === '▲' ? `属性克制 ${ee.name}，伤害 ×${ELEM_ADV_MULT}` : at === '▼' ? `被 ${ee.name} 克制，伤害只有 ×${ELEM_WEAK_MULT}` : '平属性，正常伤害');
+  updateHUD();
+}
 
-/* ================= 流程控制 ================= */
+/* ============================================================
+ * 7. 流程
+ * ============================================================ */
 function startGame(){
-  if(!G.pet) return;
-  G.state='battle'; G.level=0; G.playerHp=100; G.combo=0; G.maxCombo=0;
-  G.correctCount=0; G.wrongCount=0; G.questionNo=0; G.usedIds=[]; G.wrongPool=[];
-  G.notes=2; G.bossPhase=0; G.startTime=performance.now(); G.lock=false;
-  particles=[]; flashes=[];
+  if (G.team.length !== 3) return;
+  G.team.forEach(t => { t.hp = t.maxHp; });
+  G.state = 'battle';
+  G.level = 0; G.bossPhase = 1;
+  G.combo = 0; G.maxCombo = 0; G.correctCount = 0; G.wrongCount = 0;
+  G.questionNo = 0; G.notes = 2; G.bags = {}; G.usedQ = new Set(); G.pickedLog = []; G.wrongPool = []; G.knHit = {};
+  G.active = 0; G.lock = false; G.startTime = performance.now();
+  particles = []; flashes = [];
+  const cfg = LEVELS[0];
+  G.enemyMax = cfg.hp; G.enemyHp = cfg.hp;
   $('selectView').classList.add('hidden');
   $('resultView').classList.add('hidden');
   $('defeat').classList.add('hidden');
   $('levelClear').classList.add('hidden');
   $('battleView').classList.remove('hidden');
-  const cfg=LEVELS[0]; G.enemyMax=cfg.hp; G.enemyHp=cfg.hp;
-  updateHUD(); nextQuestion();
-  $('battleLog').textContent='选正确答案，让宠物出招！';
+  buildTeamRow();
+  updateHUD();
+  $('battleLog').textContent = `${cfg.enemy}（${ELEMENTS[cfg.elem].name}）挡在前面，答对题目让宠物出招！`;
+  nextQ();
+  SND.tap();
 }
 function goNextLevel(){
   $('levelClear').classList.add('hidden');
   G.level++;
-  if(G.level>=LEVELS.length){ showResult(); return; }
-  const cfg=LEVELS[G.level];
-  G.enemyMax=cfg.hp; G.enemyHp=cfg.hp; G.bossPhase=0; G.combo=0;
-  G.playerHp=clamp(G.playerHp+20,0,100);   // 过关回复 20
-  G.state='battle'; G.lock=false;
-  updateHUD(); nextQuestion();
-  $('battleLog').textContent=cfg.boss?'最终关：知识魔王！答对削块，答错它会长大。':'新的一关，继续！';
+  if (G.level >= LEVELS.length) { showResult(); return; }
+  const cfg = LEVELS[G.level];
+  G.team.forEach(t => { if (t.hp > 0) t.hp = clamp(t.hp + 18, 0, t.maxHp); });
+  G.enemyMax = cfg.hp; G.enemyHp = cfg.hp;
+  G.bossPhase = 1; G.combo = 0;
+  G.notes = Math.min(3, G.notes + 1);
+  G.state = 'battle'; G.lock = false;
+  updateHUD();
+  const hasCounter = G.team.some(t => t.hp > 0 && ELEM_ADV[t.pet.elem] === cfg.elem);
+  $('battleLog').textContent = cfg.boss
+    ? '最终关：知识魔王（暗）！答对削它，答错它反击。'
+    : `${cfg.enemy} 是 ${ELEMENTS[cfg.elem].name} 属性` + (hasCounter ? '，换克制的宠物上场伤害更高！' : '，队伍里没有克制它的属性，靠连击硬打！');
+  if (cfg.boss) SND.boss();
+  nextQ();
 }
 function showResult(){
-  G.state='result';
+  G.state = 'result';
+  $('chapter').textContent = '远征完成';
   $('battleView').classList.add('hidden');
   $('resultView').classList.remove('hidden');
-  const sec=Math.max(0,Math.round((performance.now()-G.startTime)/1000));
-  const acc=G.correctCount+G.wrongCount ? Math.round(G.correctCount/(G.correctCount+G.wrongCount)*100) : 0;
-  $('resStats').innerHTML=`
-    用时 <b>${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}</b><br>
-    答对 <b>${G.correctCount}</b> 题 · 答错 ${G.wrongCount} 题<br>
-    正确率 <b>${acc}%</b> · 最高连击 <b>${G.maxCombo}</b><br>
-    出战宠物 ${G.pet.emoji} ${G.pet.name}`;
-  if(G.wrongPool.length){
-    const uniq=[...new Set(G.wrongPool)];
-    $('resWrong').innerHTML='<h3>这些题目值得再看一眼（它们会回来找你）：</h3>'+
-      uniq.slice(0,6).map(id=>{const q=QS.find(x=>x.id===id);return q?'· '+q.q:'';}).join('<br>');
-  } else $('resWrong').innerHTML='';
+  const sec = Math.max(0, Math.round((performance.now() - G.startTime) / 1000));
+  const total = G.correctCount + G.wrongCount;
+  const acc = total ? Math.round(G.correctCount / total * 100) : 0;
+  $('resStats').innerHTML =
+    `用时 <b>${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}</b><br>` +
+    `答对 <b>${G.correctCount}</b> 题 · 答错 ${G.wrongCount} 题<br>` +
+    `正确率 <b>${acc}%</b> · 最高连击 <b>${G.maxCombo}</b><br>` +
+    `年级 <b>${(GRADES.find(g => g.id === G.grade) || {}).name || ''}</b> · 队伍 ${G.team.map(t => t.pet.emoji).join('')}`;
+  const kns = Object.keys(G.knHit);
+  $('resKn').innerHTML = kns.length
+    ? '<h3>本局点亮的知识点（答对即掌握）</h3>' + kns.slice(0, 14).map(k => `<span class="kn-chip">${k}</span>`).join('')
+    : '';
+  const uniq = [...new Set(G.wrongPool)];
+  $('resWrong').innerHTML = uniq.length
+    ? '<h3>这几题值得再看一眼</h3>' + uniq.slice(0, 6).map(x => '· ' + x).join('<br>')
+    : '';
+  SND.victory();
 }
 function retry(){
   $('defeat').classList.add('hidden');
@@ -312,50 +756,94 @@ function retry(){
 }
 function again(){
   $('resultView').classList.add('hidden');
-  G.pet=null;
-  $('startBtn').disabled=true; $('startBtn').textContent='选择宠物后出发';
-  G.state='select';
+  G.team = [];
+  G.state = 'select';
+  $('startBtn').disabled = true;
+  $('startBtn').textContent = '再选 3 只宠物出发';
   $('selectView').classList.remove('hidden');
-  renderSelect();
+  renderPets(); renderTeamPreview();
+  SND.tap();
 }
 function useNote(){
-  if(G.state!=='battle'||G.lock||G.notes<=0) return;
-  const wrongIdx=[];
-  G.currentOpts.forEach((_,i)=>{ if(i!==G.currentAnswer && !G.usedThisQ.includes(i)) wrongIdx.push(i); });
-  if(!wrongIdx.length) return;
-  const pick=wrongIdx[rand(wrongIdx.length)];
-  G.usedThisQ.push(pick); G.notes--;
-  const b=$('qOptions').children[pick]; if(b) b.classList.add('removed');
-  $('battleLog').textContent='米娅帮你划掉了一个错误答案！';
+  if (G.state !== 'battle' || G.lock || G.notes <= 0) return;
+  const cands = [];
+  G.currentOpts.forEach((_, i) => {
+    if (i !== G.currentAnswer && !G.usedThisQ.includes(i)) cands.push(i);
+  });
+  if (!cands.length) return;
+  const pick = cands[rand(cands.length)];
+  G.usedThisQ.push(pick);
+  G.notes--;
+  const b = $('qOptions').children[pick];
+  if (b) b.classList.add('removed');
+  $('battleLog').textContent = '米娅帮你划掉了一个错误答案！';
+  SND.tap();
   updateNoteBtn(); updateHUD();
 }
 
-/* ================= 事件绑定 ================= */
-$('startBtn').addEventListener('click',startGame);
-$('nextBtn').addEventListener('click',goNextLevel);
-$('retryBtn').addEventListener('click',retry);
-$('againBtn').addEventListener('click',again);
-$('noteBtn').addEventListener('click',useNote);
+/* ============================================================
+ * 8. 怎么玩
+ * ============================================================ */
+function showHowto(force){
+  if (!force && localStorage.getItem('battle.howto.seen') === '1') return;
+  $('howto').classList.remove('hidden');
+}
+function hideHowto(){
+  localStorage.setItem('battle.howto.seen', '1');
+  $('howto').classList.add('hidden');
+}
 
-/* ================= 调试接口（QA） ================= */
+/* ============================================================
+ * 9. 事件绑定
+ * ============================================================ */
+$('startBtn').addEventListener('click', startGame);
+$('nextBtn').addEventListener('click', goNextLevel);
+$('retryBtn').addEventListener('click', retry);
+$('againBtn').addEventListener('click', again);
+$('noteBtn').addEventListener('click', useNote);
+$('soundBtn').addEventListener('click', () => SND.toggle());
+$('helpBtn').addEventListener('click', () => { SND.tap(); showHowto(true); });
+$('howtoGo').addEventListener('click', () => { SND.tap(); hideHowto(); });
+
+/* ============================================================
+ * 10. 调试接口（QA 用）
+ * ============================================================ */
 window.__battle = {
   get state(){ return G.state; },
-  get hp(){ return G.playerHp; },
+  get grade(){ return G.grade; },
+  get team(){ return G.team.map(t => ({ id:t.pet.id, name:t.pet.name, elem:t.pet.elem, hp:t.hp })); },
+  get active(){ return G.active; },
+  get hp(){ return activeT() ? activeT().hp : 0; },
   get enemyHp(){ return G.enemyHp; },
+  get enemyElem(){ return LEVELS[G.level].elem; },
   get combo(){ return G.combo; },
   get level(){ return G.level; },
-  get correctCount(){ return G.correctCount; },
-  get question(){ return G.currentQ ? G.currentQ.id : null; },
+  get notes(){ return G.notes; },
+  get question(){ return G.currentQ ? { q:G.currentQ.q, kn:G.currentQ.kn, subj:G.currentQ.subj, opts:G.currentOpts } : null; },
+  get picked(){ return (G.pickedLog || []).slice(); },
   get answer(){ return G.currentAnswer; },
-  selectPet(id){ const p=PETS.find(x=>x.id===id); if(p){G.pet=p; return true;} return false; },
-  answer(i){ answerQuestion(i, $('qOptions').children[i]); },
+  setGrade(g){ G.grade = g; renderGrades(); },
+  setTeam(ids){ G.team = ids.map(id => { const p = PETS.find(x => x.id === id); return p ? { pet:p, hp:100, maxHp:100 } : null; }).filter(Boolean); renderPets(); renderTeamPreview(); $('startBtn').disabled = G.team.length !== 3; },
+  start(){ startGame(); },
   correct(){ answerQuestion(G.currentAnswer, $('qOptions').children[G.currentAnswer]); },
-  wrong(){ const i=[0,1,2,3].find(x=>x!==G.currentAnswer); answerQuestion(i, $('qOptions').children[i]); },
+  wrong(){ const i = [...Array(G.currentOpts.length).keys()].find(x => x !== G.currentAnswer); answerQuestion(i, $('qOptions').children[i]); },
   next(){ goNextLevel(); },
+  swap(i){ switchPet(i); },
   restart(){ startGame(); },
-  get petName(){ return G.pet?G.pet.name:null; }
+  setMute(m){ SND.muted = !!m; localStorage.setItem('battle.muted', m ? '1' : '0'); }
 };
 
-/* ================= 启动 ================= */
-function boot(){ resize(); renderSelect(); requestAnimationFrame(loop); }
+/* ============================================================
+ * 11. 启动
+ * ============================================================ */
+function boot(){
+  resize();
+  $('soundBtn').textContent = SND.muted ? '🔇' : '🔊';
+  $('soundBtn').classList.toggle('off', SND.muted);
+  renderGrades();
+  renderPets();
+  renderTeamPreview();
+  requestAnimationFrame(loop);
+  setTimeout(() => showHowto(false), 400);
+}
 boot();

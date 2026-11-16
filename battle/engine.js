@@ -150,15 +150,21 @@ const LEARN = (function () {
     }
     return ids[ids.length - 1];
   }
+  /* 「已掌握」显示口径：答对≥2次且熟练度≥2 即算入门掌握，短局也能看到增长。
+     调度（weight/reviewPick）仍按完整 s 模型走，二者互不影响。 */
   function masteredCount(grade) {
+    var g = data[grade] || {};
+    return Object.keys(g).filter(function (k) { return (g[k].s || 0) >= 2 && (g[k].ok || 0) >= 2; }).length;
+  }
+  function learnedCount(grade) { return Object.keys(data[grade] || {}).length; }
+  function solidCount(grade) {
     var g = data[grade] || {};
     return Object.keys(g).filter(function (k) { return (g[k].s || 0) >= 4 && (g[k].ok || 0) >= 2; }).length;
   }
-  function learnedCount(grade) { return Object.keys(data[grade] || {}).length; }
   function stats(grade) {
     var g = data[grade] || {}, ok = 0, no = 0;
     Object.keys(g).forEach(function (k) { ok += g[k].ok || 0; no += g[k].no || 0; });
-    return { learned: learnedCount(grade), mastered: masteredCount(grade), ok: ok, no: no };
+    return { learned: learnedCount(grade), mastered: masteredCount(grade), solid: solidCount(grade), ok: ok, no: no };
   }
 
   /* ---------- 多题型判定 ----------
@@ -204,7 +210,7 @@ const LEARN = (function () {
     record: record, get: get, resetGrade: resetGrade, weight: weight,
     stages: stages, reviewPick: reviewPick, pickFromKid: pickFromKid, questionsFor: questionsFor,
     judge: judge, normalize: normalize, masteredCount: masteredCount,
-    learnedCount: learnedCount, stats: stats, cloneQ: cloneQ,
+    learnedCount: learnedCount, solidCount: solidCount, stats: stats, cloneQ: cloneQ,
     get data() { return data; }
   };
 })();

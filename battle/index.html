@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 <script>
 /* 加载守护：任何未捕获的错误都显示出来，而不是静默白屏 */
 (function(){
@@ -202,16 +202,16 @@
         <li><b>三种题型</b>：选择题点选项；填空题输入答案；简答题写完自评。答案都来自真实题库，不会出错。</li>
         <li><b>温故知新</b>：每 4 题穿插 1 道旧知识复习；答对的题会越来越少出现，错得多的会更频繁地回来。</li>
         <li><b>答对＝出招</b>：宠物冲向敌人，伤害＝基础×连击×属性克制（克制 ×1.6、被克 ×0.7）。</li>
-        <li><b>无限远征</b>：8 站通关后点「♾️ 无限远征」，知识点源源不断，一直学、一直拿掉落。</li>
+        <li><b>无限远征</b>：全部单元通关后点「♾️ 无限远征」，按单元顺序一直学下去、一直拿掉落，通关后进度记得住。</li>
       </ol>
       <p class="howto-tip">目标是养成每天学一点的好习惯，不赶进度——答错不淘汰，换只宠物接着来。右上 🔊 开关音乐。</p>
       <button id="howtoGo" class="big-btn">开始探索</button>
     </div>
   </div>
 </div>
-<script src="data/knowledge.js?v=9"></script>
+<script src="data/knowledge.js?v=10"></script>
 <!-- 分片版：默认年级用普通 script 标签静态加载（微信 X5 兼容最好，不用同步 XHR/eval） -->
-<script src="data/kg/g3.js?v=9"></script>
+<script src="data/kg/g3.js?v=10"></script>
 <script>window.KG_LOADED = window.KG_LOADED || {}; window.KG_LOADED.g3 = true; window.__kgBootGrade = 'g3';
 /* 若上次选的是别的年级，再动态补加载（script 标签），加载完标记；boot 仍可先渲染 */
 (function(){
@@ -227,8 +227,8 @@
   } catch (e) {}
 })();
 </script>
-<script src="engine.js?v=9"></script>
-<script src="game.js?v=9"></script>
+<script src="engine.js?v=10"></script>
+<script src="game.js?v=10"></script>
 <script>
 /* 注册离线缓存：装到桌面后即使断网/弱网也能秒开，全屏运行 */
 if ('serviceWorker' in navigator) {

@@ -1,6 +1,6 @@
 /* ============================================================
  * 《知识大陆 · 宠物远征》v4 —— 大图谱 × 编队 × 克制 × 地图 × 掉落 × BGM
- * 状态：select → map(8 关远征路线) → battle → levelClear → map/… → result/defeat
+ * 状态：select → map(按知识单元动态生成的远征路线) → battle → levelClear → map/… → result/defeat
  * 零外部依赖：Canvas 粒子 + DOM 界面 + Web Audio 合成音效与背景音乐
  * ============================================================ */
 'use strict';
@@ -36,17 +36,46 @@ const SUBJ_META = window.SUBJ_META || {
   en: { name:'英语', icon:'🔤' }, sci: { name:'科学', icon:'🔬' }, eth: { name:'道德与法治', icon:'⚖️' }
 };
 
-/* ---------- 关卡：敌人属性与队伍属性形成策略约束 ---------- */
-const LEVELS = [
-  { name:'石板路',   enemy:'苔球怪',   emoji:'🪴', elem:'wood',  hp:90,  lv:1, boss:false },
-  { name:'雾林',     enemy:'潮汐蟹',   emoji:'🦀', elem:'water', hp:105, lv:1, boss:false },
-  { name:'问答桥',   enemy:'焰尾鸦',   emoji:'🦅', elem:'fire',  hp:120, lv:2, boss:false },
-  { name:'微光坡',   enemy:'萤火灵',   emoji:'✨', elem:'light', hp:130, lv:2, boss:false },
-  { name:'回声谷',   enemy:'暗影蝠',   emoji:'🦇', elem:'dark',  hp:140, lv:3, boss:false },
-  { name:'藤蔓迷宫', enemy:'巨口花',   emoji:'🌺', elem:'wood',  hp:150, lv:3, boss:false },
-  { name:'结晶洞',   enemy:'水晶兽',   emoji:'💎', elem:'water', hp:160, lv:3, boss:false },
-  { name:'书山王座', enemy:'知识魔王', emoji:'📚', elem:'dark',  hp:100, lv:4, boss:true  }
+/* ---------- 关卡皮肤：敌人属性与队伍属性形成策略约束 ----------
+ * 皮肤只有 8 套，但关卡本身按「知识图谱单元」动态生成（buildLevels）。
+ * 例：三年级 59 个单元 = 59 关，每个单元名就是关卡名，真正按大图谱推进。 */
+const LEVEL_SKINS = [
+  { enemy:'苔球怪',   emoji:'🪴', elem:'wood',  hp:82,  lv:0 },
+  { enemy:'潮汐蟹',   emoji:'🦀', elem:'water', hp:90,  lv:0 },
+  { enemy:'焰尾鸦',   emoji:'🦅', elem:'fire',  hp:98,  lv:1 },
+  { enemy:'萤火灵',   emoji:'✨', elem:'light', hp:106, lv:1 },
+  { enemy:'暗影蝠',   emoji:'🦇', elem:'dark',  hp:114, lv:2 },
+  { enemy:'巨口花',   emoji:'🌺', elem:'wood',  hp:122, lv:2 },
+  { enemy:'水晶兽',   emoji:'💎', elem:'water', hp:130, lv:3 },
+  { enemy:'星界龙',   emoji:'🐉', elem:'light', hp:138, lv:3 }
 ];
+const BOSS_SKIN = { enemy:'知识魔王', emoji:'📚', elem:'dark', hp:170, lv:4, boss:true };
+
+/* 按知识图谱单元生成关卡：一个单元一关，名字用真实单元名 */
+let LEVELS = [];
+function buildLevels(grade){
+  const stages = LEARN && LEARN.stages ? LEARN.stages(grade) : [];
+  const n = Math.max(stages.length, 8);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const st = stages[i];
+    const skin = LEVEL_SKINS[i % LEVEL_SKINS.length];
+    const round = Math.floor(i / LEVEL_SKINS.length);         // 第几轮循环（越往后越难）
+    const isBoss = i === n - 1;
+    const base = isBoss ? BOSS_SKIN : skin;
+    /* 单元名：去掉"三年级上册 第X单元 "前缀，保留可读的单元主题 */
+    const unitFull = st ? st.unit : '';
+    const unitShort = unitFull.replace(/^[一二三四五六七八九十\d]+年级[上下]册\s*/, '').replace(/^第?\d+单元\s*/, '') || (st ? st.name : '');
+    out.push({
+      name: isBoss ? '知识魔王·终章' : (unitShort || LEVEL_SKINS[i % LEVEL_SKINS.length].enemy),
+      enemy: base.enemy, emoji: base.emoji, elem: base.elem,
+      hp: Math.round(base.hp * (1 + round * 0.12)),
+      lv: clamp(base.lv + Math.floor(round / 2), 0, 4),
+      boss: isBoss, unit: unitFull, stageIdx: i
+    });
+  }
+  return out;
+}
 
 /* ---------- 全局状态 ---------- */
 const G = {
@@ -405,12 +434,26 @@ function mathKn(g, tag){
 /* ============ v5 智能出题：单元顺序 + 掌握度复习穿插 + 多题型 ============ */
 /* 知识点 -> 学科（从 KG_POINTS 反查，供题卡显示） */
 const KID_SUBJ = (function(){
-  const m = {};
+  const m = {}, u = {};
   for (const g in window.KG_POINTS) for (const s in window.KG_POINTS[g])
-    window.KG_POINTS[g][s].forEach(p => { m[g + '|' + p.id] = s; });
+    window.KG_POINTS[g][s].forEach(p => { m[g + '|' + p.id] = s; u[g + '|' + p.id] = p.unit || ''; });
+  KID_UNIT = u;
   return m;
 })();
+var KID_UNIT;
 function kidSubj(kid){ return KID_SUBJ[G.grade + '|' + kid] || 'math'; }
+function shortUnit(full){
+  return String(full || '').replace(/^[一二三四五六七八九十\d]+年级[上下]册\s*/, '').replace(/^第?\d+单元\s*/, '');
+}
+/* 统一的学习进度文案：已学(见过题) / 已掌握(答对2次+)，并给出本年级知识点总量 */
+function learnProgressText(){
+  if (!LEARN) return '';
+  const learned = LEARN.learnedCount(G.grade);
+  const mastered = LEARN.masteredCount(G.grade);
+  const pts = window.KG_POINTS[G.grade] || {};
+  const total = Object.keys(pts).reduce((s, k) => s + pts[k].length, 0);
+  return `已学 ${learned} / 已掌握 ${mastered} 个知识点（共 ${total}）`;
+}
 
 /* 取本关下一个知识点：主线队列优先；队列空则按单元顺序补充 */
 function nextTeachKid(){
@@ -473,6 +516,8 @@ function pickQuestion(){
   G.pickedLog = G.pickedLog || [];
   G.pickedLog.push((isReview ? '复习|' : '新学|') + subj + '|' + (q.kn || q.kid || '生成') + '|' + q.q);
   renderQuestion();
+  /* 知识点推进后刷新顶部单元名 / 关卡进度点（currentUnitName 会据当前 kid 更新 stageIdx） */
+  if ($('battleView') && !$('battleView').classList.contains('hidden')) updateHUD();
 }
 
 /* 兜底：题目用尽时现场生成数学题（保证永不卡住） */
@@ -529,8 +574,9 @@ function renderGradeInfo(){
   const qn = Object.keys(bank).reduce((s, k) => s + bank[k].length, 0);
   const stages = LEARN ? LEARN.stages(G.grade).length : 0;
   $('gradeInfo').innerHTML = `${g.name}（${g.stage}）· 图谱 <b>${total}</b> 知识点 · <b>${qn}</b> 道题 · <b>${stages}</b> 个单元关卡<br><span class="gi-subj">${subjNames.join(' / ')}</span>`;
-  /* 切年级后重建关卡缓存 */
+  /* 切年级后重建关卡缓存 + 关卡表（一个单元一关） */
   G.stages = LEARN ? LEARN.stages(G.grade) : [];
+  LEVELS = buildLevels(G.grade);
   _seqCache = null;
 }
 function renderPets(){
@@ -738,15 +784,26 @@ function updateHUD(){
   syncTeamRow();
   renderArena(cfg, t);
 }
-/* 战场中部：4 关进度点 + 当前属性关系（克制/被克/平） */
+/* 战场中部：关卡进度点（关卡多时只显示当前附近一段）+ 当前属性关系（克制/被克/平） */
 function renderArena(cfg, t){
   const dots = $('lvDots');
   dots.innerHTML = '';
-  for (let i = 0; i < LEVELS.length; i++) {
+  const total = LEVELS.length;
+  const MAXDOTS = 9;
+  let s = 0, e = total;
+  if (total > MAXDOTS) {
+    s = clamp(G.level - 4, 0, total - MAXDOTS);
+    e = s + MAXDOTS;
+  }
+  for (let i = s; i < e; i++) {
     const d = document.createElement('div');
     d.className = 'lv-dot' + (i < G.level ? ' done' : i === G.level ? ' now' : '');
     dots.appendChild(d);
   }
+  /* 关卡多时标注进度，让孩子知道走到第几站 */
+  let lbl = $('lvDotsLabel');
+  if (!lbl) { lbl = document.createElement('span'); lbl.id = 'lvDotsLabel'; lbl.className = 'lv-dots-label'; dots.parentNode.insertBefore(lbl, dots.nextSibling); }
+  lbl.textContent = G.mode === 'endless' ? '♾️ 无限远征' : ('第 ' + (G.level + 1) + ' / ' + total + ' 关');
   if (!t) { $('elemHint').textContent = ''; return; }
   const pe = ELEMENTS[t.pet.elem], ee = ELEMENTS[cfg.elem];
   const m = elemMult(t.pet.elem, cfg.elem);
@@ -927,7 +984,7 @@ function afterHit(){
       G.notes = Math.min(5, G.notes + 1);
       G.state = 'battle'; G.lock = false;
       updateHUD();
-      $('battleLog').textContent = `打散一个敌人！♾️ 继续 · 已掌握 ${LEARN.masteredCount(G.grade)} 个知识点。`;
+      $('battleLog').textContent = `打散一个敌人！♾️ 继续 · ${learnProgressText()}`;
       setTimeout(nextQ, 700);
       return;
     }
@@ -999,11 +1056,23 @@ function buildKidQueue(fromStage){
   G.kidQueue = q; G.kidPtr = 0;
   _seqCache = null;
 }
-/* 当前所处单元名（题卡/战斗页展示，让孩子知道学到哪一课） */
+/* 当前所处单元名（题卡/战斗页展示，让孩子知道学到哪一课）
+ * 优先按「当前题目所属知识点」实时定位单元，保证知识点推进时单元名跟着变。 */
 function currentUnitName(){
   const stages = G.stages || [];
-  const st = stages[G.stageIdx];
-  return st ? (st.name + ' · ' + st.unit.replace(/^.*?第?\d*单元\s*/, '')) : '';
+  if (!stages.length) return '';
+  let idx = clamp(G.stageIdx | 0, 0, stages.length - 1);
+  const kid = G.currentQ && G.currentQ.kid;
+  if (kid) {
+    for (let i = 0; i < stages.length; i++) {
+      if (stages[i].kids.indexOf(kid) >= 0) { idx = i; G.stageIdx = i; break; }
+    }
+  }
+  const st = stages[idx];
+  if (!st) return '';
+  const subjName = (SUBJ_META[st.subj] || {}).name || st.subj;
+  const unit = shortUnit(st.unit) || st.unit;
+  return subjName + ' · ' + unit;
 }
 function startGame(mode){
   if (G.team.length !== 3) return;
@@ -1020,7 +1089,9 @@ function startGame(mode){
   G.usedTexts = {}; G.reviewStreak = 0; G.answered = false;
   G.active = 0; G.lock = false; G.startTime = performance.now();
   particles = []; flashes = [];
-  buildKidQueue(G.mode === 'story' ? 0 : 0);
+  /* story：从当前关卡对应的单元开始学；endless：从第一单元开始顺序推进 */
+  const startStage = G.mode === 'story' ? (LEVELS[G.level] && LEVELS[G.level].stageIdx) || 0 : 0;
+  buildKidQueue(startStage);
   const cfg = LEVELS[G.level];
   G.enemyMax = cfg.hp; G.enemyHp = cfg.hp;
   $('selectView').classList.add('hidden');
@@ -1055,7 +1126,7 @@ function goNextLevel(){
     G.notes = Math.min(5, G.notes + 1);
     G.state = 'battle'; G.lock = false;
     updateHUD();
-    $('battleLog').textContent = `♾️ 第 ${G.questionNo + 1} 题继续！已掌握 ${LEARN.masteredCount(G.grade)} 个知识点。`;
+    $('battleLog').textContent = `♾️ 第 ${G.questionNo + 1} 题继续！${learnProgressText()}`;
     SND.tap(); nextQ(); return;
   }
   if (G.level >= LEVELS.length) { showResult(); return; }
@@ -1107,20 +1178,25 @@ function renderMap(){
     });
     wrap.appendChild(b);
   });
-  $('mapSub').textContent = '按单元顺序学 · 已通关 ' + Math.min(prog, LEVELS.length) + ' / ' + LEVELS.length + ' 站';
-  $('mapTip').textContent = prog >= LEVELS.length ? '🏆 8 站已通关！点「无限远征」继续学全部知识点。' : '点亮金色据点开始挑战';
+  const unitCnt = (G.stages || []).length;
+  $('mapSub').textContent = '按单元顺序学 · 已通关 ' + Math.min(prog, LEVELS.length) + ' / ' + LEVELS.length + ' 关' + (unitCnt ? '（' + unitCnt + ' 个知识单元）' : '');
+  $('mapTip').textContent = prog >= LEVELS.length ? '🏆 全部单元通关！点「无限远征」继续复习全部知识点。' : '点亮金色据点开始挑战';
   $('bagCount').textContent = Object.keys(G.bag).reduce((a, k) => a + G.bag[k], 0);
   /* 学习进度条 */
   const st = LEARN.stats(G.grade);
   const totalPts = window.KG_META ? window.KG_META.points : 0;
   if ($('learnStats')) {
+    const ptsG = window.KG_POINTS[G.grade] || {};
+    const totalPts = Object.keys(ptsG).reduce((a,k)=>a+ptsG[k].length,0);
+    const cover = totalPts ? Math.min(100, Math.round(st.learned / totalPts * 100)) : 0;
     $('learnStats').innerHTML =
       `<div class="ls-title">📊 ${((GRADES.find(g=>g.id===G.grade)||{}).name||'')} 学习进度</div>` +
-      `<div class="ls-row"><span>本年级知识点</span><b>${Object.keys(window.KG_POINTS[G.grade]||{}).reduce((a,k)=>a+window.KG_POINTS[G.grade][k].length,0)}</b></div>` +
-      `<div class="ls-row"><span>已学过 / 已掌握</span><b>${st.learned} / ${st.mastered}</b></div>` +
+      `<div class="ls-row"><span>本年级知识点</span><b>${totalPts}</b></div>` +
+      `<div class="ls-row"><span>已学过（覆盖率）</span><b>${st.learned} <small style="color:#ffe0a0">${cover}%</small></b></div>` +
+      `<div class="ls-row"><span>已掌握 / 牢固掌握</span><b>${st.mastered} / ${st.solid}</b></div>` +
       `<div class="ls-row"><span>累计答对 / 答错</span><b class="ok">${st.ok}</b> / <b class="no">${st.no}</b></div>` +
-      `<div class="ls-bar"><i style="width:${Math.min(100, st.mastered/Math.max(1,st.learned)*100)}%"></i></div>` +
-      `<p class="ls-hint">答对越多，掌握度越高，出现的就越少；错的题会更频繁地回来找你。</p>`;
+      `<div class="ls-bar"><i style="width:${cover}%"></i></div>` +
+      `<p class="ls-hint">覆盖率＝见过的知识点占比；答对越多掌握度越高、出现越少，错得多的会更频繁地回来找你。</p>`;
   }
 }
 function beginLevel(i){ G.chosenLevel = clamp(i, 0, LEVELS.length - 1); startGame('story'); }

@@ -224,7 +224,8 @@ body { background:#0e1220; }
 
 /* ---------- 战场中部 ---------- */
 #arena { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:4px 16px; min-height:70px; }
-.lv-dots { display:flex; align-items:center; gap:8px; }
+.lv-dots { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
+.lv-dots-label { display:block; text-align:center; font-size:11px; color:#ffe0a0; margin-top:2px; letter-spacing:.5px; }
 .lv-dot { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.18); }
 .lv-dot.done { background:#5fd18a; box-shadow:0 0 8px rgba(95,209,138,.6); }
 .lv-dot.now { width:22px; border-radius:5px; background:linear-gradient(90deg,#f7c948,#e8950b); box-shadow:0 0 10px rgba(245,179,1,.55); }
@@ -327,7 +328,7 @@ body { background:#0e1220; }
 .map-node.right .mn-seq { left:auto; right:-6px; }
 .map-node .mn-face { font-size:30px; line-height:1; filter:drop-shadow(0 3px 6px #0008); flex:0 0 auto; }
 .map-node .mn-info { display:flex; flex-direction:column; min-width:0; }
-.map-node .mn-info b { color:#fff4d6; font-size:12.5px; white-space:nowrap; }
+.map-node .mn-info b { color:#fff4d6; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:190px; }
 .map-node .mn-element { font-size:10.5px; font-weight:700; margin-top:1px; }
 .map-node .mn-stars { font-size:11px; color:#f5b301; margin-top:2px; letter-spacing:1px; }
 .map-node.locked { opacity:.5; filter:grayscale(.8); }

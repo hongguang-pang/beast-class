@@ -470,6 +470,8 @@
     return out;
   }
   function bigBankQ(subj, g, lv, kn, u) {
+    /* v5.1 分片版：出题时按需同步加载对应年级题库（首屏不再下载 4.2MB 全量） */
+    if (window.BB_API) window.BB_API.load(g);
     if (!BIG_BANK || !BIG_BANK[g] || !BIG_BANK[g][subj]) return null;
     const all = BIG_BANK[g][subj];
     if (!all.length) return null;
@@ -869,6 +871,7 @@
     };
     /* v3.44：按本章知识点从大图谱题库抽真题，题干/选项/答案都来自真实数据 */
     const quizOf = (c) => {
+      if (window.BB_API) window.BB_API.load(g);   /* v5.1 按需加载该年级真题分片 */
       const kns = buildChapterKn(g, c);
       const seen = {}, out = [];
       kns.forEach((x) => {

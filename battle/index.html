@@ -38,7 +38,7 @@
     else if(typeof window.__battle === 'undefined') w = '主脚本没执行（game.js 被拦截或语法不被当前浏览器支持）';
     else w = '启动时中断（详见控制台）';
     panel(w);
-  }, 2500);
+  }, 8000);
 })();
 </script>
 </head>
@@ -202,8 +202,18 @@
     </div>
   </div>
 </div>
-<script src="data/knowledge.js?v=7"></script>
-<script src="engine.js?v=7"></script>
-<script src="game.js?v=7"></script>
+<script src="data/knowledge.js?v=8"></script>
+<script>
+/* 分片版：启动前同步加载上次选择的年级（默认 g3），首屏体积从 6.3MB 降到 ~460KB */
+(function(){
+  var g = 'g3';
+  try { var s = localStorage.getItem('beast.battle.grade'); if (s && window.KG_SHARDS[s]) g = s; } catch(e){}
+  var ok = window.KG_API && window.KG_API.load(g);
+  window.__kgBootGrade = g;
+  if (!ok) { console.error('[启动] 年级分片加载失败', g); }
+})();
+</script>
+<script src="engine.js?v=8"></script>
+<script src="game.js?v=8"></script>
 </body>
 </html>

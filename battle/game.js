@@ -51,7 +51,7 @@ const LEVELS = [
 /* ---------- 全局状态 ---------- */
 const G = {
   state:'select',
-  grade:'g3',
+  grade: (typeof window.__kgBootGrade === 'string' && window.KG_SHARDS && window.KG_SHARDS[window.__kgBootGrade]) ? window.__kgBootGrade : 'g3',
   team:[],            // [{ pet, hp, maxHp }]
   active:0,
   level:0, bossPhase:1,
@@ -501,8 +501,12 @@ function renderGrades(){
     b.textContent = g.name;
     b.dataset.g = g.id;
     b.addEventListener('click', () => {
-      G.grade = g.id;
       SND.tap();
+      /* 分片版：首次进入该年级先按需加载题库分片，再渲染 */
+      const ok = (window.KG_API && window.KG_API.load(g.id));
+      if (!ok) { $('gradeInfo').innerHTML = '<b style="color:#ff9db1">该年级题库加载失败，请检查网络后重试</b>'; return; }
+      G.grade = g.id;
+      try { localStorage.setItem('beast.battle.grade', g.id); } catch(e){}
       toArr(row.children).forEach(c => c.classList.toggle('on', c.dataset.g === g.id));
       renderGradeInfo();
     });
@@ -1259,7 +1263,7 @@ window.__battle = {
   get answer(){ return G.currentAnswer; },
   get mastery(){ return LEARN ? LEARN.stats(G.grade) : null; },
   get stageInfo(){ return { idx:G.stageIdx, name:currentUnitName(), total:(G.stages||[]).length, queued:G.kidQueue.length, ptr:G.kidPtr }; },
-  setGrade(g){ G.grade = g; _seqCache = null; renderGrades(); renderGradeInfo(); },
+  setGrade(g){ if (window.KG_API) window.KG_API.load(g); G.grade = g; _seqCache = null; renderGrades(); renderGradeInfo(); },
   setTeam(ids){ G.team = ids.map(id => { const p = PETS.find(x => x.id === id); return p ? { pet:p, hp:100, maxHp:100 } : null; }).filter(Boolean); renderPets(); renderTeamPreview(); syncStartBtns(); },
   start(){ startGame('story'); },
   startEndless(){ startGame('endless'); },

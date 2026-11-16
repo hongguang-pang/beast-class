@@ -1068,3 +1068,97 @@ details.knm-chap[open]>summary{border-bottom:1px dashed #f0e8fc;padding-bottom:5
   border-radius: 99px; padding: 3px 9px; }
 .rs-go { font-style: normal; font-size: 11.5px; color: #fff; background: linear-gradient(135deg, #7c6cf0, #a78bfa);
   border-radius: 99px; padding: 4px 11px; }
+
+/* ================= 稀有度光环（v3.44 首发，v3.45 至尊版已并入下方统一定义） ================= */
+/* 说明：这里**不再**重复定义 .pav.rar-ssr / .rar-sr / .rar-r，
+   四档视觉统一由下方「v3.45 SSR 至尊视觉」一节决定，避免两套规则靠书写顺序覆盖。 */
+@keyframes rarSpin{to{transform:rotate(360deg)}}
+@keyframes rarPulse{from{opacity:.55}to{opacity:1}}
+
+/* 首页舞台：SSR 主宠彩虹光圈 */
+.stage-ssr{background:linear-gradient(135deg,#5b3a12,#a3701d 50%,#c98a2b)}
+.stage-ssr .aura::before{background:conic-gradient(from 0deg,#ffe066,#ff9de2,#9ad7ff,#b7ffb1,#ffd166,#ffe066);
+  filter:blur(13px);opacity:.95;animation:rarSpin 3.6s linear infinite,rarPulse 1.7s ease-in-out infinite alternate}
+
+/* SSR 角标：流光金 */
+.rar-tag[data-r="SSR"]{background:linear-gradient(120deg,#ffdf6b,#ff9d3c,#ffdf6b);background-size:200% 100%;
+  animation:rarShine 1.8s linear infinite}
+@keyframes rarShine{to{background-position:200% 0}}
+
+/* 五科宠物卡：SSR 卡片金光呼吸 */
+.sp-card.sp-ssr{box-shadow:0 0 12px rgba(255,196,60,.55),inset 0 0 10px rgba(255,226,140,.3);
+  background:linear-gradient(135deg,rgba(255,214,100,.16),transparent 62%),#fff;
+  animation:spSsrGlow 2.4s ease-in-out infinite alternate}
+@keyframes spSsrGlow{from{box-shadow:0 0 8px rgba(255,196,60,.4),inset 0 0 8px rgba(255,226,140,.25)}
+  to{box-shadow:0 0 16px rgba(255,196,60,.75),inset 0 0 12px rgba(255,226,140,.4)}}
+
+/* 图鉴卡：SSR 解锁卡片流光描边 */
+.dex-card[style*="#f5b301"]{box-shadow:0 0 10px rgba(245,179,1,.45)}
+
+/* ================= v3.45 SSR 至尊视觉（覆盖旧光环）+ 进化阶段形变 ================= */
+/* ---- SSR：金色圣环 + 双层彩虹 + 旋转光芒 + 皇冠 + 双翼 + 8 星 ---- */
+.pav.rar-ssr{filter:drop-shadow(0 0 8px rgba(255,196,46,.9))}
+.pav.rar-ssr::before{content:"";position:absolute;inset:-18%;border-radius:50%;z-index:0;
+  background:conic-gradient(from 0deg,#fff3a0,#ffcf3d,#ff8fd0,#8fd8ff,#a8ffb0,#ffe066,#fff3a0);
+  filter:blur(9px);opacity:.95;animation:ssrSpin 2.6s linear infinite}
+.pav.rar-ssr::after{content:"";position:absolute;inset:-6%;border-radius:50%;z-index:0;
+  border:2px solid rgba(255,224,120,.95);
+  box-shadow:0 0 22px 8px rgba(255,190,40,.85),inset 0 0 16px rgba(255,240,180,.75),0 0 0 4px rgba(255,255,255,.25);
+  animation:ssrPulse 1.3s ease-in-out infinite alternate}
+.pav.rar-ssr>img{position:relative;z-index:2;filter:saturate(1.25) brightness(1.08)}
+.pav.rar-ssr .rar-sp{position:absolute;z-index:4;font-style:normal;font-weight:900;color:#fff3b0;
+  font-size:.42em;line-height:1;pointer-events:none;
+  text-shadow:0 0 6px #ffb300,0 0 12px #ff7b00;animation:ssrFloat 1.9s ease-in-out infinite}
+.pav.rar-ssr .rar-crown{position:absolute;z-index:6;left:50%;top:-14%;transform:translateX(-50%);
+  font-size:.5em;font-style:normal;filter:drop-shadow(0 2px 4px rgba(180,110,0,.6));animation:ssrCrown 2.2s ease-in-out infinite}
+.pav.rar-ssr .rar-wing{position:absolute;z-index:1;top:38%;font-size:.6em;font-style:normal;opacity:.9;
+  filter:drop-shadow(0 0 5px rgba(255,220,120,.9))}
+.pav.rar-ssr .rar-wing.l{left:-26%;transform:scaleX(1);animation:ssrWingL 2.4s ease-in-out infinite}
+.pav.rar-ssr .rar-wing.r{right:-26%;transform:scaleX(-1);animation:ssrWingR 2.4s ease-in-out infinite}
+/* ---- SR：紫金呼吸 ---- */
+.pav.rar-sr::before{content:"";position:absolute;inset:-13%;border-radius:50%;z-index:0;
+  background:radial-gradient(circle,rgba(180,107,255,.6),transparent 70%);
+  filter:blur(6px);animation:ssrPulse 2s ease-in-out infinite alternate}
+.pav.rar-sr>img{position:relative;z-index:1;filter:saturate(1.1)}
+.pav.rar-sr .rar-sp{position:absolute;z-index:4;color:#e3c4ff;font-size:.3em;font-style:normal;
+  text-shadow:0 0 6px #a855f7;animation:ssrFloat 2.4s ease-in-out infinite}
+/* ---- R：淡蓝微光（很轻） ---- */
+.pav.rar-r::before{content:"";position:absolute;inset:-8%;border-radius:50%;z-index:0;
+  background:radial-gradient(circle,rgba(80,150,255,.28),transparent 72%);filter:blur(4px)}
+.pav.rar-r>img{position:relative;z-index:1}
+/* ---- N：完全朴素，无任何光效（衬托 SSR 的华丽） ---- */
+@keyframes ssrSpin{to{transform:rotate(360deg)}}
+@keyframes ssrPulse{from{opacity:.6;transform:scale(.96)}to{opacity:1;transform:scale(1.04)}}
+@keyframes ssrFloat{0%,100%{transform:translateY(2px) scale(.85);opacity:.4}50%{transform:translateY(-8px) scale(1.15);opacity:1}}
+@keyframes ssrCrown{0%,100%{transform:translateX(-50%) translateY(0) rotate(-4deg)}50%{transform:translateX(-50%) translateY(-4px) rotate(4deg)}}
+@keyframes ssrWingL{0%,100%{transform:rotate(-12deg) scale(1)}50%{transform:rotate(-26deg) scale(1.12)}}
+@keyframes ssrWingR{0%,100%{transform:scaleX(-1) rotate(-12deg) scale(1)}50%{transform:scaleX(-1) rotate(-26deg) scale(1.12)}}
+
+/* ---- 进化阶段形变：即使共用同一张图，升级后也明显变大/发光/加装饰 ---- */
+.pav>img{transition:transform .35s ease}
+.pav.st-baby>img{transform:scale(.8)}
+.pav.st-growth>img{transform:scale(.92) drop-shadow(0 0 5px rgba(120,200,255,.5))}
+.pav.st-adult>img{transform:scale(1.04) drop-shadow(0 0 9px rgba(180,140,255,.6))}
+.pav.st-ultimate>img{transform:scale(1.14) drop-shadow(0 0 13px rgba(255,200,80,.8))}
+/* 究极体额外加一圈金色气场 */
+.pav.st-ultimate::after{content:"";position:absolute;inset:-4%;border-radius:50%;z-index:0;
+  box-shadow:0 0 14px 4px rgba(255,190,60,.55);animation:ssrPulse 1.8s ease-in-out infinite alternate}
+/* 首页舞台阶段：不同阶段整体缩放 */
+.stage .pet.st-baby .pav{transform:scale(.82)}
+.stage .pet.st-growth .pav{transform:scale(.94)}
+.stage .pet.st-adult .pav{transform:scale(1.04)}
+.stage .pet.st-ultimate .pav{transform:scale(1.14)}
+.stage .pet{transition:transform .4s ease}
+
+/* 首页舞台稀有度角标 */
+.stage-rar{position:absolute;top:12px;right:12px;z-index:5;font-size:12px;font-weight:900;
+  padding:3px 10px;border-radius:99px;letter-spacing:1px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.stage-rar.rar-ssr{background:linear-gradient(120deg,#ffe066,#ff9d3c);color:#5b3a00;
+  background-size:200% 100%;animation:rarShine 1.8s linear infinite}
+.stage-rar.rar-sr{background:linear-gradient(120deg,#c084fc,#a855f7);color:#fff}
+.stage-sr{background:linear-gradient(135deg,#2a1a45,#4a2d6e 55%,#6d28d9)}
+.stage-sr .aura::before{background:radial-gradient(circle,rgba(168,85,247,.7),transparent 70%);filter:blur(12px)}
+
+/* SSR 角标流光加强 */
+.rar-tag[data-r="SSR"],.rar-chip.rar-ssr{background:linear-gradient(120deg,#fff3a0,#ffb300,#ff8fd0,#ffb300);
+  background-size:250% 100%;animation:rarShine 1.6s linear infinite;color:#4a2f00}

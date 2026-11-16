@@ -257,9 +257,9 @@
     const src = pool.length ? pool : CREATURES;
     return src[Math.floor(Math.random() * src.length)].id;
   }
+  /* v3.44 去掉宠物蛋：孵化必出真实宠物，Lv.1 起就是幼年期形象（蛋图在深色背景上几乎看不见） */
   const STAGES = [
-    { min: 1, name: '宠物蛋', suffix: 'egg', cls: 'egg' },
-    { min: 3, name: '幼年期', suffix: 'baby', cls: '' },
+    { min: 1, name: '幼年期', suffix: 'baby', cls: '' },
     { min: 6, name: '成长期', suffix: 'growth', cls: '' },
     { min: 9, name: '成年期', suffix: 'adult', cls: '' },
     { min: 12, name: '究极体', suffix: 'ultimate', cls: '' }
@@ -268,9 +268,8 @@
   const expNeed = (lv) => 20 + (lv - 1) * 12;
   const stageIdxOf = (lv) => { let i = 0; STAGES.forEach((s, j) => { if (lv >= s.min) i = j; }); return i; };
   /* 全部 50 只宠物都有图片立绘（经典五系为原立绘，c 系为 AI 立绘 + 四阶段合成图） */
-  /* v3.32: jpg 单图 / 四阶段 jpg 宠物 → images/m/；老宠物仍走 gif */
+  /* v3.32: jpg 单图 / 四阶段 jpg 宠物 → images/m/；老宠物仍走 gif（v3.44 起不再有蛋阶段） */
   const imgFor = (el, si) => {
-    if (si === 0 && !(PETS[el] && PETS[el].single)) return 'images/egg.jpg';
     const p = PETS[el];
     if (p && p.single) return 'images/m/' + el + '.gif';
     if (p && p.jpg) return 'images/m/' + el + '-' + STAGES[si].suffix + '.gif';
@@ -329,8 +328,8 @@
       k.pet.type = pick.id;
       k.pet.name = pick.name;
       k.skin = null;
-      k.dex = { egg: true };
-      STAGES.forEach((s) => { if (lv >= s.min && s.suffix !== 'egg') k.dex[pick.id + '-' + s.suffix] = true; });
+      k.dex = {};
+      STAGES.forEach((s) => { if (lv >= s.min) k.dex[pick.id + '-' + s.suffix] = true; });
       fixed++;
     });
     return fixed;
@@ -340,6 +339,15 @@
     d: null,
     load() {
       try { this.d = JSON.parse(localStorage.getItem(getKEY())); } catch (e) { this.d = null; }
+      /* v3.43 学生档案体检：防止切身份前异步落盘（云同步回调/定时器）把老师/家长数据
+         写进学生存储，导致「切到学生界面，菜单和内容还是老师的」。发现串档就把坏数据
+         隔离到 beast.v1.student.bad.*，按无档案走学生入学，好数据永远不会被顶掉 */
+      if (this.d && ROLE_GET() === 'student' &&
+          ((this.d.cls && this.d.cls.on) || this.d.admin || this.d.mode === 'class' || this.d.mode === 'family')) {
+        try { localStorage.setItem('beast.v1.student.bad.' + Date.now(), JSON.stringify(this.d)); } catch (e) {}
+        try { localStorage.removeItem(getKEY()); } catch (e) {}
+        this.d = null;
+      }
       /* 旧版单存储数据自动迁移到家庭存储（仅一次） */
       if (!this.d && ROLE_GET() === 'family') {
         try { this.d = JSON.parse(localStorage.getItem('beast.v1')); } catch (e) { this.d = null; }
@@ -400,12 +408,10 @@
           if (!k.dailyGame) k.dailyGame = {};
           if (!k.quest || typeof k.quest !== 'object') k.quest = {};
           if (!Array.isArray(k.wrongBook)) k.wrongBook = [];
-          /* v3.21.5 修正：Lv.1~2 是全班共用的「宠物蛋」形象，看起来都一样；
-             零进度的宠物直接提到幼年期（Lv.3），每人恢复各自的形象，已有进度不受影响 */
-          if (k.pet.lv < 3 && !k.pet.exp) k.pet.lv = 3;
+          /* v3.44 去掉宠物蛋：Lv.1~2 的蛋一律提到幼年期（Lv.3），直接显示各自的真实形象 */
+          if (k.pet.lv < 3) k.pet.lv = 3;
           if (!k.dex) k.dex = {};
-          if (!k.dex.egg) k.dex.egg = true;
-          STAGES.forEach((s) => { if (k.pet.lv >= s.min && s.suffix !== 'egg') k.dex[k.pet.type + '-' + s.suffix] = true; });
+          STAGES.forEach((s) => { if (k.pet.lv >= s.min) k.dex[k.pet.type + '-' + s.suffix] = true; });
         });
         /* 无感修复：班内宠物重复（导入后最常见）自动重新分配，老师什么都不用点 */
         try {
@@ -435,7 +441,12 @@
       e.name = d.cls.name; e.kids = d.kids; e.groups = d.cls.groups;
       e.period = d.cls.period; e.rnd = d.cls.rnd; e.since = d.cls.since;
     },
-    save() { this.sync(); try { localStorage.setItem(getKEY(), JSON.stringify(this.d)); } catch (e) { toast('存储空间不足，请在「数据」里导出后清理'); } },
+    save() {
+      /* v3.43 学生身份下拒绝把班级/家长形态的数据写进学生存储（切断串档来源） */
+      if (ROLE_GET() === 'student' && this.d &&
+          ((this.d.cls && this.d.cls.on) || this.d.admin || this.d.mode === 'class' || this.d.mode === 'family')) return;
+      this.sync(); try { localStorage.setItem(getKEY(), JSON.stringify(this.d)); } catch (e) { toast('存储空间不足，请在「数据」里导出后清理'); }
+    },
     fresh() {
       return {
         pin: null,
@@ -495,8 +506,7 @@
     P.save();
   }
   function checkDex(k) {
-    if (!k.dex.egg) k.dex.egg = true;
-    STAGES.forEach((s) => { if (k.pet.lv >= s.min && s.suffix !== 'egg') k.dex[k.pet.type + '-' + s.suffix] = true; });
+    STAGES.forEach((s) => { if (k.pet.lv >= s.min) k.dex[k.pet.type + '-' + s.suffix] = true; });
   }
   function dexCount(k) { return Object.keys(k.dex).length; }
   function checkMilestone(k) {
@@ -704,7 +714,7 @@
     }
     const profs = roleProfiles();
     el.innerHTML =
-      '<div class="big"><img src="images/egg.jpg" alt="" style="width:110px;height:110px;border-radius:26px;box-shadow:0 10px 40px rgba(255,215,110,.45)"></div>' +
+      '<div class="big" style="width:110px;height:110px;border-radius:26px;display:flex;align-items:center;justify-content:center;font-size:56px;background:linear-gradient(145deg,#ffe9a8,#ffc94d);box-shadow:0 10px 40px rgba(255,215,110,.45)">🐾</div>' +
       '<h2>伴学宠物</h2>' +
       '<p>选一个入口进入，各入口数据相互独立</p>' +
       (profs.length ? '<div class="w-backin">本机已有档案，直接继续：' +
@@ -715,7 +725,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.39 · 全宠物动图 · 稀有度边框 · 随时看说明<br>' +
+      '<div class="w-ver">版本 v3.46 · 学科冒险书 · SSR至尊特效 · 图鉴修复 · 自动更新<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -753,7 +763,7 @@
       if (ex && ex.pwd !== BeastAuth.hashPwd(pwd, ex.salt)) { toast('「' + name + '」已有账号但密码不对：换个名字，或输入原密码'); return; }
       el.remove();
       const afterPlacement = (r) => {
-        const k = { id: uid(), name, points: 0, daily: {}, grade: r.grade, pet: { name: PETS[r.type].name, type: r.type, exp: 0, lv: 1 }, dex: { egg: true, [r.type + '-baby']: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null, mastery: {}, mode: 'student' };
+        const k = { id: uid(), name, points: 0, daily: {}, grade: r.grade, pet: { name: PETS[r.type].name, type: r.type, exp: 0, lv: 3 }, dex: { [r.type + '-baby']: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null, mastery: {}, mode: 'student' };
         P.d.mode = 'student';
         P.d.cls = { name: '', groups: [], on: false };
         P.d.classes = [];
@@ -824,7 +834,7 @@
     k.className = cls.name;
     if (cls.grade) k.grade = cls.grade;
     let stu = cls.kids.find((x) => x.name === k.name) || cls.kids.find((x) => x.sid === k.id);
-    if (!stu) { stu = { name: k.name, points: 0, daily: {}, pet: { name: k.pet.name, type: k.pet.type, exp: 0, lv: 1 }, dex: { egg: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], mastery: {}, sid: k.id }; cls.kids.push(stu); }
+    if (!stu) { stu = { name: k.name, points: 0, daily: {}, pet: { name: k.pet.name, type: k.pet.type, exp: 0, lv: k.pet.lv || 3 }, dex: { [k.pet.type + '-baby']: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], mastery: {}, sid: k.id }; cls.kids.push(stu); }
     stu.sid = k.id;
     stu.joined = true;
     try { localStorage.setItem('beast.v1.class', JSON.stringify(cd)); } catch (e) {}
@@ -955,7 +965,7 @@
       }
       el.remove();
       placement(name, (r) => {
-        const k = { id: uid(), name, points: 0, daily: {}, grade: r.grade, pet: { name: PETS[r.type].name, type: r.type, exp: 0, lv: 1 }, dex: { egg: true, [r.type + '-baby']: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null };
+        const k = { id: uid(), name, points: 0, daily: {}, grade: r.grade, pet: { name: PETS[r.type].name, type: r.type, exp: 0, lv: 3 }, dex: { [r.type + '-baby']: true }, companions: [], milestones: [], skin: null, wrongBook: [], frags: {}, aid: [], inter: null };
         P.d.mode = 'family';
         if (fam && window.BeastAuth) {
           const ar = BeastAuth.register({ role: 'family', name: fam, pwd, kidId: k.id, grade: r.grade });
@@ -976,19 +986,17 @@
   function mastIconsHTML(k) {
     const M = window.BPGames;
     if (!M || !M.SUBJ) return '';
-    const stats = M.mastStats(k);
-    return '<div class="mast-icons">' +
+    const prog = M.mastProgress ? M.mastProgress(k) : null;
+    return '<div class="mast-icons" id="stMast" role="button" tabindex="0">' +
       Object.keys(M.SUBJ).map((s) => {
-        const st = stats[s] || { r: 0, w: 0 };
-        const tot = st.r + st.w;
-        const pct = tot ? Math.round(st.r / tot * 100) : -1;
-        const cls = pct < 0 ? 'm-none' : pct >= 80 ? 'm-good' : pct >= 60 ? 'm-mid' : 'm-weak';
-        return '<div class="mast-ic ' + cls + '" title="' + M.SUBJ[s].name + '">' +
+        const p = (prog && prog[s]) || { mastered: 0, total: (M.KN_TOTAL && M.KN_TOTAL[s]) || 40, pct: 0 };
+        const cls = p.pct >= 80 ? 'm-good' : p.pct >= 40 ? 'm-mid' : 'm-weak';
+        return '<div class="mast-ic ' + cls + '" title="' + M.SUBJ[s].name + '：已掌握 ' + p.mastered + ' / 全年级 ' + p.total + ' 个知识点">' +
           '<span class="mi-em">' + M.SUBJ[s].icon + '</span>' +
           '<small>' + M.SUBJ[s].name + '</small>' +
-          '<b>' + (pct < 0 ? '—' : pct + '%') + '</b></div>';
+          '<b>' + p.pct + '%</b><i class="mi-frac">' + p.mastered + '/' + p.total + '</i></div>';
       }).join('') + '</div>' +
-      '<div class="tiny" style="text-align:center;margin-top:4px">我的知识掌握度（答题自动更新）</div>';
+      '<div class="tiny" style="text-align:center;margin-top:4px">知识掌握度 = 已掌握知识点 ÷ 全年级知识点 · 答对练熟才算掌握</div>';
   }
   /* 五科宠物条：学生首页一眼看到每科宠物与经验 */
   function subjPetsHTML(k) {
@@ -1007,9 +1015,10 @@
         }
         const need = expNeed(p.lv);
         const pc = Math.min(100, Math.round(p.exp / need * 100));
-        const rc = RARC[rarOf(p.type)];
-        return '<button class="sp-card" data-subj="' + s.k + '" style="--c:' + s.c + ';border-color:' + rc + ';border-width:2px">' +
-          rarChip(rarOf(p.type)) +
+        const rr = rarOf(p.type);
+        const rc = RARC[rr];
+        return '<button class="sp-card' + (rr === 'SSR' ? ' sp-ssr' : '') + '" data-subj="' + s.k + '" style="--c:' + s.c + ';border-color:' + rc + ';border-width:2px">' +
+          rarChip(rr) +
           '<span class="spc-av">' + subjPetAv(k, s.k, 44) + '</span>' +
           '<span class="spc-t"><b>' + s.ic + ' ' + s.n + '</b><small>Lv.' + p.lv + ' · ' + pc + '%</small>' +
           '<span class="spc-bar"><i style="width:' + pc + '%"></i></span></span></button>';
@@ -1057,11 +1066,16 @@
   function mastSheet(k) {
     const M = window.BPGames;
     if (!M || !M.SUBJ) return;
-    const stats = M.mastStats(k);
-    let body = '<div class="mast-block">' +
+    const prog = M.mastProgress ? M.mastProgress(k) : null;
+    let body = '<div class="tiny" style="margin-bottom:8px;line-height:1.6">掌握度 = <b>已真正掌握的知识点</b> ÷ <b>本年级该科知识点总数</b>。一个知识点要答对 2 次以上、正确率 ≥60%（或闯关三级全通）才算掌握，所以一开始不会是 100%。</div>';
+    body += '<div class="mast-block">' +
       Object.keys(M.SUBJ).map((s) => {
-        const st = stats[s] || { r: 0, w: 0 };
-        return mastBarHTML(M.SUBJ[s].icon + ' ' + M.SUBJ[s].name, st.r, st.w);
+        const p = (prog && prog[s]) || { mastered: 0, total: (M.KN_TOTAL && M.KN_TOTAL[s]) || 40, pct: 0 };
+        const pct = p.pct;
+        const cls = pct >= 80 ? 'good' : pct >= 40 ? 'mid' : 'weak';
+        return '<div class="mast-row ' + cls + '"><span class="mr-l">' + M.SUBJ[s].icon + ' ' + M.SUBJ[s].name + '</span>' +
+          '<div class="mr-bar"><i style="width:' + pct + '%"></i></div>' +
+          '<span class="mr-v">' + pct + '%</span><span class="mr-n">' + p.mastered + '/' + p.total + ' 点</span></div>';
       }).join('') + '</div>';
     /* 薄弱知识点 top5：答题量>=2 且正确率最低 */
     const rows = Object.entries(k.mastery || {})
@@ -1122,11 +1136,14 @@
     const weekPts = ptsSince(k, weekStart());
     const third = isClass() ? rankOf(k.id, 'total') : st.min;
     const thirdLbl = isClass() ? '全班排名' : '进化等级';
+    const mainRar = rarOf(k.pet.type);
+    const stageRar = mainRar === 'SSR' ? ' stage-ssr' : mainRar === 'SR' ? ' stage-sr' : '';
+    const rarBadge = mainRar === 'N' ? '' : '<span class="stage-rar rar-' + mainRar.toLowerCase() + '">' + mainRar + '</span>';
     $view.innerHTML = '<div class="page home-page">' +
       kidsRow() +
-      '<div class="stage" style="--pet-glow:' + petMeta(k.pet.type).glow + '">' +
+      '<div class="stage' + stageRar + '" style="--pet-glow:' + petMeta(k.pet.type).glow + '">' +
       '<div class="stars"></div>' +
-      '<div class="lv-badge">Lv.' + k.pet.lv + '</div>' +
+      '<div class="lv-badge">Lv.' + k.pet.lv + '</div>' + rarBadge +
       '<div class="pet-zone"><div class="aura"><div class="pet ' + st.cls + '" id="petTap">' + petBand(k.pet, 130, wardOf(k, 'main')) + '</div></div></div>' +
       '<div class="pet-name">' + esc(displayName(k)) + '</div>' +
       '<div class="pet-stage">' + st.name + ' · ' + petMeta(k.skin || k.pet.type).name + '</div>' +
@@ -1172,7 +1189,8 @@
       const sy = document.getElementById('stSync');
       if (sy) sy.onclick = () => studentClassSheet(k);
       const sw = document.getElementById('stSwitch');
-      if (sw) sw.onclick = () => { if (confirm('切换身份会回到入口选择页，学生数据保留')) { localStorage.removeItem('beast.role'); location.reload(); } };
+      /* v3.43 学生模式的「切换身份」改走密码闸门：切回家长要密码，且看不到老师入口 */
+      if (sw) sw.onclick = () => studentExitSheet();
       const mg = document.getElementById('stMast');
       if (mg) mg.onclick = () => mastSheet(k);
       document.querySelectorAll('.sp-card').forEach((b) => (b.onclick = () => {
@@ -1639,7 +1657,7 @@
   function viewDex() {
     const k = kid();
     const els = Object.keys(PETS);
-    const total = 1 + els.length * 4;   // 蛋 + 20
+    const total = els.length * 4;   // 四阶段形态（v3.44 起无蛋）
     const got = dexCount(k);
     const pct = Math.round((got / total) * 100);
     const card = (key, img, name, sub, unlocked, extra, rar) =>
@@ -1653,8 +1671,7 @@
       '<div class="section-h"><h2>宠物图鉴</h2><span class="sub">' + got + '/' + total + ' · ' + pct + '%</span></div>' +
       '<div class="exp-bar dark" style="border-radius:99px"><i style="width:' + pct + '%"></i></div>' +
       '<div class="dex-grid" style="margin-top:12px">' +
-      card('egg', 'images/egg.jpg', '神秘宠物蛋', '旅程起点', !!k.dex.egg) +
-      els.map((el) => STAGES.slice(1).map((s) => {
+      els.map((el) => STAGES.map((s) => {
         const key = el + '-' + s.suffix;
         const un = !!k.dex[key];
         const companion = k.companions.some((c) => c.type === el) && s.suffix === 'baby';
@@ -2309,7 +2326,7 @@
     return {
       id: uid(), name, group: group || '', points: 0, daily: {},
       pet: { name: petMeta(type).name, type, exp: 0, lv: lv || 3 },
-      dex: { egg: true }, companions: [], milestones: [], skin: null
+      dex: { [type + '-baby']: true }, companions: [], milestones: [], skin: null
     };
   }
   /* 完整空档案（云端拉回来的学生用，字段齐全避免后续崩） */
@@ -2317,8 +2334,8 @@
     const type = pickType();
     return {
       id: uid(), name, group: '', points: 0, daily: {},
-      pet: { name: petMeta(type).name, type, exp: 0, lv: 1 },
-      dex: { egg: true }, companions: [], milestones: [], skin: null,
+      pet: { name: petMeta(type).name, type, exp: 0, lv: 3 },
+      dex: { [type + '-baby']: true }, companions: [], milestones: [], skin: null,
       wrongBook: [], frags: {}, aid: [], inter: null, mastery: {},
       sid: '', joined: false, bonus: 0, stuPoints: 0
     };
@@ -2701,7 +2718,6 @@
   /* 切到学生界面：学生档案与老师/家长档案分别存储，互不影响，随时可切回
      本机没有学生档案 → 走学生入学（带班级码）；已有 → 直接回到自己的学生主页 */
   function switchToStudent(code) {
-    /* 只改身份 + 强制重载；不要让老师账号的会话把人拉回老师界面 */
     try {
       localStorage.removeItem('beast.home');
       const raw = localStorage.getItem('beast.v1.student');
@@ -2711,7 +2727,9 @@
         if (!d || !d.kids || !d.kids.length) localStorage.removeItem('beast.v1.student');
       }
     } catch (e) {}
-    setRole('student');
+    /* v3.43 不在本页 setRole：把 role 参数带进 URL，由 boot 的入口解析统一改身份。
+       旧写法先改 localStorage 再导航，导航前的几百毫秒里任何异步 P.save()
+       都可能把老师/家长数据写进学生存储（串档根因），这里彻底消除这个窗口 */
     hardNav('role=student' + (code ? '&code=' + encodeURIComponent(code) : ''));
   }
   /* 在老师/家长设备上打开学生链接时的切换面板 */
@@ -2731,9 +2749,68 @@
       });
   }
 
+  /* ================= v3.43 学生模式退出闸门 =================
+     学生界面只进得来、出不去（除非密码确认）：
+     · 学生模式下不提供任何「老师界面」入口；
+     · 切回家长界面 / 回入口页，必须先过密码；
+     · 本机有家长或老师账号 → 验对应账号密码；
+       都没有 → 首次设置一个本机「家长控制密码」，之后每次退出都要输入 */
+  const EXIT_PWD_KEY = 'beast.exitPwd';
+  function exitPwdCheck(okCb, title) {
+    const others = (window.BeastAuth ? BeastAuth.list() : []).filter((u) => u.role !== 'student');
+    let hasExit = false;
+    try { hasExit = !!localStorage.getItem(EXIT_PWD_KEY); } catch (e) {}
+    const needSet = !others.length && !hasExit;
+    openSheet(
+      '<div class="sheet-h">🔒 ' + esc(title || '退出学生模式') + '</div>' +
+      (needSet
+        ? '<div class="tiny">学生模式受家长控制保护。首次退出要先设置一个「家长控制密码」（4-12 位字母或数字），之后每次退出都要输入它。</div>' +
+          '<div class="field"><input id="xpPwd" type="password" maxlength="12" placeholder="设置家长控制密码"></div>' +
+          '<button class="btn" id="xpGo" style="margin-top:10px">设置并继续</button>'
+        : '<div class="tiny">请输入密码确认（本机家长/老师账号密码' + (hasExit ? '或家长控制密码' : '') + '）</div>' +
+          '<div class="field"><input id="xpPwd" type="password" maxlength="12" placeholder="输入密码"></div>' +
+          '<button class="btn" id="xpGo" style="margin-top:10px">确认</button>'),
+      (m) => {
+        const go = () => {
+          const p = m.querySelector('#xpPwd').value.trim();
+          if (!window.BeastAuth || !BeastAuth.pwdOk(p)) { toast('密码需要 4-12 位字母或数字'); return; }
+          if (others.length) {
+            const ok = others.some((u) => u.pwd === BeastAuth.hashPwd(p, u.salt)) ||
+              (hasExit && p === (function () { try { return localStorage.getItem(EXIT_PWD_KEY); } catch (e) { return ''; } })());
+            if (!ok) { toast('❌ 密码不对，不能退出学生模式'); return; }
+          } else if (!needSet) {
+            const saved = (function () { try { return localStorage.getItem(EXIT_PWD_KEY); } catch (e) { return ''; } })();
+            if (p !== saved) { toast('❌ 密码不对，不能退出学生模式'); return; }
+          } else {
+            try { localStorage.setItem(EXIT_PWD_KEY, p); } catch (e) {}
+          }
+          okCb();
+        };
+        m.querySelector('#xpGo').onclick = go;
+        m.querySelector('#xpPwd').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
+        try { m.querySelector('#xpPwd').focus(); } catch (e) {}
+      });
+  }
+  /* 学生模式里的「切换身份」面板：只给家长界面和入口页两个出口，都要密码；老师界面入口一律不出现 */
+  function studentExitSheet() {
+    openSheet(
+      '<div class="sheet-h">🔀 切换身份</div>' +
+      '<div class="tiny se-intro">当前是<b>学生界面</b>。学生模式里没有老师界面；要切回家长界面需要密码确认，防止孩子自己退出。</div>' +
+      '<button class="btn" id="xeFam" style="width:100%;margin-top:12px">🏠 切回家长界面（需密码）</button>' +
+      '<button class="btn ghost" id="xeHome" style="width:100%;margin-top:8px">🚪 回入口页（需密码）</button>' +
+      '<button class="btn ghost sm" id="xeStay" style="width:100%;margin-top:8px">留在学生界面</button>',
+      (m, close) => {
+        m.querySelector('#xeStay').onclick = () => close();
+        m.querySelector('#xeFam').onclick = () => { close(); exitPwdCheck(() => { setRole('family'); hardNav(); }, '切回家长界面'); };
+        m.querySelector('#xeHome').onclick = () => { close(); exitPwdCheck(() => goHome(), '回入口页'); };
+      });
+  }
+
   /* v3.42 顶栏身份切换：本机已有几个档案就列几个，一键换界面 */
   function roleSwitchSheet() {
     const cur = (function () { try { return localStorage.getItem('beast.role') || ''; } catch (e) { return ''; } })();
+    /* v3.43 学生模式：走密码闸门面板，绝不列出老师界面入口 */
+    if (cur === 'student') return studentExitSheet();
     const profs = roleProfiles();
     const IC = { class: '🏫', family: '🏠', student: '🎒' };
     const NM = { class: '老师界面', family: '家长界面', student: '学生界面' };
@@ -3600,8 +3677,8 @@
             k.points = 0; k.daily = {};
             if (all) {
               const type = k.pet.type;
-              k.pet = { name: petMeta(type).name, type, exp: 0, lv: 1 };
-              k.dex = { egg: true }; k.companions = []; k.milestones = []; k.skin = null;
+              k.pet = { name: petMeta(type).name, type, exp: 0, lv: 3 };
+              k.dex = { [type + '-baby']: true }; k.companions = []; k.milestones = []; k.skin = null;
             }
           });
           P.d.log = []; P.d.pending = []; P.d.doneToday = {};
@@ -3728,8 +3805,8 @@
             const exp = (k.pet && k.pet.exp) || 0;
             k.pet = { name: pick.name, type: pick.id, exp, lv };
             k.skin = null;
-            k.dex = { egg: true };
-            STAGES.forEach((s) => { if (lv >= s.min && s.suffix !== 'egg') k.dex[pick.id + '-' + s.suffix] = true; });
+            k.dex = {};
+            STAGES.forEach((s) => { if (lv >= s.min) k.dex[pick.id + '-' + s.suffix] = true; });
           });
           P.save(); close(); render();
           toast('已重新分配 ' + n + ' 人的宠物');
@@ -4398,22 +4475,8 @@
       acctBtnEl.textContent = au ? au.name.slice(0, 3) : '👤';
     }
     bindKidsRow();
-    /* v3.42 学生界面里的回退提示：本机还留着老师档案、且登录的是老师账号时给一键返回 */
-    if (isStudent()) {
-      try {
-        const cd = JSON.parse(localStorage.getItem('beast.v1.class') || 'null');
-        const au = window.BeastAuth && BeastAuth.current();
-        if (cd && cd.kids && cd.kids.length && (!au || au.role !== 'student')) {
-          const tip = document.createElement('div');
-          tip.className = 'role-tip';
-          tip.innerHTML = '<span>👩‍🏫 当前是<b>学生界面</b> · 老师档案（' +
-            esc((cd.cls && cd.cls.name) || '我的班级') + '）已保留</span><button id="rtBack">回老师界面</button>';
-          const v = document.getElementById('view');
-          v.insertBefore(tip, v.firstChild);
-          tip.querySelector('#rtBack').onclick = () => { setRole('class'); hardNav(); };
-        }
-      } catch (e) {}
-    }
+    /* v3.43 学生模式不再提供「回老师界面」提示条：老师入口一律不出现在学生界面。
+       老师档案仍原样保留在本机，切回老师请从入口页或家长界面进（学生退出需密码） */
     /* 学生端：进页面顺手拉一次班级变动（年级/老师加分），60 秒节流 */
     if (isStudent() && P.d.kids && P.d.kids.length) setTimeout(() => cloudStudentPull(true), 700);
     /* 老师端：老班级首次进入时自动补上云（只做一次，失败不打扰） */
@@ -4841,10 +4904,26 @@
   }
 
   /* 带饰品的宠物形象：opts.size 像素，opts.noAcc 不戴饰品 */
+  /* v3.45：进化阶段用 CSS 类表达（scale/光环/皇冠），即使 S/M 系四阶段共用一张图，升级也能一眼看出变化 */
+  const STAGE_CLS = ['st-baby', 'st-growth', 'st-adult', 'st-ultimate'];
   function petBand(pet, size, wardrobe, noAcc) {
     const w = size || 88;
     if (!pet || !pet.type) return '<span class="pav" style="width:' + w + 'px;height:' + w + 'px"></span>';
-    const src = imgFor(pet.type, stageIdxOf(pet.lv || 1));
+    const si = stageIdxOf(pet.lv || 1);
+    const src = imgFor(pet.type, si);
+    /* v3.45 稀有度：SSR 全套至尊特效，SR 紫晕，R 微蓝，N 朴素 —— SSR 必须碾压其它 */
+    const rar = rarOf(pet.type);
+    const rc = rar === 'SSR' ? ' rar-ssr' : rar === 'SR' ? ' rar-sr' : rar === 'R' ? ' rar-r' : '';
+    const sc = ' ' + STAGE_CLS[si];
+    /* SSR：8 颗环绕星光 + 专属皇冠与双翼 */
+    const SP = [[10,6],[88,14],[50,2],[4,52],[96,60],[18,92],[82,94],[50,98]];
+    let spark = '';
+    if (rar === 'SSR') {
+      spark = SP.map((p, i) => '<i class="rar-sp" style="left:' + p[0] + '%;top:' + p[1] + '%;animation-delay:' + (i * 0.4) + 's">' + (i % 2 ? '✧' : '✦') + '</i>').join('') +
+        '<i class="rar-crown">👑</i><i class="rar-wing l">🪽</i><i class="rar-wing r">🪽</i>';
+    } else if (rar === 'SR') {
+      spark = '<i class="rar-sp" style="left:88%;top:12%">✧</i><i class="rar-sp" style="left:8%;top:66%;animation-delay:.9s">✦</i>';
+    }
     let layer = '';
     if (!noAcc && wardrobe) {
       Object.keys(wardrobe).forEach((slot) => {
@@ -4854,7 +4933,7 @@
         layer += '<i class="pav-acc ' + sl + '" style="left:' + a.l + '%;top:' + a.top + '%;font-size:' + Math.max(10, Math.round(w * a.f / 100)) + 'px">' + a.e + '</i>';
       });
     }
-    return '<span class="pav" style="width:' + w + 'px;height:' + w + 'px"><img src="' + src + '" alt="">' + layer + '</span>';
+    return '<span class="pav' + rc + sc + '" style="width:' + w + 'px;height:' + w + 'px"><img src="' + src + '" alt="">' + layer + spark + '</span>';
   }
   function petAv(k, size) {
     ensurePetSys(k);
@@ -5126,7 +5205,9 @@
     const me = A.current();
     const cs = cloudState();
     const rn = (r) => A.ROLE_NAME[r] || r;
-    const accRows = A.list().map((u) => {
+    /* v3.43 学生模式下账号中心只展示学生账号，其余账号（老师/家长）一概不列、不可切 */
+    const stuOnly = isStudent();
+    const accRows = A.list().filter((u) => !stuOnly || u.role === 'student').map((u) => {
       const isMe = me && u.id === me.id;
       return '<div class="acc-it' + (isMe ? ' me' : '') + '" data-id="' + u.id + '">' +
         '<span class="acc-av">' + rn(u.role).slice(0, 1) + '</span>' +
@@ -5184,15 +5265,18 @@
       }));
       m.querySelector('#accHelp') && (m.querySelector('#accHelp').onclick = () => { close(); location.href = 'help.html'; });
       m.querySelector('#accHome') && (m.querySelector('#accHome').onclick = () => {
+        /* v3.43 学生模式回入口页要过密码闸门（入口页可选老师，等于老师入口） */
+        if (isStudent()) return exitPwdCheck(() => goHome(), '回入口页');
         if (!confirm('回到入口页重新选身份？本机所有档案与账号都会保留，随时可以再进来。')) return;
         close(); goHome();
       });
       m.querySelector('#accOut') && (m.querySelector('#accOut').onclick = () => {
+        if (isStudent()) return exitPwdCheck(() => { A2.logout(); close(); goHome(); }, '退出登录');
         if (!confirm('退出后需要「名字+密码」重新登录，本机档案不会删除。确定退出？')) return;
         A2.logout();
         close(); goHome();
       });
-      m.querySelector('#accIn') && (m.querySelector('#accIn').onclick = () => { close(); loginSheet(); });
+      m.querySelector('#accIn') && (m.querySelector('#accIn').onclick = () => { close(); loginSheet(isStudent() ? 'student' : undefined); });
       m.querySelector('#accDel') && (m.querySelector('#accDel').onclick = () => {
         if (!confirm('仅删除本机账号记录，云端备份与班级数据不受影响。确定？')) return;
         A2.remove(me.id);
@@ -5207,16 +5291,18 @@
     const roles = ['student', 'family', 'class'];
     const savedRole = (() => { try { return localStorage.getItem('beast.role') || 'student'; } catch (e) { return 'student'; } })();
     let role = prefRole || savedRole || 'student';
+    /* v3.43 学生模式里登录：身份锁死为学生，不给登录老师/家长账号的口子 */
+    const lockRole = !!prefRole && prefRole === 'student' && isStudent();
     const draw = (m) => {
       m.querySelector('.auth-body').innerHTML =
-        '<div class="field"><label>身份</label><select id="lgRole">' +
+        (lockRole ? '' : '<div class="field"><label>身份</label><select id="lgRole">' +
         roles.map((r) => '<option value="' + r + '"' + (r === role ? ' selected' : '') + '>' + A.ROLE_NAME[r] + '</option>').join('') +
-        '</select></div>' +
+        '</select></div>') +
         '<div class="field"><label>名字（注册时用的）</label><input id="lgName" maxlength="12" placeholder="学生昵称 / 家长账号名 / 老师姓名"></div>' +
         '<div class="field"><label>密码</label><input id="lgPwd" type="password" maxlength="12"></div>' +
         '<button class="btn" id="lgGo" style="margin-top:10px">登录</button>' +
         '<div class="tiny" style="margin-top:8px">本机没有这个账号时，会自动连云端找回档案（需要网络）</div>';
-      m.querySelector('#lgRole').onchange = (e) => { role = e.target.value; draw(m); };
+      m.querySelector('#lgRole') && (m.querySelector('#lgRole').onchange = (e) => { role = e.target.value; draw(m); });
       m.querySelector('#lgGo').onclick = () => {
         const name = m.querySelector('#lgName').value.trim();
         const pwd = m.querySelector('#lgPwd').value;
@@ -5333,17 +5419,36 @@
        这里清掉标记即可，不再弹「是否切换」的框——那个框点了也切不过去 */
     window.__entry = null;
     legacyNotice();
+    /* v3.46 单一更新入口：以前 index.html 和 app.js 各写一套 controllerchange，
+       两套互相抢（一套 reload、一套只提示），最终表现是「提示条常驻但页面没更新」。
+       现在只保留这里一套，规则见下方注释。 */
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js?v=3420', { updateViaCache: 'none' }).catch(() => {});
-      let rld = false;
+      const hadCtl = !!navigator.serviceWorker.controller;   /* 首次安装时本来就没有控制者 */
+      navigator.serviceWorker.register('sw.js?v=3426', { updateViaCache: 'none' }).then((reg) => {
+        /* 每 30 分钟探一次新版 */
+        setInterval(() => { reg.update().catch(() => {}); }, 30 * 60 * 1000);
+        /* 回到前台时顺手查一次更新，不等定时器 */
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+      }).catch(() => {});
+      let done = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (rld) return; rld = true;
-        /* 答题/弹层正在进行时不要打断，只提示，用户打完点一下即可 */
+        if (done) return; done = true;
+        if (!hadCtl) return;                                  /* 首次安装：不刷新，避免白刷一次 */
         const busy = document.querySelector('.qz-mask') || document.querySelector('.sheet-mask') || document.querySelector('#quiz');
         if (busy) { if (window.showUpdTip) window.showUpdTip(); return; }
-        if (!sessionStorage.getItem('swRld')) { sessionStorage.setItem('swRld', '1'); location.reload(); }
+        /* 同一会话只自动刷一次，防止新版 SW 反复 claim 导致刷新死循环 */
+        let already = false;
+        try { already = sessionStorage.getItem('beast.sw.once') === '1'; } catch (e) {}
+        if (already) { if (window.showUpdTip) window.showUpdTip(); return; }
+        try { sessionStorage.setItem('beast.sw.once', '1'); } catch (e) {}
+        location.reload();
       });
+      /* 20 秒后解锁：下次真发新版仍能自动刷新 */
+      setTimeout(() => { try { sessionStorage.removeItem('beast.sw.once'); } catch (e) {} }, 20000);
     }
   }
-  boot();
+  /* v3.45 关键：games.js 在 app.js 之后加载，首屏若立刻 render 会拿不到 window.BPGames，
+     导致「知识掌握度」「冒险小说进度」等模块静默丢失。等 DOM 就绪（所有同步脚本已执行）再启动。 */
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();

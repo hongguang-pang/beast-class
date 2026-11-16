@@ -517,3 +517,41 @@
 .nv-dots i.rd { background: #c7b48e; }
 .nv-dots i.on { width: 16px; background: #a8843f; }
 .nv-hint { text-align: center; font-size: 11px; color: #b0a184; padding: 4px 0 14px; }
+
+/* v3.45 掌握度分数：已掌握 / 全年级知识点总数 */
+.mast-ic .mi-frac{display:block;font-size:8.5px;color:#a99ab8;font-style:normal;margin-top:1px;line-height:1.1}
+.mast-ic.m-good .mi-frac{color:#6fae62}.mast-ic.m-mid .mi-frac{color:#c99a2e}.mast-ic.m-weak .mi-frac{color:#c77b74}
+
+/* ================= v3.45 学科冒险小说馆 ================= */
+.nv-books{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:8px 0 14px}
+.nv-book{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px 7px;border:1.5px solid #eee2f8;
+  border-radius:13px;background:#fff;position:relative;transition:.18s}
+.nv-book.on{border-color:var(--bc);box-shadow:0 3px 14px rgba(90,60,140,.16);background:linear-gradient(160deg,#fff,#faf6ff)}
+.nv-book .nvb-em{font-size:21px;line-height:1}
+.nv-book .nvb-t{display:flex;flex-direction:column;align-items:center;width:100%}
+.nv-book .nvb-t b{font-size:10.5px;color:#4a3364;white-space:nowrap}
+.nv-book .nvb-t small{font-size:8.5px;color:#9a8ab0;margin-top:1px}
+.nv-book .nvb-bar{display:block;width:78%;height:3px;border-radius:9px;background:#ece4f6;margin-top:3px;overflow:hidden}
+.nv-book .nvb-bar i{display:block;height:100%;background:var(--bc);border-radius:9px}
+.nv-book-hero{display:flex;gap:12px;align-items:stretch;margin:4px 0 12px;padding:12px;border-radius:14px;
+  background:linear-gradient(135deg,#faf6ff,#fff);border:1px solid #efe6fb}
+.nvbh-cover{flex:0 0 96px;border-radius:8px 12px 12px 8px;padding:12px 8px;color:#fff;text-align:center;
+  background:linear-gradient(150deg,var(--bc),#5b3a9e);display:flex;flex-direction:column;justify-content:center;
+  box-shadow:0 4px 12px rgba(80,50,130,.25)}
+.nvbh-cover span{font-size:28px}.nvbh-cover b{font-size:13px;letter-spacing:1px;margin-top:4px}
+.nvbh-cover small{font-size:8.5px;opacity:.85;margin-top:3px}
+.nvbh-info{flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.nvbh-info b{font-size:15px;color:#3d2c55}.nvbh-info small{font-size:11px;color:#8a7aa0}
+.nvbh-bar{height:7px;border-radius:9px;background:#ece4f6;overflow:hidden;margin-top:4px}
+.nvbh-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--bc),#a855f7);border-radius:9px}
+.nvbh-info span{font-size:10.5px;color:#7c6a95}
+.nv-row.reading{border-color:#c9a8ff;background:linear-gradient(135deg,#faf3ff,#fff);box-shadow:0 2px 8px rgba(168,85,247,.12)}
+.nv-row.reading .nvr-em{animation:nvPulse 1.5s ease-in-out infinite}
+@keyframes nvPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+/* 知识点重点标记 */
+mark.kn-hi{background:linear-gradient(transparent 58%,#ffe08a 58%);color:#8a5a00;font-weight:800;
+  padding:0 2px;border-radius:2px;box-decoration-break:clone}
+
+/* v3.45 掌握度图标可点开详情 */
+.mast-icons{cursor:pointer}
+.mast-icons:active{opacity:.75}

@@ -1302,7 +1302,11 @@ function boot(){
   setTimeout(() => showHowto(false), 400);
 }
 function safeBoot(){
-  try { boot(); window.__bootOk = true; }
+  try {
+    boot(); window.__bootOk = true;
+    /* 慢网下加载守护定时器可能先于 boot 误报红条，启动成功后清掉 */
+    var bar = document.getElementById('__errbar'); if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
+  }
   catch (e) {
     console.error('[启动失败]', e);
     if (window.__errPanel) window.__errPanel(e && e.message ? e.message : String(e));

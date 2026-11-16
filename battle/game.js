@@ -318,13 +318,16 @@ function pickQuestion(){
     subj = 'eth'; q = pickBankQ('eth', cfg.lv);
   } else {
     subj = 'math';
-    /* 难度在关卡值上下浮动，且尽量避免与已出题目重复 */
-    const mlv = clamp(cfg.lv + rand(2) - 1, 0, 4);
-    for (let t = 0; t < 8; t++) {
-      q = genMath(G.grade, mlv);
-      if (!G.usedQ.has(q.q)) break;
+    /* 优先用大图谱题库（题目自带真实知识点名），取尽再程序生成兜底 */
+    q = pickBankQ('math', cfg.lv);
+    if (!q) {
+      const mlv = clamp(cfg.lv + rand(2) - 1, 0, 4);
+      for (let t = 0; t < 8; t++) {
+        q = genMath(G.grade, mlv);
+        if (!G.usedQ.has(q.q)) break;
+      }
+      G.usedQ.add(q.q);
     }
-    G.usedQ.add(q.q);
   }
   /* 该科题用完（尤其道德与法治每年级只有 2 题）→ 退回数学题，保证不重复 */
   if (!q) {
@@ -369,10 +372,10 @@ function renderGrades(){
 function renderGradeInfo(){
   const g = GRADES.find(x => x.id === G.grade);
   const kn = KG_NAMES[G.grade] || {};
-  const total = ['math','cn','sci','eth'].reduce((s, k) => s + (kn[k] || []).length, 0);
+  const total = ['math','cn','en','sci','eth'].reduce((s, k) => s + (kn[k] || []).length, 0);
   const bank = KG_BANK[G.grade] || {};
-  const qn = Object.keys(bank).reduce((s, k) => s + bank[k].length, 0) + 200;
-  $('gradeInfo').innerHTML = `${g.name} · 图谱 <b>${total}</b> 个知识点 · <b>${qn}+</b> 道题 · 语文/数学/英语/科学/道德与法治`;
+  const qn = Object.keys(bank).reduce((s, k) => s + bank[k].length, 0);
+  $('gradeInfo').innerHTML = `${g.name} · 图谱 <b>${total}</b> 个知识点 · <b>${qn}</b> 道题 · 语文/数学/英语/科学/道德与法治`;
 }
 function renderPets(){
   const grid = $('petGrid'); grid.innerHTML = '';

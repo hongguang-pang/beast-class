@@ -1162,3 +1162,12 @@ details.knm-chap[open]>summary{border-bottom:1px dashed #f0e8fc;padding-bottom:5
 /* SSR 角标流光加强 */
 .rar-tag[data-r="SSR"],.rar-chip.rar-ssr{background:linear-gradient(120deg,#fff3a0,#ffb300,#ff8fd0,#ffb300);
   background-size:250% 100%;animation:rarShine 1.6s linear infinite;color:#4a2f00}
+
+/* ================= v3.48 图鉴：立绘改透明底后的衬底 ================= */
+/* 抠成透明立绘后，浅色卡片上的白色角色会糊掉，给图片区一层深色径向底 */
+.dex-card .dx-img{background:radial-gradient(circle at 50% 38%,#313e64 0%,#1b2238 66%,#111629 100%);
+  box-shadow:inset 0 0 20px rgba(0,0,0,.38)}
+.dex-card .dx-img img{object-fit:contain;padding:5%;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
+.dex-card.locked .dx-img{background:repeating-linear-gradient(45deg,#eee9f7,#eee9f7 8px,#e5dff2 8px,#e5dff2 16px);
+  box-shadow:none}
+.dex-card.locked .dx-img img{filter:none}

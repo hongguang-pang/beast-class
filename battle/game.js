@@ -28,13 +28,12 @@ const ELEMENTS = window.ELEMENTS, ELEM_ADV = window.ELEM_ADV;
 const ELEM_ADV_MULT = window.ELEM_ADV_MULT, ELEM_WEAK_MULT = window.ELEM_WEAK_MULT;
 const RAR_BONUS = window.RAR_BONUS, RAR_COLOR = window.RAR_COLOR;
 const KG_BANK = window.KG_BANK, KG_NAMES = window.KG_NAMES;
+/* 学习引擎 LEARN 由 engine.js 以 const 声明，全局可直接引用 */
 
-const SUBJ_META = {
-  math: { name:'数学', icon:'🧮' },
-  cn:   { name:'语文', icon:'📖' },
-  en:   { name:'英语', icon:'🔤' },
-  sci:  { name:'科学', icon:'🔬' },
-  eth:  { name:'道德与法治', icon:'⚖️' }
+/* 学科元数据来自 knowledge.js（10 科全量），旧版仅有本地 5 科表，这里做兼容兜底 */
+const SUBJ_META = window.SUBJ_META || {
+  math: { name:'数学', icon:'🧮' }, cn: { name:'语文', icon:'📖' },
+  en: { name:'英语', icon:'🔤' }, sci: { name:'科学', icon:'🔬' }, eth: { name:'道德与法治', icon:'⚖️' }
 };
 
 /* ---------- 关卡：敌人属性与队伍属性形成策略约束 ---------- */
@@ -61,7 +60,17 @@ const G = {
   notes:2, usedThisQ:[],
   currentQ:null, currentOpts:[], currentAnswer:0,
   bags:{}, usedQ:new Set(), wrongPool:[], knHit:{}, startTime:0, lock:false,
-  chosenLevel:0, lvCorrect:0, lvWrong:0, lvSubj:{}, bag:{}, runDrops:[], sessionDrops:[]
+  chosenLevel:0, lvCorrect:0, lvWrong:0, lvSubj:{}, bag:{}, runDrops:[], sessionDrops:[],
+  /* v5 学习引擎状态 */
+  mode:'story',            // story=单元闯关 | endless=无限远征
+  stages:[],               // 当前年级的单元关卡列表 LEARN.stages(grade)
+  stageIdx:0,              // 当前单元关卡下标
+  kidQueue:[],             // 本关待学的知识点id队列（按单元顺序）
+  kidPtr:0,                // 队列游标
+  usedTexts:{},            // 本局已出题干（避免重复）
+  answered:false,          // 当前题是否已作答（填空/简答防重复提交）
+  inputKind:null,          // 当前题型渲染态
+  reviewStreak:0           // 连续出题计数，用于穿插复习
 };
 
 /* ---------- 安全存储：无痕模式 / file:// / 微信受限环境下 localStorage 会抛错 ---------- */
@@ -393,66 +402,92 @@ function mathKn(g, tag){
   return inside || tag;
 }
 
-/* 题库抽题：年级内各科循环取，不连续重复 */
-function pickBankQ(kind, maxLv){
-  const bank = (KG_BANK[G.grade] || {})[kind] || [];
-  if (!bank.length) return null;
-  if (!G.bags[kind] || !G.bags[kind].length) G.bags[kind] = shuffle(bank.map((_, i) => i));
-  let guard = 0;
-  /* 同一局内不重复出题；本科题目用完则返回 null，由调用方换科 */
-  while (G.bags[kind].length && guard++ < 80) {
-    const idx = G.bags[kind].pop();
-    const q = bank[idx];
-    if (q.lv > maxLv) continue;
-    if (G.usedQ.has(q.q)) continue;
-    G.usedQ.add(q.q);
-    return q;
+/* ============ v5 智能出题：单元顺序 + 掌握度复习穿插 + 多题型 ============ */
+/* 知识点 -> 学科（从 KG_POINTS 反查，供题卡显示） */
+const KID_SUBJ = (function(){
+  const m = {};
+  for (const g in window.KG_POINTS) for (const s in window.KG_POINTS[g])
+    window.KG_POINTS[g][s].forEach(p => { m[g + '|' + p.id] = s; });
+  return m;
+})();
+function kidSubj(kid){ return KID_SUBJ[G.grade + '|' + kid] || 'math'; }
+
+/* 取本关下一个知识点：主线队列优先；队列空则按单元顺序补充 */
+function nextTeachKid(){
+  while (G.kidPtr < G.kidQueue.length) {
+    const kid = G.kidQueue[G.kidPtr++];
+    if (LEARN.questionsFor(G.grade, kid).length) return kid;
   }
   return null;
 }
+/* 单元顺序的下一个知识点（跨单元推进，用于无限模式主线） */
+let _seqCache = null;
+function sequentialKid(skip){
+  if (!_seqCache || _seqCache.grade !== G.grade) {
+    const kids = [];
+    (G.stages || []).forEach(st => st.kids.forEach(k => kids.push(k)));
+    _seqCache = { grade:G.grade, kids:kids, i:0 };
+  }
+  const kk = _seqCache.kids;
+  for (let n = 0; n < kk.length; n++) {
+    _seqCache.i = (_seqCache.i + 1) % kk.length;
+    const kid = kk[_seqCache.i];
+    if (kid !== skip && LEARN.questionsFor(G.grade, kid).length) return kid;
+  }
+  return null;
+}
+
 function pickQuestion(){
-  const cfg = LEVELS[G.level];
-  const roll = Math.random();
-  let q = null, subj = 'math';
-  if (roll < 0.26) {
-    subj = 'en'; q = pickBankQ('en', cfg.lv);
-  } else if (roll < 0.44) {
-    subj = 'cn'; q = pickBankQ('cn', cfg.lv);
-  } else if (roll < 0.58) {
-    subj = 'sci'; q = pickBankQ('sci', cfg.lv);
-  } else if (roll < 0.66) {
-    subj = 'eth'; q = pickBankQ('eth', cfg.lv);
+  const lv = LEVELS[G.level] || LEVELS[0];
+  let q = null, kid = null, isReview = false;
+
+  if (G.mode === 'endless') {
+    /* 无限模式：每 4 题穿插 1 道复习（错得多/掌握低/到期的优先） */
+    G.reviewStreak++;
+    const wantReview = (G.reviewStreak % 4 === 0);
+    if (wantReview) {
+      kid = LEARN.reviewPick(G.grade, G.currentQ ? G.currentQ.kid : null);
+      if (kid) isReview = true;
+    }
+    if (!kid) kid = nextTeachKid() || sequentialKid(G.currentQ ? G.currentQ.kid : null);
+    if (kid) q = LEARN.pickFromKid(G.grade, kid, G.usedTexts, lv.lv);
   } else {
-    subj = 'math';
-    /* 优先用大图谱题库（题目自带真实知识点名），取尽再程序生成兜底 */
-    q = pickBankQ('math', cfg.lv);
-    if (!q) {
-      const mlv = clamp(cfg.lv + rand(2) - 1, 0, 4);
-      for (let t = 0; t < 8; t++) {
-        q = genMath(G.grade, mlv);
-        if (!G.usedQ.has(q.q)) break;
-      }
-      G.usedQ.add(q.q);
-    }
+    /* 单元闯关：严格按本单元知识点顺序 */
+    kid = nextTeachKid();
+    if (kid) q = LEARN.pickFromKid(G.grade, kid, G.usedTexts, lv.lv);
+    if (!q) q = fallbackQuestion(lv);   // 单元学完/无题兜底
   }
-  /* 该科题用完（尤其道德与法治每年级只有 2 题）→ 退回数学题，保证不重复 */
-  if (!q) {
-    subj = 'math';
-    for (let t = 0; t < 8; t++) {
-      q = genMath(G.grade, cfg.lv);
-      if (!G.usedQ.has(q.q)) break;
-    }
-    G.usedQ.add(q.q);
-  }
+
+  if (!q) q = fallbackQuestion(lv);
+  const subj = q.kid ? kidSubj(q.kid) : 'math';
   q.subj = subj;
+  q.isReview = isReview;
   G.currentQ = q;
-  G.currentOpts = q.options;
+  /* 统一转换为引擎题型字段：choice 用 o/a；fill/short 用 ans */
+  G.currentOpts = (q.tp === 'choice') ? q.o : [];
   G.currentAnswer = q.a;
   G.usedThisQ = [];
+  G.answered = false;
   G.questionNo++;
+  G.usedTexts[q.q] = 1;
   G.pickedLog = G.pickedLog || [];
-  G.pickedLog.push(subj + '|' + q.q);
+  G.pickedLog.push((isReview ? '复习|' : '新学|') + subj + '|' + (q.kn || q.kid || '生成') + '|' + q.q);
   renderQuestion();
+}
+
+/* 兜底：题目用尽时现场生成数学题（保证永不卡住） */
+function fallbackQuestion(lv){
+  const mlv = clamp((lv ? lv.lv : 1) + rand(2) - 1, 0, 4);
+  for (let t = 0; t < 8; t++) {
+    const q = genMath(G.grade, mlv);
+    if (!G.usedTexts[q.q]) {
+      q.tp = 'choice'; q.kid = ''; q.o = q.options; q.ans = q.options[q.a];
+      return q;
+    }
+  }
+  const q = genMath(G.grade, 0);
+  q.tp = 'choice'; q.kid = ''; q.o = q.options; q.ans = q.options[q.a];
+  return q;
 }
 
 /* ============================================================
@@ -476,12 +511,17 @@ function renderGrades(){
   renderGradeInfo();
 }
 function renderGradeInfo(){
-  const g = GRADES.find(x => x.id === G.grade);
-  const kn = KG_NAMES[G.grade] || {};
-  const total = ['math','cn','en','sci','eth'].reduce((s, k) => s + (kn[k] || []).length, 0);
+  const g = GRADES.find(x => x.id === G.grade) || GRADES[0];
+  const pts = window.KG_POINTS[G.grade] || {};
+  const subjNames = Object.keys(pts).map(k => (SUBJ_META[k] || {}).name || k);
+  const total = Object.keys(pts).reduce((s, k) => s + pts[k].length, 0);
   const bank = KG_BANK[G.grade] || {};
   const qn = Object.keys(bank).reduce((s, k) => s + bank[k].length, 0);
-  $('gradeInfo').innerHTML = `${g.name} · 图谱 <b>${total}</b> 个知识点 · <b>${qn}</b> 道题 · 语文/数学/英语/科学/道德与法治`;
+  const stages = LEARN ? LEARN.stages(G.grade).length : 0;
+  $('gradeInfo').innerHTML = `${g.name}（${g.stage}）· 图谱 <b>${total}</b> 知识点 · <b>${qn}</b> 道题 · <b>${stages}</b> 个单元关卡<br><span class="gi-subj">${subjNames.join(' / ')}</span>`;
+  /* 切年级后重建关卡缓存 */
+  G.stages = LEARN ? LEARN.stages(G.grade) : [];
+  _seqCache = null;
 }
 function renderPets(){
   const grid = $('petGrid'); grid.innerHTML = '';
@@ -509,14 +549,16 @@ function togglePet(p){
   else { SND.tap(); $('startBtn').textContent = '最多 3 只 · 点已选的可以取消'; return; }
   SND.tap();
   renderPets(); renderTeamPreview();
+  syncStartBtns();
+}
+function syncStartBtns(){
+  const ready = G.team.length === 3;
   const btn = $('startBtn');
-  if (G.team.length === 3) {
-    btn.disabled = false;
-    btn.textContent = `带 ${G.team.map(t => t.pet.emoji).join('')} 出发！`;
-  } else {
-    btn.disabled = true;
-    btn.textContent = `再选 ${3 - G.team.length} 只宠物出发`;
+  if (btn) {
+    btn.disabled = !ready;
+    btn.textContent = ready ? `带 ${G.team.map(t => t.pet.emoji).join('')} 出发！` : `再选 ${3 - G.team.length} 只宠物出发`;
   }
+  const eb = $('endlessBtn2'); if (eb) eb.disabled = !ready;
 }
 function renderTeamPreview(){
   const bar = $('teamBar'); bar.innerHTML = '';
@@ -562,32 +604,99 @@ function advTag(petElem, enemyElem){
   return '';
 }
 function renderQuestion(){
-  const q = G.currentQ, cfg = LEVELS[G.level];
+  const q = G.currentQ, cfg = LEVELS[G.level] || LEVELS[0];
   const meta = SUBJ_META[q.subj] || SUBJ_META.math;
+  const tpName = q.tp === 'fill' ? '填空' : q.tp === 'short' ? '简答' : '选择';
   $('qSubj').textContent = `${meta.icon} ${meta.name}`;
-  $('qKn').textContent = q.kn ? `知识点 · ${q.kn}` : '';
-  $('qProgress').textContent = `第 ${G.questionNo} 题 · ${cfg.name}`;
+  let knTxt = q.isReview ? '🔁 复习旧知识' : (q.kn ? '知识点 · ' + q.kn : '知识点');
+  $('qKn').textContent = knTxt + ' · ' + tpName + '题';
+  const master = q.kid ? LEARN.get(G.grade, q.kid) : null;
+  $('qProgress').textContent = (G.mode === 'endless' ? '∞ 第 ' + G.questionNo + ' 题' : ('第 ' + G.questionNo + ' 题')) +
+    (master && master.seen ? ' · 见过' + master.seen + '次' : '');
   $('qText').textContent = q.q;
   const box = $('qOptions'); box.innerHTML = '';
-  G.currentOpts.forEach((txt, i) => {
-    const b = document.createElement('button');
-    b.className = 'opt';
-    b.textContent = txt;
-    b.dataset.i = i;
-    b.addEventListener('click', () => answerQuestion(i, b));
-    box.appendChild(b);
-  });
+  G.answered = false;
+
+  if (q.tp === 'choice') {
+    /* 选择题：选项按钮（2-4 个自适应） */
+    box.className = 'q-opts';
+    G.currentOpts.forEach((txt, i) => {
+      const b = document.createElement('button');
+      b.className = 'opt';
+      b.textContent = txt;
+      b.dataset.i = i;
+      b.addEventListener('click', () => submitChoice(i, b));
+      box.appendChild(b);
+    });
+  } else {
+    /* 填空 / 简答：输入框 + 提交 */
+    box.className = 'q-input-wrap';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.id = 'qInput';
+    inp.className = 'q-input';
+    inp.autocomplete = 'off';
+    inp.placeholder = q.tp === 'fill' ? '输入答案（数字或文字）' : '写下你的想法';
+    const hint = document.createElement('div');
+    hint.className = 'q-hint';
+    hint.textContent = q.tp === 'fill' ? '小提示：数字填空可以用小数或分数形式' : '简答写完点提交，再对照参考答案自评';
+    const sub = document.createElement('button');
+    sub.className = 'q-submit';
+    sub.id = 'qSubmit';
+    sub.textContent = '提交答案';
+    sub.addEventListener('click', submitText);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') submitText(); });
+    box.appendChild(inp); box.appendChild(hint); box.appendChild(sub);
+    setTimeout(() => { try { inp.focus(); } catch(e){} }, 60);
+  }
   updateNoteBtn();
 }
+/* 选择题提交 */
+function submitChoice(i, btn){ if (G.answered) return; answerQuestion(i === G.currentAnswer, btn); }
+/* 填空/简答提交：引擎判定，简答未精确匹配则进入自评 */
+function submitText(){
+  if (G.answered) return;
+  const inp = $('qInput'); if (!inp) return;
+  const val = inp.value || '';
+  if (!LEARN.normalize(val)) { inp.classList.add('shake'); setTimeout(()=>inp.classList.remove('shake'), 400); return; }
+  const q = G.currentQ;
+  const verdict = LEARN.judge(q, val);
+  G.answered = true;
+  toArr($('qOptions').children).forEach(el => { if (el.classList) el.style.pointerEvents = 'none'; });
+  inp.disabled = true;
+  const sub = $('qSubmit'); if (sub) sub.disabled = true;
+  if (verdict === null) {
+    /* 简答：显示参考答案，让孩子自评 */
+    showSelfGrade(val);
+  } else {
+    answerQuestion(verdict ? 1 : 0, null, val);
+  }
+}
+/* 简答题自评弹层 */
+function showSelfGrade(val){
+  const q = G.currentQ;
+  const box = $('qOptions');
+  box.insertAdjacentHTML('beforeend',
+    '<div class="self-grade"><p>参考答案：<b>' + escHtml(q.ans) + '</b></p>' +
+    (q.exp ? '<p class="self-exp">' + escHtml(q.exp) + '</p>' : '') +
+    '<p>你觉得自己答对了吗？</p>' +
+    '<button class="self-btn yes" id="selfYes">✓ 我答对了</button>' +
+    '<button class="self-btn no" id="selfNo">✗ 还差点</button></div>');
+  $('selfYes').addEventListener('click', () => { const b=$('selfYes'); if(b)b.remove(); const n=$('selfNo'); if(n)n.remove(); answerQuestion(1, null, val); });
+  $('selfNo').addEventListener('click', () => { const b=$('selfNo'); if(b)b.remove(); const y=$('selfYes'); if(y)y.remove(); answerQuestion(0, null, val); });
+}
+function escHtml(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function updateNoteBtn(){
   const b = $('noteBtn');
   b.textContent = `📓 米娅的笔记 ×${G.notes}`;
   b.disabled = G.notes <= 0;
 }
 function updateHUD(){
-  const cfg = LEVELS[G.level], t = activeT();
+  const cfg = LEVELS[G.level] || LEVELS[0], t = activeT();
   const gname = (GRADES.find(x => x.id === G.grade) || {}).name || '';
-  $('chapter').textContent = `${gname} · 第 ${G.level + 1} 关 ${cfg.name}`;
+  const modeTag = G.mode === 'endless' ? '♾️无限' : ('第' + (G.level + 1) + '关');
+  const unit = currentUnitName();
+  $('chapter').textContent = `${gname} · ${modeTag}${unit ? ' · ' + unit : ''}`;
   $('enemyName').textContent = cfg.enemy;
   $('enemyEmoji').textContent = cfg.emoji;
   const ee = ELEMENTS[cfg.elem];
@@ -687,25 +796,36 @@ function bigVerdict(text, cls){
   $('stage').appendChild(d);
   setTimeout(() => d.remove(), 1100);
 }
-function answerQuestion(i, btn){
+function answerQuestion(correct, btn, userText){
   if (G.lock || G.state !== 'battle') return;
   G.lock = true;
-  const correct = i === G.currentAnswer;
-  const opts = toArr($('qOptions').children);
-  opts.forEach((b, idx) => {
-    b.style.pointerEvents = 'none';
-    if (idx === G.currentAnswer) b.classList.add('right');
-  });
+  G.answered = true;
+  const q = G.currentQ;
+  const cfg = LEVELS[G.level] || LEVELS[0];
+  /* 选择题：标记正确项；填空/简答：显示正确答案 */
+  if (q && q.tp === 'choice') {
+    const opts = toArr($('qOptions').children);
+    opts.forEach((b, idx) => {
+      b.style.pointerEvents = 'none';
+      if (idx === G.currentAnswer) b.classList.add('right');
+    });
+  }
+  /* v5：记录掌握度（答对降频、答错升频、间隔复习） */
+  let master = null;
+  if (q && q.kid && LEARN) {
+    LEARN.record(G.grade, q.kid, correct);
+    master = LEARN.get(G.grade, q.kid);
+  }
   if (correct) {
     const t = activeT();
     G.combo++;
     G.maxCombo = Math.max(G.maxCombo, G.combo);
     G.correctCount++;
     G.lvCorrect++;
-    G.lvSubj[G.currentQ.subj] = (G.lvSubj[G.currentQ.subj] || 0) + 1;
-    const meta = SUBJ_META[G.currentQ.subj] || SUBJ_META.math;
-    if (G.currentQ.kn) G.knHit[`${meta.name} · ${G.currentQ.kn}`] = 1;
-    const em = elemMult(t.pet.elem, LEVELS[G.level].elem);
+    G.lvSubj[q ? q.subj : 'math'] = (G.lvSubj[q ? q.subj : 'math'] || 0) + 1;
+    const meta = SUBJ_META[q ? q.subj : 'math'] || SUBJ_META.math;
+    if (q && q.kn) G.knHit[`${meta.name} · ${q.kn}`] = 1;
+    const em = elemMult(t.pet.elem, cfg.elem);
     const comboMult = 1 + 0.25 * Math.min(G.combo - 1, 4);
     const base = 20 + (RAR_BONUS[t.pet.rar] || 0);
     const dmg = Math.max(6, Math.round(base * em * comboMult));
@@ -713,20 +833,27 @@ function answerQuestion(i, btn){
     if (isCrit) { bigVerdict('克制！', 'v-crit'); SND.crit(); }
     else if (G.combo >= 3) { bigVerdict(`连击 ×${G.combo}！`, 'v-good'); SND.correct(G.combo); }
     else { bigVerdict('命中！', 'v-good'); SND.correct(G.combo); }
-    $('battleLog').textContent = `${t.pet.skill}！${isCrit ? '属性克制，' : ''}造成 ${dmg} 点伤害${G.combo >= 2 ? `（连击 ×${G.combo}）` : ''}`;
+    let tip = `${t.pet.skill}！${isCrit ? '属性克制，' : ''}造成 ${dmg} 点伤害${G.combo >= 2 ? `（连击 ×${G.combo}）` : ''}`;
+    if (q && q.kid && master) tip += `　掌握度 ${master.s}/6`;
+    $('battleLog').textContent = tip;
     enemyCast(dmg, isCrit);
   } else {
-    btn.classList.add('wrong');
+    if (btn && btn.classList) btn.classList.add('wrong');
     G.combo = 0;
     G.wrongCount++;
     G.lvWrong++;
     const t = activeT();
-    const dmg = LEVELS[G.level].boss ? 20 : 16;
+    const dmg = cfg.boss ? 20 : 16;
     t.hp = clamp(t.hp - dmg, 0, t.maxHp);
-    if (G.currentQ) G.wrongPool.push({ q:G.currentQ.q, a:G.currentOpts[G.currentAnswer] });
+    const rightAns = q ? (q.tp === 'choice' ? (q.o ? q.o[q.a] : G.currentOpts[G.currentAnswer]) : q.ans) : '';
+    if (q) G.wrongPool.push({ q:q.q, a:rightAns });
     bigVerdict('再想想～', 'v-bad');
     SND.wrong();
-    $('battleLog').textContent = '答错了，' + t.pet.name + '被反击，掉了 ' + dmg + ' 点体力。看看正确答案，下一题再来！';
+    /* 填空/简答立即显示正确答案，帮助学习 */
+    let tip = '答错了，' + t.pet.name + '被反击，掉了 ' + dmg + ' 点体力。';
+    if (q && q.tp !== 'choice') tip += ' 正确答案：' + escHtml(rightAns);
+    if (q && q.kid && master) tip += '　这题会多安排几次复习。';
+    $('battleLog').innerHTML = tip;
     enemyAttack(dmg);
   }
   updateHUD();
@@ -778,6 +905,22 @@ function afterHit(){
     }
     pages(FW/2, FH*0.32, 22);
     flash('rgba(255,230,160,.7)');
+    /* 无限模式：敌人打散不弹过关层，自动循环到下一站继续出题 */
+    if (G.mode === 'endless') {
+      SND.clear();
+      rollDrops(G.level);
+      G.level = (G.level + 1) % LEVELS.length;
+      const nc = LEVELS[G.level];
+      G.team.forEach(t => { if (t.hp > 0) t.hp = clamp(t.hp + 24, 0, t.maxHp); });
+      G.enemyMax = nc.hp; G.enemyHp = nc.hp;
+      G.bossPhase = 1; G.combo = 0; G.lvCorrect = 0; G.lvWrong = 0; G.lvSubj = {}; G.runDrops = [];
+      G.notes = Math.min(5, G.notes + 1);
+      G.state = 'battle'; G.lock = false;
+      updateHUD();
+      $('battleLog').textContent = `打散一个敌人！♾️ 继续 · 已掌握 ${LEARN.masteredCount(G.grade)} 个知识点。`;
+      setTimeout(nextQ, 700);
+      return;
+    }
     G.state = 'levelClear';
     SND.clear();
     rollDrops(G.level);
@@ -836,18 +979,39 @@ function switchPet(i){
 /* ============================================================
  * 7. 流程
  * ============================================================ */
-function startGame(){
+/* 把当前单元起始、后续单元的知识点按单元顺序铺入出题队列 */
+function buildKidQueue(fromStage){
+  const stages = G.stages || (G.stages = LEARN.stages(G.grade));
+  if (!stages.length) return;
+  G.stageIdx = clamp(fromStage | 0, 0, stages.length - 1);
+  const q = [];
+  for (let i = G.stageIdx; i < stages.length; i++) stages[i].kids.forEach(k => q.push(k));
+  G.kidQueue = q; G.kidPtr = 0;
+  _seqCache = null;
+}
+/* 当前所处单元名（题卡/战斗页展示，让孩子知道学到哪一课） */
+function currentUnitName(){
+  const stages = G.stages || [];
+  const st = stages[G.stageIdx];
+  return st ? (st.name + ' · ' + st.unit.replace(/^.*?第?\d*单元\s*/, '')) : '';
+}
+function startGame(mode){
   if (G.team.length !== 3) return;
+  G.mode = mode || 'story';
   G.team.forEach(t => { t.hp = t.maxHp; });
   G.state = 'battle';
-  G.level = clamp(G.chosenLevel | 0, 0, LEVELS.length - 1); G.bossPhase = 1;
+  G.level = G.mode === 'story' ? clamp(G.chosenLevel | 0, 0, LEVELS.length - 1) : 0;
+  G.bossPhase = 1;
   G.combo = 0; G.maxCombo = 0; G.correctCount = 0; G.wrongCount = 0;
   G.lvCorrect = 0; G.lvWrong = 0; G.lvSubj = {}; G.runDrops = [];
-  if (G.chosenLevel === 0) G.sessionDrops = [];
-  G.questionNo = 0; G.notes = 2; G.bags = {}; G.usedQ = new Set(); G.pickedLog = []; G.wrongPool = []; G.knHit = {};
+  if (G.chosenLevel === 0 || G.mode === 'endless') G.sessionDrops = [];
+  G.questionNo = 0; G.notes = G.mode === 'endless' ? 3 : 2;
+  G.bags = {}; G.usedQ = new Set(); G.pickedLog = []; G.wrongPool = []; G.knHit = {};
+  G.usedTexts = {}; G.reviewStreak = 0; G.answered = false;
   G.active = 0; G.lock = false; G.startTime = performance.now();
   particles = []; flashes = [];
-  const cfg = LEVELS[0];
+  buildKidQueue(G.mode === 'story' ? 0 : 0);
+  const cfg = LEVELS[G.level];
   G.enemyMax = cfg.hp; G.enemyHp = cfg.hp;
   $('selectView').classList.add('hidden');
   $('mapView').classList.add('hidden');
@@ -857,7 +1021,11 @@ function startGame(){
   $('battleView').classList.remove('hidden');
   buildTeamRow();
   updateHUD();
-  $('battleLog').textContent = `${cfg.enemy}（${ELEMENTS[cfg.elem].name}）挡在前面，答对题目让宠物出招！`;
+  const gname = (GRADES.find(x => x.id === G.grade) || {}).name || '';
+  const intro = G.mode === 'endless'
+    ? '♾️ 无限远征：知识源源不断，答对就出招，错了会多安排复习！'
+    : `${cfg.enemy}（${ELEMENTS[cfg.elem].name}）挡在前面，答对题目让宠物出招！`;
+  $('battleLog').textContent = intro;
   nextQ();
   SND.tap();
   BGM.setTheme('battle');
@@ -867,6 +1035,19 @@ function goNextLevel(){
   markCleared(G.level);
   G.chosenLevel = G.level + 1;
   G.level++;
+  if (G.mode === 'endless') {
+    /* 无限模式：8 个据点循环，永不结算 */
+    G.level = G.level % LEVELS.length;
+    const c = LEVELS[G.level];
+    G.team.forEach(t => { if (t.hp > 0) t.hp = clamp(t.hp + 22, 0, t.maxHp); });
+    G.enemyMax = c.hp; G.enemyHp = c.hp;
+    G.bossPhase = 1; G.combo = 0; G.lvCorrect = 0; G.lvWrong = 0; G.lvSubj = {}; G.runDrops = [];
+    G.notes = Math.min(5, G.notes + 1);
+    G.state = 'battle'; G.lock = false;
+    updateHUD();
+    $('battleLog').textContent = `♾️ 第 ${G.questionNo + 1} 题继续！已掌握 ${LEARN.masteredCount(G.grade)} 个知识点。`;
+    SND.tap(); nextQ(); return;
+  }
   if (G.level >= LEVELS.length) { showResult(); return; }
   const cfg = LEVELS[G.level];
   G.team.forEach(t => { if (t.hp > 0) t.hp = clamp(t.hp + 18, 0, t.maxHp); });
@@ -916,11 +1097,24 @@ function renderMap(){
     });
     wrap.appendChild(b);
   });
-  $('mapSub').textContent = '已通关 ' + Math.min(prog, LEVELS.length) + ' / ' + LEVELS.length + ' 关 · 通关解锁下一站';
-  $('mapTip').textContent = prog >= LEVELS.length ? '🏆 全部通关！可重刷任意关卡拿满星。' : '点亮金色据点开始挑战';
+  $('mapSub').textContent = '按单元顺序学 · 已通关 ' + Math.min(prog, LEVELS.length) + ' / ' + LEVELS.length + ' 站';
+  $('mapTip').textContent = prog >= LEVELS.length ? '🏆 8 站已通关！点「无限远征」继续学全部知识点。' : '点亮金色据点开始挑战';
   $('bagCount').textContent = Object.keys(G.bag).reduce((a, k) => a + G.bag[k], 0);
+  /* 学习进度条 */
+  const st = LEARN.stats(G.grade);
+  const totalPts = window.KG_META ? window.KG_META.points : 0;
+  if ($('learnStats')) {
+    $('learnStats').innerHTML =
+      `<div class="ls-title">📊 ${((GRADES.find(g=>g.id===G.grade)||{}).name||'')} 学习进度</div>` +
+      `<div class="ls-row"><span>本年级知识点</span><b>${Object.keys(window.KG_POINTS[G.grade]||{}).reduce((a,k)=>a+window.KG_POINTS[G.grade][k].length,0)}</b></div>` +
+      `<div class="ls-row"><span>已学过 / 已掌握</span><b>${st.learned} / ${st.mastered}</b></div>` +
+      `<div class="ls-row"><span>累计答对 / 答错</span><b class="ok">${st.ok}</b> / <b class="no">${st.no}</b></div>` +
+      `<div class="ls-bar"><i style="width:${Math.min(100, st.mastered/Math.max(1,st.learned)*100)}%"></i></div>` +
+      `<p class="ls-hint">答对越多，掌握度越高，出现的就越少；错的题会更频繁地回来找你。</p>`;
+  }
 }
-function beginLevel(i){ G.chosenLevel = clamp(i, 0, LEVELS.length - 1); startGame(); }
+function beginLevel(i){ G.chosenLevel = clamp(i, 0, LEVELS.length - 1); startGame('story'); }
+function startEndless(){ G.chosenLevel = 0; startGame('endless'); }
 function afterClearToMap(){
   $('levelClear').classList.add('hidden');
   markCleared(G.level);
@@ -991,14 +1185,16 @@ function again(){
   $('mapView').classList.add('hidden');
   G.team = [];
   G.state = 'select';
-  $('startBtn').disabled = true;
-  $('startBtn').textContent = '再选 3 只宠物出发';
   $('selectView').classList.remove('hidden');
-  renderPets(); renderTeamPreview();
+  renderPets(); renderTeamPreview(); syncStartBtns();
   SND.tap();
 }
 function useNote(){
   if (G.state !== 'battle' || G.lock || G.notes <= 0) return;
+  if (!G.currentQ || G.currentQ.tp !== 'choice') {
+    $('battleLog').textContent = '这题是填空/简答，米娅的笔记帮不上忙，仔细想想再提交～';
+    SND.tap(); return;
+  }
   const cands = [];
   G.currentOpts.forEach((_, i) => {
     if (i !== G.currentAnswer && !G.usedThisQ.includes(i)) cands.push(i);
@@ -1030,6 +1226,8 @@ function hideHowto(){
  * 9. 事件绑定
  * ============================================================ */
 $('startBtn').addEventListener('click', enterMap);
+if ($('endlessBtn')) $('endlessBtn').addEventListener('click', () => { SND.tap(); startEndless(); });
+if ($('endlessBtn2')) $('endlessBtn2').addEventListener('click', () => { SND.tap(); startEndless(); });
 $('nextBtn').addEventListener('click', afterClearToMap);
 $('mapBackBtn').addEventListener('click', () => { SND.tap(); G.state = 'select'; $('mapView').classList.add('hidden'); $('selectView').classList.remove('hidden'); BGM.setTheme('map'); });
 $('bagBtn').addEventListener('click', showBag);
@@ -1055,14 +1253,18 @@ window.__battle = {
   get combo(){ return G.combo; },
   get level(){ return G.level; },
   get notes(){ return G.notes; },
-  get question(){ return G.currentQ ? { q:G.currentQ.q, kn:G.currentQ.kn, subj:G.currentQ.subj, opts:G.currentOpts } : null; },
+  get mode(){ return G.mode; },
+  get question(){ return G.currentQ ? { q:G.currentQ.q, kn:G.currentQ.kn, subj:G.currentQ.subj, tp:G.currentQ.tp, opts:G.currentOpts, answer:G.currentQ.ans, kid:G.currentQ.kid, isReview:G.currentQ.isReview } : null; },
   get picked(){ return (G.pickedLog || []).slice(); },
   get answer(){ return G.currentAnswer; },
-  setGrade(g){ G.grade = g; renderGrades(); },
-  setTeam(ids){ G.team = ids.map(id => { const p = PETS.find(x => x.id === id); return p ? { pet:p, hp:100, maxHp:100 } : null; }).filter(Boolean); renderPets(); renderTeamPreview(); $('startBtn').disabled = G.team.length !== 3; },
-  start(){ startGame(); },
-  correct(){ answerQuestion(G.currentAnswer, $('qOptions').children[G.currentAnswer]); },
-  wrong(){ const i = toArr(Array(G.currentOpts.length).keys()).find(x => x !== G.currentAnswer); answerQuestion(i, $('qOptions').children[i]); },
+  get mastery(){ return LEARN ? LEARN.stats(G.grade) : null; },
+  get stageInfo(){ return { idx:G.stageIdx, name:currentUnitName(), total:(G.stages||[]).length, queued:G.kidQueue.length, ptr:G.kidPtr }; },
+  setGrade(g){ G.grade = g; _seqCache = null; renderGrades(); renderGradeInfo(); },
+  setTeam(ids){ G.team = ids.map(id => { const p = PETS.find(x => x.id === id); return p ? { pet:p, hp:100, maxHp:100 } : null; }).filter(Boolean); renderPets(); renderTeamPreview(); syncStartBtns(); },
+  start(){ startGame('story'); },
+  startEndless(){ startGame('endless'); },
+  correct(){ const q=G.currentQ; if(q&&q.tp==='choice') answerQuestion(true, $('qOptions').children[G.currentAnswer]); else answerQuestion(true, null); },
+  wrong(){ const q=G.currentQ; if(q&&q.tp==='choice'){ const i=toArr(Array(G.currentOpts.length).keys()).find(x=>x!==G.currentAnswer); answerQuestion(false, $('qOptions').children[i]); } else answerQuestion(false, null); },
   next(){ goNextLevel(); },
   swap(i){ switchPet(i); },
   restart(){ startGame(); },

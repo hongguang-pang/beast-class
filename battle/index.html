@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>知识大陆 · 宠物远征</title>
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css?v=7">
 <script>
 /* 加载守护：任何未捕获的错误都显示出来，而不是静默白屏 */
 (function(){
@@ -79,7 +80,8 @@
     <div id="rosterHint" class="roster-hint"></div>
 
     <button id="startBtn" class="big-btn" disabled>再选 3 只宠物出发</button>
-    <p class="sel-foot">答对＝宠物出招 · 属性克制伤害 ×1.6 · 答错不淘汰，换只宠物继续</p>
+    <button id="endlessBtn2" class="big-btn endless-btn" disabled>♾️ 无限远征（答不完的知识点）</button>
+    <p class="sel-foot">答对＝宠物出招 · 按单元顺序学 · 错得越多复习越勤 · 属性克制伤害 ×1.6</p>
   </section>
 
   <!-- 远征地图 -->
@@ -89,6 +91,8 @@
       <h1>知识大陆地图</h1>
       <p id="mapSub">点亮据点 · 通关解锁下一站</p>
     </div>
+    <div id="learnStats" class="learn-stats"></div>
+    <button id="endlessBtn" class="endless-map-btn">♾️ 无限远征 · 一直学下去</button>
     <button id="bagBtn" class="bag-btn">🎒 我的背包 <span id="bagCount" class="bag-count">0</span></button>
     <div id="mapPath" class="map-path"></div>
     <p id="mapTip" class="map-tip">点亮金色据点开始挑战</p>
@@ -186,19 +190,20 @@
     <div class="howto-card">
       <h2>怎么玩 · 6 步</h2>
       <ol class="howto-steps">
-        <li><b>选年级、组队</b>：先选 1-6 年级，再挑 3 只宠物（属性不同，克制不同敌人）。</li>
-        <li><b>看地图选关</b>：8 个据点连成远征路线，点亮金色的那一关开打，通关解锁下一站。</li>
-        <li><b>读题点答案</b>：题目下方三个选项，点对的那一个。</li>
+        <li><b>选年级、组队</b>：选 1-12 年级，挑 3 只宠物（属性不同，克制不同敌人）。</li>
+        <li><b>按单元顺序学</b>：题目按课本单元一个知识点一个知识点往下学，学会了才进下一个。</li>
+        <li><b>三种题型</b>：选择题点选项；填空题输入答案；简答题写完自评。答案都来自真实题库，不会出错。</li>
+        <li><b>温故知新</b>：每 4 题穿插 1 道旧知识复习；答对的题会越来越少出现，错得多的会更频繁地回来。</li>
         <li><b>答对＝出招</b>：宠物冲向敌人，伤害＝基础×连击×属性克制（克制 ×1.6、被克 ×0.7）。</li>
-        <li><b>答错＝挨打</b>：当前宠物掉血、连击清零，倒下换下一只，三只全倒才失败。</li>
-        <li><b>捡战利品</b>：打赢掉知识碎片、属性晶石和徽章，回地图上点「背包」就能看到收获。</li>
+        <li><b>无限远征</b>：8 站通关后点「♾️ 无限远征」，知识点源源不断，一直学、一直拿掉落。</li>
       </ol>
-      <p class="howto-tip">右上 🔊 可开关音乐与音效；卡住可点「米娅的笔记」划掉一个错项。</p>
+      <p class="howto-tip">目标是养成每天学一点的好习惯，不赶进度——答错不淘汰，换只宠物接着来。右上 🔊 开关音乐。</p>
       <button id="howtoGo" class="big-btn">开始探索</button>
     </div>
   </div>
 </div>
-<script src="data/knowledge.js?v=6"></script>
-<script src="game.js?v=6"></script>
+<script src="data/knowledge.js?v=7"></script>
+<script src="engine.js?v=7"></script>
+<script src="game.js?v=7"></script>
 </body>
 </html>

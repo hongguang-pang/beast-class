@@ -1,5 +1,5 @@
 /* 伴学宠物 · 离线缓存 Service Worker */
-const VERSION = 'beast-v3.45.1';
+const VERSION = 'beast-v3.45.2';
 const SHELL = [
   './',
   './index.html',
@@ -11,8 +11,14 @@ const SHELL = [
   './lib/qrg.js',
   './lib/jsqr.js',
   './app.js?v=3440',
-  './bigbank.js?v=3451',
-  './games.js?v=3451',
+  './bigbank.js?v=3452',
+  './bb/g1.js?v=3452',
+  './bb/g2.js?v=3452',
+  './bb/g3.js?v=3452',
+  './bb/g4.js?v=3452',
+  './bb/g5.js?v=3452',
+  './bb/g6.js?v=3452',
+  './games.js?v=3452',
   './cloud.js?v=3440',
   './auth.js?v=3440',
   './manifest.webmanifest',

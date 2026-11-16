@@ -2,9 +2,16 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>知识大陆 · 宠物远征</title>
-<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7c3aed">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="冒险大陆">
+<title>冒险大陆 · 宠物远征</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
 <style>
 /* 《知识大陆 · 宠物远征》样式 · 竖屏 390×844 优先 */
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -675,23 +682,23 @@ window.KG_LOADED = {};
 window.KG_API = {
   loaded: function(g){ return !!window.KG_LOADED[g]; },
   meta: function(g){ return window.KG_SHARDS[g]; },
-  /* 同步加载分片（XHR + eval），保证调用后 window.KG_BANK[g] 立即可用 */
-  load: function(g){
-    if (window.KG_LOADED[g]) return true;
-    var m = window.KG_SHARDS[g]; if (!m) return false;
+  /* 用普通 <script> 标签动态加载分片（微信 X5 对同步 XHR/eval 兼容差，故不用它们） */
+  load: function(g, cb){
+    if (window.KG_LOADED[g]) { cb && cb(true); return true; }
+    var m = window.KG_SHARDS[g]; if (!m) { cb && cb(false); return false; }
     try {
-      var x = new XMLHttpRequest(); x.open('GET', m.f, false); x.send(null);
-      if (x.status < 200 || x.status >= 400) return false;
-      (0, eval)(x.responseText);
-      window.KG_LOADED[g] = true;
-      return true;
-    } catch (e) { console.error('[分片加载失败]', g, e); return false; }
-  },
-  /* 预加载默认年级（供 index.html 启动前调用） */
-  preload: function(g){ return this.load(g); }
+      var s = document.createElement('script');
+      s.src = m.f;
+      s.onload = function(){ window.KG_LOADED[g] = true; cb && cb(true); };
+      s.onerror = function(){ console.error('[分片加载失败]', g); cb && cb(false); };
+      (document.head || document.body).appendChild(s);
+      return true;  /* 已发起加载 */
+    } catch (e) { cb && cb(false); return false; }
+  }
 };
 
 </script>
+<!-- 分片版：默认年级用普通 script 标签静态加载（微信 X5 兼容最好，不用同步 XHR/eval） -->
 <script>
 /* 单文件版：内联全部年级分片 */
 /* battle knowledge shard g1 */
@@ -766,6 +773,7 @@ window.KG_LOADED["g9"]=true;
 window.KG_LOADED["g10"]=true;
 window.KG_LOADED["g11"]=true;
 window.KG_LOADED["g12"]=true;
+window.__kgBootGrade='g3';
 </script>
 <script>
 /* ============================================================
@@ -1486,13 +1494,19 @@ function renderGrades(){
     b.dataset.g = g.id;
     b.addEventListener('click', () => {
       SND.tap();
-      /* 分片版：首次进入该年级先按需加载题库分片，再渲染 */
-      const ok = (window.KG_API && window.KG_API.load(g.id));
-      if (!ok) { $('gradeInfo').innerHTML = '<b style="color:#ff9db1">该年级题库加载失败，请检查网络后重试</b>'; return; }
-      G.grade = g.id;
-      try { localStorage.setItem('beast.battle.grade', g.id); } catch(e){}
-      toArr(row.children).forEach(c => c.classList.toggle('on', c.dataset.g === g.id));
-      renderGradeInfo();
+      const apply = () => {
+        G.grade = g.id;
+        try { localStorage.setItem('beast.battle.grade', g.id); } catch(e){}
+        toArr(row.children).forEach(c => c.classList.toggle('on', c.dataset.g === g.id));
+        renderGradeInfo();
+      };
+      /* 分片版：script 标签按需加载该年级题库，加载完再渲染 */
+      if (window.KG_API && window.KG_API.loaded(g.id)) { apply(); return; }
+      $('gradeInfo').innerHTML = '<b style="color:#ffd777">正在加载 ' + g.name + ' 题库…</b>';
+      window.KG_API.load(g.id, (ok) => {
+        if (ok) apply();
+        else $('gradeInfo').innerHTML = '<b style="color:#ff9db1">题库加载失败，请检查网络后重试</b>';
+      });
     });
     row.appendChild(b);
   });
@@ -2247,7 +2261,10 @@ window.__battle = {
   get answer(){ return G.currentAnswer; },
   get mastery(){ return LEARN ? LEARN.stats(G.grade) : null; },
   get stageInfo(){ return { idx:G.stageIdx, name:currentUnitName(), total:(G.stages||[]).length, queued:G.kidQueue.length, ptr:G.kidPtr }; },
-  setGrade(g){ if (window.KG_API) window.KG_API.load(g); G.grade = g; _seqCache = null; renderGrades(); renderGradeInfo(); },
+  setGrade(g){ const apply=()=>{ G.grade = g; _seqCache = null; renderGrades(); renderGradeInfo(); };
+    if (window.KG_API && window.KG_API.loaded(g)) apply();
+    else if (window.KG_API) window.KG_API.load(g, apply);
+    else apply(); },
   setTeam(ids){ G.team = ids.map(id => { const p = PETS.find(x => x.id === id); return p ? { pet:p, hp:100, maxHp:100 } : null; }).filter(Boolean); renderPets(); renderTeamPreview(); syncStartBtns(); },
   start(){ startGame('story'); },
   startEndless(){ startGame('endless'); },
@@ -2305,6 +2322,14 @@ function safeBoot(){
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', safeBoot);
 else safeBoot();
 
+/* 注册离线缓存：装到桌面后全屏运行、弱网也能开 */
+try {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+} catch (e) {}
 </script>
 </body>
 </html>

@@ -33,8 +33,16 @@
   <script src="cloud.js?v=3440"></script>
   <script src="auth.js?v=3440"></script>
   <script src="app.js?v=3440"></script>
-  <script src="bigbank.js?v=3451"></script>
-  <script src="games.js?v=3451"></script>
+  <script src="bigbank.js?v=3452"></script>
+  <!-- 分片版：小学 1-6 年级题库用普通 script 标签并行加载（单个 196-316KB，微信不超时） -->
+  <script src="bb/g1.js?v=3452"></script>
+  <script src="bb/g2.js?v=3452"></script>
+  <script src="bb/g3.js?v=3452"></script>
+  <script src="bb/g4.js?v=3452"></script>
+  <script src="bb/g5.js?v=3452"></script>
+  <script src="bb/g6.js?v=3452"></script>
+  <script>window.BB_LOADED=window.BB_LOADED||{};['g1','g2','g3','g4','g5','g6'].forEach(function(g){window.BB_LOADED[g]=true;});</script>
+  <script src="games.js?v=3452"></script>
   <script>
     /* 版本更新提示：SW 换代后不打断答题，先给一条可点提示 */
     (function () {

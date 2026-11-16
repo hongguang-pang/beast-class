@@ -21,18 +21,17 @@ window.KG_LOADED = {};
 window.KG_API = {
   loaded: function(g){ return !!window.KG_LOADED[g]; },
   meta: function(g){ return window.KG_SHARDS[g]; },
-  /* 同步加载分片（XHR + eval），保证调用后 window.KG_BANK[g] 立即可用 */
-  load: function(g){
-    if (window.KG_LOADED[g]) return true;
-    var m = window.KG_SHARDS[g]; if (!m) return false;
+  /* 用普通 <script> 标签动态加载分片（微信 X5 对同步 XHR/eval 兼容差，故不用它们） */
+  load: function(g, cb){
+    if (window.KG_LOADED[g]) { cb && cb(true); return true; }
+    var m = window.KG_SHARDS[g]; if (!m) { cb && cb(false); return false; }
     try {
-      var x = new XMLHttpRequest(); x.open('GET', m.f, false); x.send(null);
-      if (x.status < 200 || x.status >= 400) return false;
-      (0, eval)(x.responseText);
-      window.KG_LOADED[g] = true;
-      return true;
-    } catch (e) { console.error('[分片加载失败]', g, e); return false; }
-  },
-  /* 预加载默认年级（供 index.html 启动前调用） */
-  preload: function(g){ return this.load(g); }
+      var s = document.createElement('script');
+      s.src = m.f;
+      s.onload = function(){ window.KG_LOADED[g] = true; cb && cb(true); };
+      s.onerror = function(){ console.error('[分片加载失败]', g); cb && cb(false); };
+      (document.head || document.body).appendChild(s);
+      return true;  /* 已发起加载 */
+    } catch (e) { cb && cb(false); return false; }
+  }
 };

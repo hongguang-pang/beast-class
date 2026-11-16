@@ -502,13 +502,19 @@ function renderGrades(){
     b.dataset.g = g.id;
     b.addEventListener('click', () => {
       SND.tap();
-      /* 分片版：首次进入该年级先按需加载题库分片，再渲染 */
-      const ok = (window.KG_API && window.KG_API.load(g.id));
-      if (!ok) { $('gradeInfo').innerHTML = '<b style="color:#ff9db1">该年级题库加载失败，请检查网络后重试</b>'; return; }
-      G.grade = g.id;
-      try { localStorage.setItem('beast.battle.grade', g.id); } catch(e){}
-      toArr(row.children).forEach(c => c.classList.toggle('on', c.dataset.g === g.id));
-      renderGradeInfo();
+      const apply = () => {
+        G.grade = g.id;
+        try { localStorage.setItem('beast.battle.grade', g.id); } catch(e){}
+        toArr(row.children).forEach(c => c.classList.toggle('on', c.dataset.g === g.id));
+        renderGradeInfo();
+      };
+      /* 分片版：script 标签按需加载该年级题库，加载完再渲染 */
+      if (window.KG_API && window.KG_API.loaded(g.id)) { apply(); return; }
+      $('gradeInfo').innerHTML = '<b style="color:#ffd777">正在加载 ' + g.name + ' 题库…</b>';
+      window.KG_API.load(g.id, (ok) => {
+        if (ok) apply();
+        else $('gradeInfo').innerHTML = '<b style="color:#ff9db1">题库加载失败，请检查网络后重试</b>';
+      });
     });
     row.appendChild(b);
   });
@@ -1263,7 +1269,10 @@ window.__battle = {
   get answer(){ return G.currentAnswer; },
   get mastery(){ return LEARN ? LEARN.stats(G.grade) : null; },
   get stageInfo(){ return { idx:G.stageIdx, name:currentUnitName(), total:(G.stages||[]).length, queued:G.kidQueue.length, ptr:G.kidPtr }; },
-  setGrade(g){ if (window.KG_API) window.KG_API.load(g); G.grade = g; _seqCache = null; renderGrades(); renderGradeInfo(); },
+  setGrade(g){ const apply=()=>{ G.grade = g; _seqCache = null; renderGrades(); renderGradeInfo(); };
+    if (window.KG_API && window.KG_API.loaded(g)) apply();
+    else if (window.KG_API) window.KG_API.load(g, apply);
+    else apply(); },
   setTeam(ids){ G.team = ids.map(id => { const p = PETS.find(x => x.id === id); return p ? { pet:p, hp:100, maxHp:100 } : null; }).filter(Boolean); renderPets(); renderTeamPreview(); syncStartBtns(); },
   start(){ startGame('story'); },
   startEndless(){ startGame('endless'); },

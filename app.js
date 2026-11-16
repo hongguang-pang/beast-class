@@ -725,7 +725,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.46 · 学科冒险书 · SSR至尊特效 · 图鉴修复 · 自动更新<br>' +
+      '<div class="w-ver">版本 v3.47 · 怪物立绘 · 学科冒险书 · SSR至尊特效 · 自动更新<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -5424,7 +5424,7 @@
        现在只保留这里一套，规则见下方注释。 */
     if ('serviceWorker' in navigator) {
       const hadCtl = !!navigator.serviceWorker.controller;   /* 首次安装时本来就没有控制者 */
-      navigator.serviceWorker.register('sw.js?v=3426', { updateViaCache: 'none' }).then((reg) => {
+      navigator.serviceWorker.register('sw.js?v=3427', { updateViaCache: 'none' }).then((reg) => {
         /* 每 30 分钟探一次新版 */
         setInterval(() => { reg.update().catch(() => {}); }, 30 * 60 * 1000);
         /* 回到前台时顺手查一次更新，不等定时器 */

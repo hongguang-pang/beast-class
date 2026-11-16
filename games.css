@@ -555,3 +555,25 @@ mark.kn-hi{background:linear-gradient(transparent 58%,#ffe08a 58%);color:#8a5a00
 /* v3.45 掌握度图标可点开详情 */
 .mast-icons{cursor:pointer}
 .mast-icons:active{opacity:.75}
+
+/* ================= v3.47 怪物立绘（emoji → 手绘形象） ================= */
+.foe-img{width:112px;height:112px;object-fit:contain;display:block;margin:0 auto;
+  filter:drop-shadow(0 8px 12px rgba(0,0,0,.5));animation:foeIdle 3.2s ease-in-out infinite}
+.foe-card.is-boss .foe-img{width:132px;height:132px}
+.foe-card.is-boss{background:linear-gradient(180deg,rgba(255,90,90,.16),rgba(255,255,255,.05));
+  border-color:rgba(255,150,150,.5)}
+@keyframes foeIdle{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-7px) rotate(1deg)}}
+/* 剧情卡里的怪物特写 */
+.story-em.has-img{font-size:0;line-height:0}
+.story-foe{width:170px;height:170px;object-fit:contain;display:inline-block;
+  filter:drop-shadow(0 10px 16px rgba(0,0,0,.45));animation:foeIdle 3.6s ease-in-out infinite}
+/* 关卡地图上的 Boss 小头像 */
+.an-dot .an-foe{width:27px;height:27px;object-fit:contain;vertical-align:-6px;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+@media (prefers-reduced-motion: reduce){.foe-img,.story-foe{animation:none}}
+/* 知识点行的守护怪物头像 */
+.kn-foe{width:40px;height:40px;flex:none;object-fit:contain;
+  filter:drop-shadow(0 3px 5px rgba(60,40,90,.25))}
+@media (max-width:360px){.kn-foe{width:34px;height:34px}}
+/* 兜底 emoji 在立绘存在时必须真正隐藏（.foe-em 有 display:block，覆盖了 [hidden]） */
+.foe-em[hidden]{display:none}

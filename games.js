@@ -475,10 +475,45 @@
     return out;
   }
 
-  /* 怪物与 Boss */
-  const ENEMIES = ['👾 数据粘怪', '🦇 吵吵蝙蝠', '🐙 墨墨章鱼', '🐺 嚎叫小狼', '🦂 沙沙毒蝎'];
-  const BOSSES = ['🍄 蘑菇国王', '🦖 玩具霸王龙', '⛈️ 风暴魔王', '🌋 熔岩巨兽', '🧊 冰霜女皇'];
-  const FINAL = '👑 知识魔王';
+  /* 怪物与 Boss（v3.47：emoji → 手绘立绘，images/mon/*.png，emoji 仅作图未加载时的兜底） */
+  const ENEMIES = [
+    { em: '👾', name: '数据粘怪', img: 'images/mon/e01-data-slime.png', tag: '总把 0 和 1 弄混' },
+    { em: '🦇', name: '吵吵蝙蝠', img: 'images/mon/e02-noisy-bat.png', tag: '一题念三遍' },
+    { em: '🐙', name: '墨墨章鱼', img: 'images/mon/e03-ink-octopus.png', tag: '把字涂成一团' },
+    { em: '🐺', name: '嚎叫小狼', img: 'images/mon/e04-howling-wolf.png', tag: '坐着瞎喊答案' },
+    { em: '🦂', name: '沙沙毒蝎', img: 'images/mon/e05-sand-scorpion.png', tag: '专挑难的下钩' },
+    { em: '🐍', name: '字母蛇', img: 'images/mon/e06-letter-snake.png', tag: '把 ABC 咬乱顺序' },
+    { em: '🪲', name: '算珠甲虫', img: 'images/mon/e07-abacus-beetle.png', tag: '偷偷拨错一颗珠' },
+    { em: '🪼', name: '迷雾水母', img: 'images/mon/e08-mist-jelly.png', tag: '把题目搅成雾' },
+    { em: '🕷️', name: '涂改蜘蛛', img: 'images/mon/e09-typo-spider.png', tag: '专改错别字' },
+    { em: '👻', name: '走神幽灵', img: 'images/mon/e10-doze-ghost.png', tag: '一读就犯困' }
+  ];
+  const BOSSES = [
+    { em: '🍄', name: '蘑菇国王', img: 'images/mon/b01-mushroom-king.png' },
+    { em: '🦖', name: '玩具霸王龙', img: 'images/mon/b02-toy-trex.png' },
+    { em: '⛈️', name: '风暴魔王', img: 'images/mon/b03-storm-lord.png' },
+    { em: '🌋', name: '熔岩巨兽', img: 'images/mon/b04-lava-beast.png' },
+    { em: '🧊', name: '冰霜女皇', img: 'images/mon/b05-frost-queen.png' },
+    { em: '👑', name: '知识魔王', img: 'images/mon/b06-knowledge-lord.png' }
+  ];
+  /* 学科 Boss 用形象更贴题的那只：语文→涂改蜘蛛、数学→算珠甲虫、英语→字母蛇、
+     科学→风暴魔王、道法→走神幽灵（坏习惯） */
+  const SUBJ_FOE = { cn: 8, math: 6, en: 5, sci: 2, eth: 9 };
+  const FINAL_FOE = BOSSES[5];
+  const FINAL = '👑 ' + FINAL_FOE.name;
+  /* 每个年级错开 3 位，避免五个年级都是同一批怪物 */
+  const foeAt = (arr, i, g) => {
+    const shift = (parseInt(String(g || 'g1').slice(1), 10) || 1) * 3;
+    const idx = ((i | 0) + shift) % arr.length;
+    return arr[(idx + arr.length) % arr.length];
+  };
+  const subjFoe = (subj) => (SUBJ_FOE[subj] != null ? ENEMIES[SUBJ_FOE[subj]] : ENEMIES[0]);
+  /* 同一知识点每次都是同一只守护怪（按名字哈希），不同知识点之间则错开 */
+  const foeForKn = (n, g) => {
+    let h = 0;
+    String((n && n.kn) || '').split('').forEach((c) => { h = (h * 31 + c.charCodeAt(0)) | 0; });
+    return foeAt(ENEMIES, Math.abs(h) + ((n && n.u) || 0), g);
+  };
   const NODE_META = {
     battle: { icon: '⚔️', name: '知识战斗' },
     review: { icon: '🛡️', name: '复习营地' },
@@ -708,23 +743,25 @@
     const unitT = (G.units[n.u] && G.units[n.u].t) || '未知的领域';
     if (n.t === 'kn') {
       const st = n.stage || 1;
+      const gd = foeForKn(n, g);
       const stLine = st === 1
-        ? '「' + n.kn + '」刻在路边的石碑上，字迹被雾气糊住了。守碑的小精灵眨眨眼：「念对了，我就把路让开。」'
+        ? '「' + n.kn + '」刻在路边的石碑上，字迹被雾气糊住了。守碑的' + gd.name + '眨眨眼：「念对了，我就把路让开。」'
         : st === 2
-          ? '小精灵把「' + n.kn + '」拆成三块碎字抛向空中：「接得住，才算真的记住了。」'
+          ? gd.name + '把「' + n.kn + '」拆成三块碎字抛向空中：「接得住，才算真的记住了。」'
           : '石碑裂开一道缝，里面传出低沉的声音：「最后一个问题——' + n.kn + '，你真的懂了吗？」';
-      return { ch: n.u || 0, em: S ? S.icon : '📖', title: chap.n.split('·')[1].trim() + ' · ' + n.kn,
+      return { ch: n.u || 0, em: gd.em, img: gd.img, title: chap.n.split('·')[1].trim() + ' · ' + n.kn,
         lines: [scene, stLine, '答对问题，就能点亮这块石板，继续往前走。'] };
     }
     if (n.t === 'boss') {
-      const bn = S ? S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[n.u];
-      return { ch: n.u || 0, em: S ? S.icon : '👹', title: 'Boss 来袭 · ' + bn,
+      const bn = S ? S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[(n.u || 0) % BOSSES.length].name;
+      const bio = S ? subjFoe(n.subj) : foeAt(BOSSES, n.u || 0, g);
+      return { ch: n.u || 0, em: S ? S.icon : '👹', img: bio.img, fm: bio.em, title: 'Boss 来袭 · ' + bn,
         lines: ['「' + unitT + '」的出口被挡住了。' + bn + '从阴影里站起来，个头比想象中大得多。',
           '它搓着手指，摆出守门人的姿势：「过了我这关，徽章才归你。」',
           '小队互相看了看，点点头——把学会的全部用上，赢下这一局！'] };
     }
     if (n.t === 'final') {
-      return { ch: 4, em: '👑', title: '最终决战 · 知识魔王',
+      return { ch: 4, em: '👑', img: FINAL_FOE.img, fm: FINAL_FOE.em, title: '最终决战 · 知识魔王',
         lines: ['书山之巅，' + gradeName(g) + '所有的「没弄懂」堆成了知识魔王的身体。它盯着小队，声音像雷滚过山谷。',
           '「你们答对的每一道题，都是从我这儿抢走的。」魔王咆哮着张开双臂。',
           '宠物站到了最前面，五色的徽章在胸口发亮。最后一场——去吧，把这一学年彻底赢下来！'] };
@@ -735,9 +772,9 @@
           '把之前学过的招式再打一遍，手感就回来了。', '热身完毕？那就开始吧。'] };
     }
     if (n.t === 'chall' || n.t === 'battle') {
-      const en = ENEMIES[(n.u || 0) % ENEMIES.length];
-      return { ch: n.u || 0, em: en.split(' ')[0], title: '遭遇战 · ' + en.split(' ')[1],
-        lines: [scene, en.split(' ')[1] + '从草丛里跳了出来，挡在路中间，一副「此路是我开」的表情。',
+      const en = foeAt(ENEMIES, n.u || 0, g);
+      return { ch: n.u || 0, em: en.em, img: en.img, title: '遭遇战 · ' + en.name,
+        lines: [scene, en.name + '从草丛里跳了出来，挡在路中间，一副「此路是我开」的表情。',
           '别慌，题目就是武器。上！'] };
     }
     return null;
@@ -752,7 +789,9 @@
     m.className = 'story-mask sc-' + (story.ch % 5);
     m.innerHTML = '<div class="story-card">' +
       '<button class="story-x" id="stX">✕</button>' +
-      '<div class="story-em">' + story.em + '</div>' +
+      '<div class="story-em' + (story.img ? ' has-img' : '') + '">' +
+      (story.img ? '<img class="story-foe" src="' + story.img + '" alt="" onerror="this.replaceWith(document.createTextNode(\'' + story.em + '\'))">' : story.em) +
+      '</div>' +
       '<h2 class="story-t">' + esc(story.title) + '</h2>' +
       '<div class="story-lines">' + story.lines.map((l, i) => '<p style="animation-delay:' + (0.3 + i * 0.9) + 's">' + esc(l) + '</p>').join('') + '</div>' +
       '<div class="story-foot"><button class="btn" id="stGo">⚔️ 开始挑战</button>' +
@@ -1197,7 +1236,10 @@
       el.innerHTML =
         '<div class="qz">' + headHTML() +
         (cfg.enemy ?
-          '<div class="qz-foe"><div class="foe-card" id="foeCard"><span class="foe-em">' + cfg.enemy.em + '</span>' +
+          '<div class="qz-foe"><div class="foe-card' + (cfg.enemy.boss ? ' is-boss' : '') + '" id="foeCard">' +
+          (cfg.enemy.img
+            ? '<img class="foe-img" src="' + cfg.enemy.img + '" alt="" onerror="this.parentNode.querySelector(\'.foe-em\').hidden=false;this.remove()"><span class="foe-em" hidden>' + cfg.enemy.em + '</span>'
+            : '<span class="foe-em">' + cfg.enemy.em + '</span>') +
           '<div class="foe-nm">' + esc(cfg.enemy.name) + '</div>' +
           '<div class="foe-hp"><i style="width:' + Math.max(0, eHp / cfg.enemy.hp * 100) + '%"></i></div></div></div>' +
           '<div class="qz-vs"><img class="qz-pet ' + (cfg.mode === 'drill' ? '' : '') + '" id="qzPet" src="' + petSrc + '" alt=""></div>' +
@@ -1594,9 +1636,11 @@
       const cur = n.i === ci && !(n.t === 'final' && finalLocked);
       const S = n.subj ? SUBJ[n.subj] : null;
       const icon = n.t === 'boss' ? (S ? S.icon : '👹') : n.t === 'treasure' ? '📦' : n.t === 'final' ? '👑' : meta.icon;
-      const name = n.t === 'boss' ? (S ? S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[n.u])
+      const name = n.t === 'boss' ? (S ? S.name + '·' + S.bosses[n.u % S.bosses.length] : BOSSES[(n.u || 0) % BOSSES.length].name)
         : n.t === 'treasure' ? '神秘宝箱' : n.t === 'final' ? '知识魔王' : meta.name;
-      const dot = n.done ? (n.t === 'treasure' ? '📦' : '✅') : locked ? '🔒' : icon;
+      const foeImg = (n.t === 'boss' || n.t === 'final') ? (n.t === 'final' ? FINAL_FOE.img : (S ? subjFoe(n.subj).img : foeAt(BOSSES, n.u || 0, g).img)) : '';
+      const dot = n.done ? (n.t === 'treasure' ? '📦' : '✅') : locked ? '🔒'
+        : foeImg ? '<img class="an-foe" src="' + foeImg + '" alt="">' : icon;
       return '<button class="adv-node t-' + n.t + ' ' + (n.done ? 'done' : '') + (cur ? ' cur' : '') + (locked ? ' lock' : '') + '" data-i="' + n.i + '">' +
         '<span class="an-dot">' + dot + '</span>' +
         '<span class="an-lb"><b>' + esc(name) + '</b><small>' +
@@ -1621,7 +1665,9 @@
           '" data-i="' + n.i + '" title="' + STAGE_NAME[(n.stage || 1) - 1] + '">' +
           (dn ? '✓' : cu ? 'GO' : lk ? '·' : '▶') + '<i>' + STAGE_NAME[(n.stage || 1) - 1].slice(0, 1) + '</i></button>';
       }).join('');
+      const gf = foeForKn(items[0], g);
       return '<div class="kn-row pos-' + (pos % 4) + (doneC === items.length ? ' done' : '') + (cur ? ' cur' : '') + (locked ? ' lock' : '') + '">' +
+        '<img class="kn-foe" src="' + gf.img + '" alt="" title="' + esc(gf.name) + '">' +
         '<div class="kn-info"><i class="qkn-tag" style="background:' + S.c + '">' + S.icon + ' ' + S.name + '</i>' +
         '<b>' + esc(grp.kn) + '</b>' +
         '<small>' + (doneC === items.length ? '已掌握 ⭐ 三级全通' : '难度 ' + (doneC + 1) + '/3 · ' + STAGE_NAME[doneC] + ' 待挑战') + '</small></div>' +
@@ -1952,12 +1998,13 @@
     const qs = genNodeQs(n, g);
     /* 敌人血量 = 题目数（答对扣血，保证可击败）；难度体现在题目 lv 与题量上 */
     const bossS = n.subj ? SUBJ[n.subj] : null;
-    const enemy = n.t === 'kn' ? (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(ENEMIES[n.u % ENEMIES.length])
-      : n.t === 'battle' ? (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(ENEMIES[n.u % ENEMIES.length])
-      : n.t === 'review' ? { em: '🛡️', name: '复习木桩', hp: qs.length }
-      : n.t === 'boss' ? (bossS ? { em: bossS.icon, name: bossS.name + '·' + bossS.bosses[n.u % bossS.bosses.length], hp: qs.length }
-        : (function (s) { return { em: s.split(' ')[0], name: s.split(' ')[1], hp: qs.length }; })(BOSSES[n.u]))
-      : { em: '👑', name: '知识魔王', hp: qs.length };
+    const eKn = n.t === 'kn' ? foeForKn(n, g) : foeAt(ENEMIES, n.u || 0, g);
+    const enemy = n.t === 'kn' || n.t === 'battle' ? { em: eKn.em, name: eKn.name, img: eKn.img, tag: eKn.tag, hp: qs.length }
+      : n.t === 'review' ? { em: '🛡️', name: '复习木桩', img: '', hp: qs.length }
+      : n.t === 'boss' ? (bossS
+        ? { em: bossS.icon, name: bossS.name + '·' + bossS.bosses[n.u % bossS.bosses.length], img: subjFoe(n.subj).img, boss: true, hp: qs.length }
+        : Object.assign({}, foeAt(BOSSES, n.u || 0, g), { boss: true, hp: qs.length }))
+      : { em: FINAL_FOE.em, name: FINAL_FOE.name, img: FINAL_FOE.img, boss: true, hp: qs.length };
     /* v3.40 剧情引子：先看小说式开场卡，再进入答题战斗 */
     storyCard(storyOf(n, g), () => quizRun({
       qs, enemy,

@@ -10,8 +10,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="app.css?v=3460">
-  <link rel="stylesheet" href="games.css?v=3440">
+  <link rel="stylesheet" href="app.css?v=3500">
+  <link rel="stylesheet" href="games.css?v=3500">
 </head>
 <body>
   <header id="topbar">
@@ -30,50 +30,20 @@
   <script src="lib/lz.min.js"></script>
   <script src="lib/qrg.js"></script>
   <script src="lib/jsqr.js"></script>
-  <script src="cloud.js?v=3440"></script>
-  <script src="auth.js?v=3440"></script>
-  <script src="app.js?v=3460"></script>
-  <script src="bigbank.js?v=3452"></script>
-  <!-- 分片版：小学 1-6 年级题库用普通 script 标签并行加载（单个 196-316KB，微信不超时） -->
-  <script src="bb/g1.js?v=3452"></script>
-  <script src="bb/g2.js?v=3452"></script>
-  <script src="bb/g3.js?v=3452"></script>
-  <script src="bb/g4.js?v=3452"></script>
-  <script src="bb/g5.js?v=3452"></script>
-  <script src="bb/g6.js?v=3452"></script>
-  <script>window.BB_LOADED=window.BB_LOADED||{};['g1','g2','g3','g4','g5','g6'].forEach(function(g){window.BB_LOADED[g]=true;});</script>
-  <script src="games.js?v=3461"></script>
+  <script src="cloud.js?v=3500"></script>
+  <script src="auth.js?v=3500"></script>
+  <script src="app.js?v=3500"></script>
+  <script src="games.js?v=3500"></script>
   <script>
-    /* 版本更新提示：SW 换代后不打断答题，先给一条可点提示 */
+    /* v3.46 这里只负责「提示条」本身：注册 SW 与自动刷新都在 app.js（唯一一处），
+       避免两套 controllerchange 互相抢（旧版就是这么把提示条刷成常驻的）。 */
     (function () {
-      if (!('serviceWorker' in navigator)) return;
       var tip = document.getElementById('upTip');
-      /* v3.46：同一版本只提示一次；用户确认/忽略后记住，避免反复弹出 */
-      window.showUpdTip = function () {
-        if (!tip) return;
-        try { if (sessionStorage.getItem('swTipDone') === '1') return; } catch (e) {}
-        tip.hidden = false;
-      };
-      function dismiss(reload) {
-        if (tip) tip.hidden = true;
-        try { sessionStorage.setItem('swTipDone', '1'); } catch (e) {}
-        if (!reload) return;
-        /* 通知等待中的 SW 立即激活，再刷新，避免刷新后仍是旧 SW 又提示 */
-        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-        }
-        try { sessionStorage.removeItem('swRld'); } catch (e) {}
-        setTimeout(function () { location.reload(); }, 120);
-      }
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
-          setInterval(function () { reg.update().catch(function () {}); }, 30 * 60 * 1000);
-        }).catch(function () {});
-      });
+      window.showUpdTip = function () { if (tip) tip.hidden = false; };
       var go = document.getElementById('upGo');
-      if (go) go.onclick = function () { dismiss(true); };
+      if (go) go.onclick = function () { location.reload(); };
       var x = document.getElementById('upX');
-      if (x) x.onclick = function () { dismiss(false); };
+      if (x) x.onclick = function () { tip.hidden = true; };
     })();
   </script>
 </body>

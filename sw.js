@@ -1,5 +1,5 @@
 /* 伴学宠物 · 离线缓存 Service Worker */
-const VERSION = 'beast-v3.46.0';
+const VERSION = 'beast-v3.46.1';
 const SHELL = [
   './',
   './index.html',
@@ -18,7 +18,7 @@ const SHELL = [
   './bb/g4.js?v=3452',
   './bb/g5.js?v=3452',
   './bb/g6.js?v=3452',
-  './games.js?v=3460',
+  './games.js?v=3461',
   './cloud.js?v=3440',
   './auth.js?v=3440',
   './manifest.webmanifest',

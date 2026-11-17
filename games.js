@@ -1376,6 +1376,8 @@
       btn.classList.add(right ? 'good' : 'bad');
       if (!right) {
         BP.SND.play('wrong'); BP.SND.play('hurt');
+        /* 静音也能看懂：震动跟随音效开关 */
+        if (BP.SND.on && navigator.vibrate) { try { navigator.vibrate([45, 60, 45]); } catch (e) {} }
         el.querySelectorAll('.qz-opt')[q.a].classList.add('good');
         wrongQs.push(q);
         petHp--;
@@ -1387,6 +1389,8 @@
       } else {
         eHp--;
         BP.SND.play('right', !!cfg.enemy);
+        /* 答对短震；有连击/克制时加倍节奏 */
+        if (BP.SND.on && navigator.vibrate) { try { navigator.vibrate(cfg.enemy ? [18, 22, 55] : 24); } catch (e) {} }
         const pet = el.querySelector('#qzPet');
         if (pet) { pet.classList.add('atk'); setTimeout(() => pet.classList.remove('atk'), 500); }
         const foe = el.querySelector('#foeCard');

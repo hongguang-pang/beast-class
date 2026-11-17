@@ -82,6 +82,12 @@ body { background:#0e1220; }
 }
 .big-btn:disabled { background:#3c3c4a; color:#b8b3c9; box-shadow:none; cursor:default; border:1px dashed rgba(255,255,255,.18); }
 .big-btn:active:not(:disabled) { transform:translateY(2px); }
+/* 首访引导：轻脉冲提示"从这里开始"，不遮挡画面，几秒后自动消失 */
+#selectView.first-visit .big-btn { animation:startPulse 1.4s ease-in-out infinite; border-color:rgba(245,179,1,.8); }
+@keyframes startPulse {
+  0%,100% { box-shadow:0 4px 14px rgba(0,0,0,.3); }
+  50% { box-shadow:0 0 0 4px rgba(245,179,1,.35), 0 0 22px rgba(245,179,1,.6); }
+}
 .sel-foot { text-align:center; color:#8f8aa3; font-size:11px; margin:0 20px 18px; line-height:1.6; }
 
 /* ---------- 战斗页 ---------- */
@@ -136,6 +142,14 @@ body { background:#0e1220; }
 
 /* ---------- 题卡 ---------- */
 #questionCard { margin:auto 12px 10px; background:rgba(250,246,235,.98); border-radius:16px; padding:13px 14px 10px; box-shadow:0 10px 30px #0008; }
+/* 静音也能看懂的即时反馈：答对绿闪+弹跳，答错红框+抖动 */
+#questionCard.qb-right { animation:qbRight .46s ease-out; }
+#questionCard.qb-wrong { animation:qshake .4s ease-in-out; border:2px solid #e0555f; }
+@keyframes qbRight {
+  0% { box-shadow:0 10px 30px #0008, 0 0 0 0 rgba(95,209,138,0); transform:scale(1); }
+  35% { box-shadow:0 10px 30px #0008, 0 0 0 5px rgba(95,209,138,.55), 0 0 40px rgba(95,209,138,.6); transform:scale(1.025); }
+  100% { box-shadow:0 10px 30px #0008, 0 0 0 0 rgba(95,209,138,0); transform:scale(1); }
+}
 #qHead { display:flex; align-items:center; gap:8px; font-size:11px; color:#8a7959; margin-bottom:8px; }
 #qSubj { color:#a5761a; font-weight:800; white-space:nowrap; }
 .q-kn { flex:1; color:#7a6a48; background:#efe4c9; border-radius:8px; padding:2px 7px; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

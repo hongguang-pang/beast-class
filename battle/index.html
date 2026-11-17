@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 <script>
 /* 加载守护：任何未捕获的错误都显示出来，而不是静默白屏 */
 (function(){
@@ -88,7 +88,7 @@
 
     <button id="startBtn" class="big-btn" disabled>再选 3 只宠物出发</button>
     <button id="endlessBtn2" class="big-btn endless-btn" disabled>♾️ 无限远征（答不完的知识点）</button>
-    <p class="sel-foot">答对＝宠物出招 · 按单元顺序学 · 错得越多复习越勤 · 属性克制伤害 ×1.6</p>
+    <p class="sel-foot">选好年级和 3 只宠物就能出发 · 答对＝宠物出招 · 按单元顺序学 · 错得越多复习越勤 · 属性克制伤害 ×1.6<br><span style="color:#f5b301">第一次玩？点右上角「?」随时看玩法</span></p>
   </section>
 
   <!-- 远征地图 -->
@@ -209,9 +209,9 @@
     </div>
   </div>
 </div>
-<script src="data/knowledge.js?v=10"></script>
+<script src="data/knowledge.js?v=11"></script>
 <!-- 分片版：默认年级用普通 script 标签静态加载（微信 X5 兼容最好，不用同步 XHR/eval） -->
-<script src="data/kg/g3.js?v=10"></script>
+<script src="data/kg/g3.js?v=11"></script>
 <script>window.KG_LOADED = window.KG_LOADED || {}; window.KG_LOADED.g3 = true; window.__kgBootGrade = 'g3';
 /* 若上次选的是别的年级，再动态补加载（script 标签），加载完标记；boot 仍可先渲染 */
 (function(){
@@ -227,8 +227,8 @@
   } catch (e) {}
 })();
 </script>
-<script src="engine.js?v=10"></script>
-<script src="game.js?v=10"></script>
+<script src="engine.js?v=11"></script>
+<script src="game.js?v=11"></script>
 <script>
 /* 注册离线缓存：装到桌面后即使断网/弱网也能秒开，全屏运行 */
 if ('serviceWorker' in navigator) {

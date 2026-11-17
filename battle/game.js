@@ -195,6 +195,22 @@ const SND = {
   }
 };
 /* ============================================================
+ * 1a. 震动反馈（移动端手感）——借鉴《打个螺丝》"打磨操作手感"的经验。
+ * 分级：tap 轻、right 答对、combo 连击渐强、crit 克制双击、wrong 钝震、clear 过关节奏。
+ * 跟随静音开关：静音＝安静模式，不震动。桌面端 navigator.vibrate 不存在时自动无感。
+ * ============================================================ */
+const VIB = {
+  on(){ return typeof SND !== 'undefined' && !SND.muted && typeof navigator !== 'undefined' && navigator.vibrate; },
+  fire(p){ if (this.on()) { try { navigator.vibrate(p); } catch (e) {} } },
+  tap(){ this.fire(12); },
+  right(){ this.fire(24); },
+  combo(n){ this.fire([18, 22, Math.min(60, 28 + n * 6)]); },
+  crit(){ this.fire([30, 40, 30, 40, 70]); },
+  wrong(){ this.fire([45, 60, 45]); },
+  clear(){ this.fire([30, 50, 30, 50, 90]); },
+  boss(){ this.fire([60, 50, 60, 50, 120]); }
+};
+/* ============================================================
  * 1b. 背景音乐（Web Audio 合成，8 小节循环，与音效共用上下文）
  * ============================================================ */
 const BGM = {
@@ -897,9 +913,12 @@ function answerQuestion(correct, btn, userText){
     const base = 20 + (RAR_BONUS[t.pet.rar] || 0);
     const dmg = Math.max(6, Math.round(base * em * comboMult));
     const isCrit = em > 1.2;
-    if (isCrit) { bigVerdict('克制！', 'v-crit'); SND.crit(); }
-    else if (G.combo >= 3) { bigVerdict(`连击 ×${G.combo}！`, 'v-good'); SND.correct(G.combo); }
-    else { bigVerdict('命中！', 'v-good'); SND.correct(G.combo); }
+    if (isCrit) { bigVerdict('克制！', 'v-crit'); SND.crit(); VIB.crit(); }
+    else if (G.combo >= 3) { bigVerdict(`连击 ×${G.combo}！`, 'v-good'); SND.correct(G.combo); VIB.combo(G.combo); }
+    else { bigVerdict('命中！', 'v-good'); SND.correct(G.combo); VIB.right(); }
+    /* 静音也能看懂：题卡绿闪 + 轻微弹跳 */
+    const qc = $('questionCard');
+    if (qc) { qc.classList.remove('qb-right', 'qb-wrong'); void qc.offsetWidth; qc.classList.add('qb-right'); }
     let tip = `${t.pet.skill}！${isCrit ? '属性克制，' : ''}造成 ${dmg} 点伤害${G.combo >= 2 ? `（连击 ×${G.combo}）` : ''}`;
     if (q && q.kid && master) tip += `　掌握度 ${master.s}/6`;
     $('battleLog').textContent = tip;
@@ -916,6 +935,10 @@ function answerQuestion(correct, btn, userText){
     if (q) G.wrongPool.push({ q:q.q, a:rightAns });
     bigVerdict('再想想～', 'v-bad');
     SND.wrong();
+    VIB.wrong();
+    /* 静音也能看懂：题卡红抖 */
+    const qc = $('questionCard');
+    if (qc) { qc.classList.remove('qb-right', 'qb-wrong'); void qc.offsetWidth; qc.classList.add('qb-wrong'); }
     /* 填空/简答立即显示正确答案，帮助学习 */
     let tip = '答错了，' + t.pet.name + '被反击，掉了 ' + dmg + ' 点体力。';
     if (q && q.tp !== 'choice') tip += ' 正确答案：' + escHtml(rightAns);
@@ -966,7 +989,7 @@ function afterHit(){
       G.enemyHp = cfg.hp;
       pages(FW/2, FH*0.32, 16);
       flash('rgba(255,230,160,.6)');
-      SND.boss();
+      SND.boss(); VIB.boss();
       $('battleLog').textContent = ['', '', '它散成书页，又重新聚起来了——还有两下！', '最后一段了，别放松！'][G.bossPhase] || '它又变了！';
       updateHUD(); G.lock = false; setTimeout(nextQ, 900); return;
     }
@@ -974,7 +997,7 @@ function afterHit(){
     flash('rgba(255,230,160,.7)');
     /* 无限模式：敌人打散不弹过关层，自动循环到下一站继续出题 */
     if (G.mode === 'endless') {
-      SND.clear();
+      SND.clear(); VIB.clear();
       rollDrops(G.level);
       G.level = (G.level + 1) % LEVELS.length;
       const nc = LEVELS[G.level];
@@ -989,7 +1012,7 @@ function afterHit(){
       return;
     }
     G.state = 'levelClear';
-    SND.clear();
+    SND.clear(); VIB.clear();
     rollDrops(G.level);
     const uniq = []; G.runDrops.forEach(d => { if (uniq.indexOf(d) < 0) uniq.push(d); });
     $('clearDrops').innerHTML = uniq.length
@@ -1141,7 +1164,7 @@ function goNextLevel(){
   $('battleLog').textContent = cfg.boss
     ? '最终关：知识魔王（暗）！答对削它，答错它反击。'
     : `${cfg.enemy} 是 ${ELEMENTS[cfg.elem].name} 属性` + (hasCounter ? '，换克制的宠物上场伤害更高！' : '，队伍里没有克制它的属性，靠连击硬打！');
-  if (cfg.boss) SND.boss();
+  if (cfg.boss) { SND.boss(); VIB.boss(); }
   nextQ();
 }
 function enterMap(){
@@ -1311,9 +1334,9 @@ function hideHowto(){
 /* ============================================================
  * 9. 事件绑定
  * ============================================================ */
-$('startBtn').addEventListener('click', enterMap);
+$('startBtn').addEventListener('click', () => { $('selectView').classList.remove('first-visit'); LS.set('battle.howto.seen', '1'); enterMap(); });
 if ($('endlessBtn')) $('endlessBtn').addEventListener('click', () => { SND.tap(); startEndless(); });
-if ($('endlessBtn2')) $('endlessBtn2').addEventListener('click', () => { SND.tap(); startEndless(); });
+if ($('endlessBtn2')) $('endlessBtn2').addEventListener('click', () => { SND.tap(); $('selectView').classList.remove('first-visit'); LS.set('battle.howto.seen', '1'); startEndless(); });
 $('nextBtn').addEventListener('click', afterClearToMap);
 $('mapBackBtn').addEventListener('click', () => { SND.tap(); G.state = 'select'; $('mapView').classList.add('hidden'); $('selectView').classList.remove('hidden'); BGM.setTheme('map'); });
 $('bagBtn').addEventListener('click', showBag);
@@ -1384,7 +1407,12 @@ function boot(){
   renderPets();
   renderTeamPreview();
   requestAnimationFrame(loop);
-  setTimeout(() => showHowto(false), 400);
+  /* 首屏不弹全屏教程：直接可组队开玩，让新玩家尽早完成第一次有效操作。
+     首次仅让「开始」按钮轻微脉冲提示，完整玩法随时点右上 ? 查看。 */
+  if (LS.get('battle.howto.seen') !== '1') {
+    $('selectView').classList.add('first-visit');
+    setTimeout(() => $('selectView') && $('selectView').classList.remove('first-visit'), 12000);
+  }
 }
 function safeBoot(){
   try {

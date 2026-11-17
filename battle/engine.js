@@ -76,6 +76,83 @@ const LEARN = (function () {
     var arr = (qIndex[grade] || {})[kid] || [];
     return arr;
   }
+  /* ============================================================
+   * v1.3 填空降频：手机上打字填答案费劲，抽到 fill 时尽量改成点选。
+   *  - 保留少量填空(约三成)，其余转换；
+   *  - 优先改用同知识点的现成 choice 题（题目完全合理）；
+   *  - 没有 choice 但答案是数字的（计算题），自动生成 4 个数字选项转成 choice；
+   *  - 语文/英语等文字类 fill 无 choice 可换时保留原填空。
+   * 所有转换只作用在抽出的题目副本上，不改题库源数据。
+   * ============================================================ */
+  var FILL_KEEP_RATE = 0.32;   // fill 保留率：题库 fill 约16% × 0.32 ≈ 5%
+
+  /* 生成数字型干扰项；返回 {o:[选项文本...], a:正确下标} 或 null */
+  function numericOptions(ans) {
+    var s = String(ans == null ? '' : ans).trim();
+    if (!s) return null;
+    var m, opts = [], right = s;
+    function add(v) {
+      var t = String(Math.round(v * 1000) / 1000);
+      if (opts.indexOf(t) < 0 && t !== right) opts.push(t);
+    }
+    /* 分数 a/b：同分母改分子 */
+    m = s.match(/^(-?\d+)\s*\/\s*(\d+)$/);
+    if (m) {
+      var n = parseInt(m[1], 10), d = parseInt(m[2], 10);
+      if (d > 0) {
+        /* 同分母改分子 + 交换分子分母 + 相邻分母，凑够 3 个干扰项 */
+        [1, -1, 2, -2, 3].forEach(function (k) { if (n + k >= 0) add((n + k) + '/' + d); });
+        if (d !== n) add(d + '/' + n === right ? (d + 1) + '/' + n : d + '/' + n);
+        if (d + 1 > 0) add(n + '/' + (d + 1));
+        if (opts.length >= 3) return pack(opts, right);
+      }
+    }
+    /* 纯数字（含小数）：按量级生成邻近干扰项，避免出现负数 */
+    m = s.match(/^-?\d+(?:\.\d+)?$/);
+    if (m) {
+      var v = Number(s);
+      var dec = (s.split('.')[1] || '').length;
+      var step = Math.abs(v) >= 100 ? 10 : (Math.abs(v) >= 10 ? 2 : 1);
+      /* 候选：±step、±2step、±1，过滤掉负数与 0 以下、保留小数位 */
+      var cands = [step, -step, step * 2, -step * 2, 1, -1];
+      for (var k = 0; k < cands.length; k++) {
+        var nv = v + cands[k];
+        if (nv < 0) continue;                       // 小学题不出现负数选项
+        var txt = dec ? nv.toFixed(dec) : String(Math.round(nv));
+        if (txt !== right && opts.indexOf(txt) < 0) opts.push(txt);
+        if (opts.length >= 3) break;
+      }
+      if (opts.length >= 3) return pack(opts, right);
+    }
+    return null;
+    function pack(others, rightTxt) {
+      var all = others.slice(0, 3).concat([rightTxt]);
+      /* Fisher-Yates 打散 */
+      for (var i = all.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1)); var t = all[i]; all[i] = all[j]; all[j] = t;
+      }
+      return { o: all, a: all.indexOf(rightTxt) };
+    }
+  }
+
+  /* 把抽到的 fill 题尽量软化成点选题。pool = 该知识点全部题(含已用)。 */
+  function softenFill(q, pool) {
+    if (!q || q.tp !== 'fill') return q;
+    if (Math.random() < FILL_KEEP_RATE) return q;   // 保留少量填空
+    /* ① 同知识点现成 choice 题 */
+    var choices = (pool || []).filter(function (x) { return x.tp === 'choice'; });
+    if (choices.length) return choices[Math.floor(Math.random() * choices.length)];
+    /* ② 数字答案 -> 自动生成选项 */
+    var numOpt = numericOptions(q.ans);
+    if (numOpt) {
+      var cq = { id: q.id, q: q.q, tp: 'choice', o: numOpt.o, a: numOpt.a,
+                 ans: q.ans, exp: q.exp, f: q.f, kn: q.kn, kid: q.kid,
+                 unit: q.unit, uidx: q.uidx, ac: q.ac || [] };
+      return cq;
+    }
+    return q;   // ③ 文字类无 choice 可换，保留填空
+  }
+
   /* 从一个知识点取一道题：优先难度匹配、优先未见过的答案文本，随机打散选项副本 */
   function pickFromKid(grade, kid, usedTexts, wantLv) {
     var arr = questionsFor(grade, kid);
@@ -89,6 +166,8 @@ const LEARN = (function () {
     } else {
       q = pool[Math.floor(Math.random() * pool.length)];
     }
+    if (!q) return null;
+    q = softenFill(q, arr);
     return cloneQ(q);
   }
   /* 复制题目，选项顺序打散（choice），保持 a/ans 正确 */

@@ -1,5 +1,5 @@
 /* 冒险大陆 · 离线缓存 Service Worker（scope = /battle/，与根目录伴学宠物互不干扰） */
-const VERSION = 'battle-v1.2.0';
+const VERSION = 'battle-v1.3.0';
 const SHELL = [
   './',
   './index.html',
@@ -17,7 +17,7 @@ const SHELL = [
   './data/kg/g10.js?v=11',
   './data/kg/g11.js?v=11',
   './data/kg/g12.js?v=11',
-  './engine.js?v=11',
+  './engine.js?v=12',
   './game.js?v=11',
   './manifest.webmanifest',
   './icons/icon-192.png',

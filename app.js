@@ -270,9 +270,12 @@
   /* 全部 50 只宠物都有图片立绘（经典五系为原立绘，c 系为 AI 立绘 + 四阶段合成图） */
   /* v3.32: jpg 单图 / 四阶段 jpg 宠物 → images/m/；老宠物仍走 gif（v3.44 起不再有蛋阶段） */
   const imgFor = (el, si) => {
+    el = migratePetType(el);                 // 老类型 fire/c1 等先迁移
     const p = PETS[el];
-    if (p && p.single) return 'images/m/' + el + '.gif';
-    if (p && p.jpg) return 'images/m/' + el + '-' + STAGES[si].suffix + '.gif';
+    if (!p) el = 'P001';                     // 未知/空类型兜底到必存在的 P001，杜绝 404 空白
+    const pp = PETS[el];
+    if (pp && pp.single) return 'images/m/' + el + '.gif';
+    if (pp && pp.jpg) return 'images/m/' + el + '-' + STAGES[si].suffix + '.gif';
     return 'images/gif/' + el + '-' + STAGES[si].suffix + '.gif';
   };
   const petImg = (k) => imgFor(k.skin || k.pet.type, stageIdxOf(k.pet.lv));
@@ -739,7 +742,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.55 · 主卡片宠物图放大（幼年期不再偏小）· SSR特效正常环绕<br>' +
+      '<div class="w-ver">版本 v3.56 · 修复个别学生头像空白（图片失败降级emoji+取消懒加载+类型迁移兜底）· 宠物图放大<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -1256,7 +1259,7 @@
     openSheet('<div class="sheet-h">选择学生</div><div class="tiny">点一下切换到该同学</div>' +
       '<div class="stu-grid sm" id="spGrid" style="margin-top:12px">' + P.d.kids.map((k) =>
         '<div class="stu' + (k.id === P.d.cur ? ' sel' : '') + '" data-k="' + k.id + '">' +
-        '<div class="av"><img src="' + petImg(k) + '" alt="" loading="lazy"></div>' +
+        '<div class="av"><img src="' + petImg(k) + '" alt="" loading="eager"></div>' +
         '<div class="nm">' + esc(k.name) + '</div><div class="pt">' + k.points + '</div></div>').join('') + '</div>',
       (m, close) => {
         m.querySelectorAll('.stu').forEach((c) => (c.onclick = () => { P.d.cur = c.dataset.k; P.save(); close(); render(); }));
@@ -1677,7 +1680,7 @@
     const card = (key, img, name, sub, unlocked, extra, rar) =>
       '<div class="dex-card' + (unlocked ? '' : ' locked') + '"' + (rar ? ' style="border:2px solid ' + RARC[rar] + '"' : '') + (extra ? ' ' + extra : '') + '>' +
       (rar ? rarChip(rar) : '') +
-      '<div class="dx-img">' + (unlocked ? '<img src="' + img + '" alt="" loading="lazy">' : '<span class="lk">🔒</span>') + '</div>' +
+      '<div class="dx-img">' + (unlocked ? '<img src="' + img + '" alt="" loading="eager">' : '<span class="lk">🔒</span>') + '</div>' +
       '<div class="dx-nm">' + (unlocked ? name : '？？？') + '</div>' +
       '<div class="dx-sub">' + sub + '</div></div>';
 
@@ -2493,7 +2496,7 @@
         k.stuPoints = st.snap.points || 0;   /* 学生自己赚的 */
         k.streak = st.snap.streak || 0;
         k.dailyDone = !!st.snap.dailyDone;
-        if (st.snap.petName) { k.pet = k.pet || {}; k.pet.name = st.snap.petName; if (st.snap.petType) k.pet.type = st.snap.petType; k.pet.lv = st.snap.petLv || k.pet.lv || 1; }
+        if (st.snap.petName) { k.pet = k.pet || {}; k.pet.name = st.snap.petName; if (st.snap.petType) { k.pet.type = migratePetType(st.snap.petType); if (!PETS[k.pet.type]) k.pet.type = (k.pet && k.pet.type && PETS[k.pet.type]) ? k.pet.type : pickType(); } k.pet.lv = st.snap.petLv || k.pet.lv || 1; }
         /* 总分以云端为准 = 学生自己赚的 + 老师给的；云端值变了才覆盖，
            避免老师刚加分（离线未确认）被旧值冲掉 */
         const cloudTotal = (st.snap.points || 0) + (st.bonus || 0);
@@ -3091,7 +3094,7 @@
       (list.length ? list.map((k) => {
         const r = rankMap[k.id];
         return '<div class="stu' + (r <= 3 ? ' top' + r : '') + '" data-k="' + k.id + '" style="--glow:' + petMeta(k.skin || k.pet.type).glow + '">' +
-          '<div class="av"><img src="' + petImg(k) + '" alt="" loading="lazy"></div>' +
+          '<div class="av"><img src="' + petImg(k) + '" alt="" loading="eager"></div>' +
           '<div class="nm">' + esc(k.name) + '</div>' +
           '<div class="pt">' + k.points + '</div>' +
           (r <= 3 ? '<i class="rk">' + ['🥇', '🥈', '🥉'][r - 1] + '</i>' : '') +
@@ -3233,7 +3236,7 @@
       (gs.length ? gs.map((g) => '<button data-g="' + esc(g) + '">' + esc(g) + '</button>').join('') : '') + '</div>' +
       '<div class="stu-grid sm" id="qaGrid">' + P.d.kids.map((k) =>
         '<div class="stu' + (sel.has(k.id) ? ' sel' : '') + '" data-k="' + k.id + '">' +
-        '<div class="av"><img src="' + petImg(k) + '" alt="" loading="lazy"></div>' +
+        '<div class="av"><img src="' + petImg(k) + '" alt="" loading="eager"></div>' +
         '<div class="nm">' + esc(k.name) + '</div><i class="ck">✓</i></div>').join('') + '</div>' +
       '<div class="qa-bar">' +
       '<div class="tiny" style="margin:2px 2px 6px">加分学科（只喂对应宠物）</div>' +
@@ -3586,7 +3589,7 @@
       (topAll.length ? '<div class="board">' + topAll.map((x, i) =>
         '<div class="bd-row" data-c="' + x.cls.id + '" data-k="' + x.k.id + '">' +
         '<span class="bd-rk' + (i < 3 ? ' hot' : '') + '">' + (i + 1) + '</span>' +
-        '<span class="bd-av"><img src="' + petImg(x.k) + '" alt="" loading="lazy"></span>' +
+        '<span class="bd-av"><img src="' + petImg(x.k) + '" alt="" loading="eager"></span>' +
         '<span class="bd-nm">' + esc(x.k.name) + '<i>' + esc(x.cls.name) + '</i></span>' +
         '<span class="bd-v">' + x.v + '</span></div>').join('') + '</div>'
         : '<div class="card empty">' + label + '还没有人得分</div>') +
@@ -5402,6 +5405,26 @@
 
   /* ================= 启动 ================= */
   function boot() {
+    /* v3.56：全局宠物图加载失败降级——任何头像/立绘 img 加载失败时，
+       从 src 反推宠物类型并显示对应 emoji，绝不留纯空白框（兼容旧缓存/网络抖动/异常类型） */
+    document.addEventListener('error', (ev) => {
+      const im = ev.target;
+      if (!im || im.tagName !== 'IMG' || im.dataset.petFb) return;
+      const src = im.getAttribute('src') || '';
+      const mm = src.match(/(?:images\/(?:gif|m)\/)?([A-Z]\d{3})(?:-|\.)/);
+      if (!mm) return;
+      im.dataset.petFb = '1';
+      const meta = petMeta(mm[1]);
+      const box = im.parentElement;
+      if (box) {
+        const fb = document.createElement('span');
+        fb.className = 'pet-fb';
+        fb.textContent = meta.emoji || '🥚';
+        fb.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:' + Math.max(16, Math.round((box.clientWidth || 40) * 0.55)) + 'px;line-height:1';
+        try { box.insertBefore(fb, im); } catch (e) {}
+      }
+      im.style.display = 'none';
+    }, true);
     /* ① 入口链接先解析：?role=student&code=XXXXXX（老师生成发给学生） */
     try {
       const q = new URLSearchParams(location.search);
@@ -5463,7 +5486,7 @@
        现在只保留这里一套，规则见下方注释。 */
     if ('serviceWorker' in navigator) {
       const hadCtl = !!navigator.serviceWorker.controller;   /* 首次安装时本来就没有控制者 */
-      navigator.serviceWorker.register('sw.js?v=3550', { updateViaCache: 'none' }).then((reg) => {
+      navigator.serviceWorker.register('sw.js?v=3560', { updateViaCache: 'none' }).then((reg) => {
         /* 每 30 分钟探一次新版 */
         setInterval(() => { reg.update().catch(() => {}); }, 30 * 60 * 1000);
         /* 回到前台时顺手查一次更新，不等定时器 */

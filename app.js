@@ -503,7 +503,7 @@
       toast(k.pet.name + ' 升级啦！Lv.' + k.pet.lv);
       checkMilestone(k);
     }
-    P.save();
+    saveSmart();
   }
   function checkDex(k) {
     STAGES.forEach((s) => { if (k.pet.lv >= s.min) k.dex[k.pet.type + '-' + s.suffix] = true; });
@@ -520,10 +520,12 @@
     const type = pool[Math.floor(Math.random() * pool.length)];
     k.companions.push({ type, from: hit });
     k.dex[type + '-baby'] = true;
-    P.save();
+    saveSmart();
     revealFX(k, type, hit);
   }
   function revealFX(k, type, fromLv) {
+    /* v3.52：批量加分中抑制逐个降临动画，统一在提交后提示 */
+    if (AWARD_BATCH) { AWARD_BATCH.fx = true; return; }
     const p = PETS[type];
     const m = document.createElement('div');
     m.className = 'evo-mask';
@@ -544,6 +546,9 @@
     m.querySelector('#rvOk').onclick = close;
     m.onclick = (e) => { if (e.target === m) close(); };
   }
+  /* v3.52 批量加分上下文：合并写盘/云推送、抑制逐人动画，提升触屏一体机上的响应速度与稳定性 */
+  let AWARD_BATCH = null; // { sids:Set, reason, subj, amt }
+  function saveSmart() { if (!AWARD_BATCH) P.save(); }
   function grantPoints(k, n, reason, subj) {
     k.points += n;
     if (!k.daily) k.daily = {};
@@ -555,12 +560,19 @@
       const sk = subj === undefined ? mySubjScope() : subj;
       addSubjExp(k, sk, n);
     }
-    /* 老师在电脑上给分 → 推到云端，学生手机下次同步能看到 */
+    /* 老师在电脑上给分 → 推到云端，学生手机下次同步能看到
+       v3.52：批量加分时只收集 sid，循环结束后一次性推送，避免 N 次请求拖慢触屏机 */
     if (n !== 0 && P.d.mode !== 'student' && k.sid) {
-      const c0 = (P.d.classes || []).find((c) => c.id === P.d.clsId);
-      if (c0 && c0.teacherKey && c0.code) cloudPushBonus([k.sid], n, reason || '老师奖励', subj === undefined ? mySubjScope() : subj);
+      if (AWARD_BATCH) {
+        AWARD_BATCH.sids.push(k.sid);
+        AWARD_BATCH.amt = n; AWARD_BATCH.reason = reason || '老师奖励';
+        AWARD_BATCH.subj = subj === undefined ? mySubjScope() : subj;
+      } else {
+        const c0 = (P.d.classes || []).find((c) => c.id === P.d.clsId);
+        if (c0 && c0.teacherKey && c0.code) cloudPushBonus([k.sid], n, reason || '老师奖励', subj === undefined ? mySubjScope() : subj);
+      }
     }
-    P.save();
+    saveSmart();
   }
   function addLog(k, em, text, delta, kind) {
     if (!Array.isArray(P.d.log)) P.d.log = [];
@@ -640,6 +652,8 @@
     paint();
   }
   function evoFX(k) {
+    /* v3.52：批量加分中抑制逐个进化动画，避免多个全屏遮罩叠加卡住触屏面板 */
+    if (AWARD_BATCH) { AWARD_BATCH.fx = true; return; }
     const st = stageOf(k.pet.lv);
     const m = document.createElement('div');
     m.className = 'evo-mask';
@@ -725,7 +739,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.51 · 修复全班页学生姓名不显示（白字白底）· 冒险填空减少 · 学科冒险书 · SSR至尊特效<br>' +
+      '<div class="w-ver">版本 v3.52 · 触屏批量加分修复（连点多选不失灵）· 提交更快 · 修复全班页学生姓名不显示 · 冒险填空减少 · 学科冒险书<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -3244,14 +3258,23 @@
             m.querySelectorAll('#qaWhy button').forEach((b) => b.classList.toggle('on', b.dataset.w === why));
           }
         };
+        const cards = Array.prototype.slice.call(m.querySelectorAll('#qaGrid .stu'));
         const paint = () => {
-          m.querySelectorAll('#qaGrid .stu').forEach((c) => c.classList.toggle('sel', sel.has(c.dataset.k)));
+          cards.forEach((c) => c.classList.toggle('sel', sel.has(c.dataset.k)));
           m.querySelector('#qaGo').textContent = '给 ' + sel.size + ' 人' + (st.amt > 0 ? '加分' : '扣分');
           m.querySelector('#qaGo').disabled = !sel.size;
         };
-        m.querySelectorAll('#qaGrid .stu').forEach((c) => (c.onclick = () => {
-          const id = c.dataset.k; sel.has(id) ? sel.delete(id) : sel.add(id); paint();
-        }));
+        const toggleCard = (id) => { sel.has(id) ? sel.delete(id) : sel.add(id); paint(); };
+        /* v3.52 触屏优化：用 click 判定选中（已被 touch-action:manipulation 去掉双击缩放），
+           pointerdown 只做即时按压反馈，pointerup/cancel 复位；不用 touchstart+touchend 手写，
+           避免与 click 双触发造成「点一下被取消」。 */
+        cards.forEach((c) => {
+          const id = c.dataset.k;
+          c.addEventListener('pointerdown', () => c.classList.add('press'));
+          ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) =>
+            c.addEventListener(ev, () => c.classList.remove('press')));
+          c.addEventListener('click', () => toggleCard(id));
+        });
         m.querySelectorAll('#qaTools button').forEach((b) => (b.onclick = () => {
           if (b.dataset.all === '1') P.d.kids.forEach((k) => sel.add(k.id));
           else if (b.dataset.all === '0') sel.clear();
@@ -3264,13 +3287,29 @@
           b.classList.add('on'); why = b.dataset.w;
         }));
         paint();
-        m.querySelector('#qaGo').onclick = () => {
+        let submitted = false;
+        m.querySelector('#qaGo').addEventListener('click', () => {
+          if (submitted) return;               // 提交锁：防触屏连点重复加分
           if (!sel.size) return toast('先选学生');
-          let n = 0;
-          sel.forEach((id) => { const k = P.d.kids.find((x) => x.id === id); if (k) { grantPoints(k, st.amt, why, subjSel); n++; } });
+          submitted = true;
+          /* v3.52：开启批量上下文——逐人加分只改内存，统一在此一次写盘 + 一次云推送 */
+          AWARD_BATCH = { sids: [], reason: why, subj: subjSel, amt: st.amt, fx: false };
+          let n = 0, hadFx = false;
+          try {
+            sel.forEach((id) => { const k = P.d.kids.find((x) => x.id === id); if (k) { grantPoints(k, st.amt, why, subjSel); n++; } });
+          } finally {
+            const batch = AWARD_BATCH; AWARD_BATCH = null; hadFx = !!batch.fx;
+            P.save();                          // 一次写盘替代 N 次
+            if (batch.sids.length) {
+              const c0 = (P.d.classes || []).find((c) => c.id === P.d.clsId);
+              if (c0 && c0.teacherKey && c0.code) cloudPushBonus(batch.sids, batch.amt, batch.reason, batch.subj);
+            }
+          }
           close(); render();
-          toast('已给 ' + n + ' 人 ' + (st.amt > 0 ? '+' : '') + st.amt + ' 分' + (st.amt > 0 && subjSel !== 'all' ? ' · 只喂' + SUBJ_NAME[subjSel] + '宠物' : ''));
-        };
+          toast('已给 ' + n + ' 人 ' + (st.amt > 0 ? '+' : '') + st.amt + ' 分' +
+            (st.amt > 0 && subjSel !== 'all' ? ' · 只喂' + SUBJ_NAME[subjSel] + '宠物' : '') +
+            (hadFx ? ' · 有同学升级啦' : ''));
+        });
       });
   }
 
@@ -4836,7 +4875,7 @@
       while (p.exp >= expNeed(p.lv) && p.lv < 60) { p.exp -= expNeed(p.lv); p.lv += 1; }
       if (p.lv > before) ups.push({ subj: sk, lv: p.lv });
     });
-    P.save();
+    saveSmart();
     return ups;
   }
   /* v3.38 获得学科宠物：随机降临一只，经验银行里的积累一次性注入 */
@@ -5424,7 +5463,7 @@
        现在只保留这里一套，规则见下方注释。 */
     if ('serviceWorker' in navigator) {
       const hadCtl = !!navigator.serviceWorker.controller;   /* 首次安装时本来就没有控制者 */
-      navigator.serviceWorker.register('sw.js?v=3428', { updateViaCache: 'none' }).then((reg) => {
+      navigator.serviceWorker.register('sw.js?v=3520', { updateViaCache: 'none' }).then((reg) => {
         /* 每 30 分钟探一次新版 */
         setInterval(() => { reg.update().catch(() => {}); }, 30 * 60 * 1000);
         /* 回到前台时顺手查一次更新，不等定时器 */

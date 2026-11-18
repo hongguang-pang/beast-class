@@ -9,7 +9,9 @@
   --tab-h:58px;--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;touch-action:manipulation;-webkit-touch-callout:none}
+/* v3.52：触屏一体机批量加分防「点两下就点不动」——禁用双击缩放，保留正常滑动/缩放 */
+button,.stu,.chips>button,.amts button{touch-action:manipulation;-webkit-user-select:none;user-select:none}
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
   background:var(--bg);color:var(--text);font-size:15px;line-height:1.5}
 button{font-family:inherit}
@@ -321,7 +323,7 @@ svg{display:block}
 .stu-grid.sm{grid-template-columns:repeat(4,1fr);gap:8px}
 .stu{position:relative;background:var(--surface);border-radius:16px;padding:11px 6px 9px;text-align:center;
   box-shadow:var(--shadow);border:2px solid transparent;cursor:pointer;transition:.15s;overflow:hidden}
-.stu:active{transform:scale(.96)}
+.stu:active,.stu.press{transform:none;filter:brightness(.94);border-color:var(--brand)}
 .stu .av{width:64px;height:64px;margin:0 auto 6px;border-radius:14px;overflow:hidden;background:var(--brand-soft);box-shadow:0 2px 10px var(--glow,transparent), inset 0 0 10px var(--glow,transparent);
   border:2px solid var(--line)}
 .stu-grid.sm .av{width:44px;height:44px;margin-bottom:4px}

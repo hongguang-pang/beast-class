@@ -725,7 +725,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.50 · 冒险填空大题减少76% · 补全句子改情景对话点选 · 学科冒险书 · SSR至尊特效<br>' +
+      '<div class="w-ver">版本 v3.51 · 修复全班页学生姓名不显示（白字白底）· 冒险填空减少 · 学科冒险书 · SSR至尊特效<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';

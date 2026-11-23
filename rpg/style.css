@@ -1,0 +1,181 @@
+/* ============================================================
+ * 精灵大陆 · 知识远征  —  样式
+ * ============================================================ */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;background:#0c0818;color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;overflow:hidden;}
+#app{position:relative;width:100%;height:100%;max-width:520px;margin:0 auto;overflow:hidden;background:#120c26;}
+.view{position:absolute;inset:0;overflow:hidden;}
+.hidden{display:none !important;}
+button{font-family:inherit;cursor:pointer;border:none;outline:none;}
+
+/* ---------- 通用按钮 ---------- */
+.big-btn{display:block;width:calc(100% - 48px);max-width:360px;margin:12px auto;padding:14px;border-radius:14px;
+  font-size:16px;font-weight:800;letter-spacing:2px;}
+.big-btn.gold{background:linear-gradient(135deg,#ffd35c,#e89a1f);color:#4a2f00;box-shadow:0 8px 22px #ffd35c44;}
+.big-btn.ghost{background:rgba(255,255,255,.1);color:#e8dcff;border:1px solid rgba(255,255,255,.25);}
+.big-btn:disabled{opacity:.4;}
+.text-btn{display:block;margin:10px auto;background:none;color:#b9a7d8;font-size:13px;text-decoration:underline;}
+
+/* ---------- 标题页 ---------- */
+#titleView{background:radial-gradient(circle at 50% 22%,#3a2a6b 0%,#1a1030 46%,#0c0818 100%);overflow-y:auto;}
+.title-glow{position:absolute;left:50%;top:16%;width:260px;height:260px;transform:translateX(-50%);
+  background:radial-gradient(circle,#ffd35c33,transparent 68%);filter:blur(10px);pointer-events:none;}
+.title-inner{position:relative;text-align:center;padding:38px 22px 40px;}
+.title-badge{display:inline-block;padding:5px 14px;border-radius:20px;background:rgba(255,211,92,.14);
+  border:1px solid rgba(255,211,92,.4);color:#ffd35c;font-size:11px;letter-spacing:1px;}
+.title-logo{margin:14px 0 2px;font-size:46px;letter-spacing:8px;font-weight:900;
+  background:linear-gradient(180deg,#fff6d0,#ffcf5c);-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 6px 30px rgba(255,190,60,.35);}
+.title-sub{color:#b9a7d8;font-size:13px;letter-spacing:3px;}
+.title-desc{color:#cfc6e8;font-size:12.5px;line-height:1.7;margin:16px auto;max-width:360px;}
+.title-start{margin-top:16px;}
+.grade-sel{display:inline-flex;align-items:center;gap:8px;color:#cfc6e8;font-size:13px;margin-bottom:12px;}
+.grade-sel select{padding:6px 12px;border-radius:10px;background:#2a1e4a;color:#fff;border:1px solid #5a4a8a;font-size:14px;}
+.starter-label{color:#ffd777;font-size:12px;margin-bottom:8px;}
+.starter-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:400px;margin:0 auto 8px;}
+.starter{position:relative;padding:6px 2px 8px;border-radius:12px;background:#1d1538;border:2px solid #3a2c60;
+  color:#fff;transition:transform .12s,border-color .2s;}
+.starter img{width:100%;height:44px;object-fit:contain;display:block;}
+.starter .st-name{font-size:10.5px;margin-top:2px;white-space:nowrap;}
+.starter .st-meta{font-size:9px;color:#9a8fbf;margin-top:1px;}
+.starter.on{border-color:#ffd35c;background:#332743;transform:translateY(-3px);box-shadow:0 6px 16px #ffd35c33;}
+.starter.on::after{content:'✓';position:absolute;top:-6px;right:-4px;width:18px;height:18px;border-radius:50%;
+  background:#ffd35c;color:#4a2f00;font-size:12px;font-weight:900;line-height:18px;}
+
+/* ---------- 世界地图 ---------- */
+#worldStage{background:#0c1a0e;}
+#worldCanvas{position:absolute;inset:0;}
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;
+  padding:8px 10px;background:linear-gradient(#0009,transparent);z-index:5;}
+.hud-left,.hud-right{display:flex;gap:6px;align-items:center;}
+.hud-item{padding:5px 9px;border-radius:10px;background:#0009;font-size:12px;font-weight:700;color:#ffe6a0;}
+.hud-btn{padding:6px 10px;border-radius:10px;background:#0009;color:#fff;font-size:12px;font-weight:700;border:1px solid #ffffff33;}
+.hud-quest{position:absolute;top:48px;left:10px;right:10px;z-index:5;padding:6px 10px;border-radius:10px;
+  background:linear-gradient(90deg,#4a2f00cc,#2a1e4acc);border:1px solid #ffd35c55;color:#ffe6a0;font-size:11.5px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hud-team{position:absolute;top:80px;left:10px;display:flex;flex-direction:column;gap:4px;z-index:5;}
+.ht-item{display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:9px;background:#000a;border:1px solid #ffffff22;font-size:10px;}
+.ht-item.on{border-color:#ffd35c;background:#3a2a10cc;}
+.ht-item img{width:22px;height:22px;object-fit:contain;}
+.ht-name{color:#fff;min-width:42px;}
+.ht-hp{width:38px;height:5px;border-radius:3px;background:#ffffff22;overflow:hidden;}
+.ht-hp i{display:block;height:100%;}
+.ht-lv{color:#ffd35c;}
+.joy-base{position:absolute;left:20px;bottom:26px;width:112px;height:112px;border-radius:50%;
+  background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.25);z-index:6;touch-action:none;}
+.joy-knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
+  background:radial-gradient(circle,#ffe6a0,#e8a52f);box-shadow:0 4px 12px #0008;}
+.action-btn{position:absolute;right:22px;bottom:38px;width:82px;height:82px;border-radius:50%;z-index:6;
+  background:linear-gradient(135deg,#7b5cff,#b14bff);color:#fff;font-size:15px;font-weight:800;line-height:1.2;
+  box-shadow:0 6px 20px #7b5cff66;}
+.action-btn small{font-size:10px;opacity:.8;}
+
+/* ---------- 战斗 ---------- */
+#battleView{background:linear-gradient(180deg,#2a1e46,#160e2c);overflow-y:auto;}
+.battle-scene{padding:14px 14px 20px;min-height:100%;}
+.bs-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-top:6px;}
+.bs-side{flex:1;text-align:center;padding:10px 6px;border-radius:16px;background:#ffffff0d;border:1px solid #ffffff1a;}
+.bs-side.enemy{background:#4a1e2a55;border-color:#ff7a7a44;}
+.bs-side.mine{background:#1e3a4a55;border-color:#7ad0ff44;}
+.bs-name{font-size:15px;font-weight:800;color:#fff4d6;}
+.bs-elem{font-size:12px;margin-top:2px;}
+.bs-img{width:96px;height:96px;object-fit:contain;display:block;margin:6px auto;image-rendering:auto;}
+.hpbar{position:relative;height:16px;border-radius:9px;background:#0008;overflow:hidden;margin-top:6px;border:1px solid #ffffff22;}
+.hpfill{height:100%;transition:width .3s;}
+.hpfill.enemy{background:linear-gradient(90deg,#ff6b6b,#ff9a5c);}
+.hpfill.mine{background:linear-gradient(90deg,#4fd07a,#8fe08f);}
+.hpbar span{position:absolute;inset:0;font-size:10px;line-height:16px;color:#fff;text-shadow:0 1px 2px #000;}
+.bs-mp{font-size:11px;color:#7ad0ff;margin-top:4px;font-weight:700;}
+.bs-vs{align-self:center;font-size:20px;font-weight:900;color:#ffd35c;text-shadow:0 2px 10px #ffd35c88;}
+.b-team-row{display:flex;gap:6px;justify-content:center;margin:12px 0;}
+.b-team-row button{width:44px;height:44px;border-radius:10px;background:#2a1e4a;border:2px solid #ffffff22;font-size:22px;}
+.b-team-row button.on{border-color:#ffd35c;background:#3a2a10;}
+.b-team-row button:disabled{opacity:.3;}
+.b-log{height:118px;overflow-y:auto;padding:8px 12px;border-radius:12px;background:#0007;border:1px solid #ffffff18;
+  font-size:12px;line-height:1.65;color:#e8dcff;margin-bottom:12px;}
+.b-log div{padding:1px 0;}
+.b-cmds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.cmd{padding:12px 4px;border-radius:12px;background:linear-gradient(135deg,#4a3a7a,#33265c);color:#fff;
+  font-size:13px;font-weight:800;box-shadow:0 4px 12px #0005;}
+.cmd small{display:block;font-size:9px;font-weight:400;opacity:.75;margin-top:2px;}
+.cmd.spell{background:linear-gradient(135deg,#3aa7ff,#2563eb);}
+.cmd.ult{background:linear-gradient(135deg,#ff7a3d,#e0341f);}
+.cmd.run{background:linear-gradient(135deg,#7a8290,#5a626e);}
+.cmd:active{transform:scale(.96);}
+.b-tip{text-align:center;color:#9a8fbf;font-size:10.5px;margin-top:10px;}
+
+/* ---------- 队伍/背包/任务 ---------- */
+#partyView{background:#160e2c;overflow-y:auto;padding:14px 14px 30px;}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.panel-head h2{margin:0;font-size:20px;color:#ffe6a0;}
+.back-btn{padding:7px 12px;border-radius:10px;background:#ffffff14;color:#fff;font-size:12px;}
+.party-grid{display:grid;gap:10px;}
+.pet-card{border-radius:14px;background:#ffffff0d;border:1px solid #ffffff1a;padding:10px 12px;}
+.pet-card.on{border-color:#ffd35c;background:#ffd35c12;}
+.pc-top{display:flex;gap:10px;align-items:center;}
+.pc-top img{width:58px;height:58px;object-fit:contain;}
+.pc-title b{font-size:16px;color:#fff4d6;}
+.pc-rar{font-size:11px;margin-left:6px;font-weight:800;}
+.pc-sub{font-size:11.5px;margin-top:3px;}
+.pc-bars{margin-top:8px;}
+.pc-bar{display:flex;align-items:center;gap:6px;font-size:10px;color:#b9a7d8;margin:3px 0;}
+.pc-bar span{width:28px;}
+.pc-bar i{flex:1;height:7px;border-radius:4px;background:#ffffff1a;overflow:hidden;}
+.pc-bar i b{display:block;height:100%;}
+.pc-bar em{width:64px;text-align:right;font-style:normal;color:#cfc6e8;}
+.pc-stats{font-size:11px;color:#8fe3a8;margin-top:6px;}
+.pc-actions{margin-top:6px;text-align:right;}
+.pc-actions button{padding:5px 12px;border-radius:8px;background:#4a3a7a;color:#fff;font-size:11px;}
+.pc-active{color:#ffd35c;font-size:11px;}
+.panel-block{margin-top:18px;}
+.panel-block h3{color:#ffd777;font-size:15px;margin:0 0 8px;}
+.bag-grid{display:grid;gap:6px;}
+.bag-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#ffffff0d;}
+.bag-item .bi-icon{font-size:22px;}
+.bag-item b{font-size:13px;color:#fff;}
+.bag-item small{display:block;font-size:10.5px;color:#9a8fbf;}
+.bag-item .bi-num{margin-left:auto;color:#ffd35c;font-weight:800;}
+.quest-box{padding:12px;border-radius:12px;background:linear-gradient(135deg,#4a2f00aa,#2a1e4aaa);border:1px solid #ffd35c55;}
+.q-title{font-size:15px;color:#ffe6a0;font-weight:800;}
+.q-desc{font-size:12px;color:#e8dcff;margin:6px 0;line-height:1.5;}
+.q-prog{font-size:12px;color:#8fe3a8;}
+.q-reward{font-size:11px;color:#ffd35c;margin-top:4px;}
+.q-hint{font-size:11px;color:#9a8fbf;margin-top:6px;}
+.q-turnin{margin-top:8px;padding:8px 14px;border-radius:9px;background:#4fbf6a;color:#fff;font-weight:800;font-size:12px;}
+
+/* ---------- 弹层 ---------- */
+.overlay{position:absolute;inset:0;z-index:30;background:#000c;display:flex;align-items:center;justify-content:center;padding:20px;}
+.quiz-card,.dlg-card{background:linear-gradient(160deg,#faf4e6,#efe0bd);border-radius:20px;padding:20px 18px;width:100%;max-width:400px;
+  max-height:88%;overflow-y:auto;box-shadow:0 18px 50px #000b;color:#3a2c10;}
+.quiz-title{text-align:center;font-size:16px;font-weight:900;color:#a3283f;}
+.quiz-subj{text-align:center;font-size:11px;color:#8a7650;margin-top:3px;}
+.quiz-q{font-size:17px;font-weight:700;line-height:1.6;margin:16px 0;color:#2e2410;text-align:center;}
+.quiz-opts{display:grid;gap:9px;}
+.quiz-opts button{padding:12px;border-radius:12px;background:#fff;border:2px solid #d9c698;color:#3a2c10;font-size:15px;font-weight:600;}
+.quiz-opts button:active{background:#ffd35c44;}
+.q-fill{display:flex;gap:8px;}
+.q-fill input{flex:1;padding:12px;border-radius:12px;border:2px solid #d9c698;background:#fff;font-size:16px;min-width:0;}
+.q-fill button{padding:0 18px;border-radius:12px;background:#e8a52f;color:#fff;font-weight:800;white-space:nowrap;}
+.quiz-foot{text-align:center;color:#9a8256;font-size:10.5px;margin-top:12px;}
+.dlg-title{text-align:center;font-size:19px;font-weight:900;color:#6b4a12;margin-bottom:10px;}
+.dlg-title small{font-size:13px;color:#a3283f;}
+.dlg-text{font-size:14px;line-height:1.8;color:#4a3a18;margin-bottom:8px;}
+.shop-list,.b-bag-list{display:grid;gap:8px;margin:12px 0;}
+.shop-item,.bb-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;
+  background:#fff;border:1px solid #d9c698;font-size:13px;color:#3a2c10;}
+.shop-item button,.bb-item{padding:5px 14px;border-radius:8px;background:#e8a52f;color:#fff;font-weight:800;}
+.bb-item{width:100%;}
+.bb-item span{color:#a3283f;font-weight:800;}
+
+/* ---------- Toast ---------- */
+.toast{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);z-index:50;
+  padding:10px 18px;border-radius:22px;background:#000d;color:#ffe6a0;font-size:13px;font-weight:700;
+  box-shadow:0 6px 20px #0008;max-width:88%;text-align:center;}
+
+@media (max-height:640px){
+  .title-logo{font-size:36px;}
+  .starter-grid{grid-template-columns:repeat(5,1fr);}
+  .starter img{height:34px;}
+  .bs-img{width:78px;height:78px;}
+}

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1a1030">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="精灵大陆">
+<title>精灵大陆 · 知识远征</title>
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+<div id="app">
+  <!-- 标题页 -->
+  <section id="titleView" class="view">
+    <div class="title-glow"></div>
+    <div class="title-inner">
+      <div class="title-badge">知识驱动 · 自由探索 RPG</div>
+      <h1 class="title-logo">精灵大陆</h1>
+      <div class="title-sub">知识远征 · Knowledge Quest</div>
+      <p class="title-desc">在一片靠知识守护的大陆上，带着你的宠物队伍自由探索、战斗、成长。<br>答对题目，才能释放真正的力量。</p>
+      <div class="title-start">
+        <label class="grade-sel">出发年级 <select id="selGrade"></select></label>
+        <div class="starter-label">① 选择 3 只初始宠物（首发在最前）</div>
+        <div id="starterGrid" class="starter-grid"></div>
+        <button id="btnStartAdventure" class="big-btn gold" disabled>开始冒险</button>
+        <button id="titleContinue" class="big-btn ghost" style="display:none">继续上次冒险</button>
+        <button id="titleNew" class="text-btn">重新开始游戏</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 世界地图 -->
+  <section id="worldStage" class="view hidden">
+    <canvas id="worldCanvas"></canvas>
+    <!-- 顶部 HUD -->
+    <div id="hud">
+      <div class="hud-left">
+        <div class="hud-item">💰 <span id="hudGold">0</span></div>
+        <div class="hud-item">📍 <span id="hudZone">精灵大陆</span></div>
+      </div>
+      <div class="hud-right">
+        <button id="hudParty" class="hud-btn">🐾 队伍</button>
+        <button id="hudMenu" class="hud-btn">❓</button>
+      </div>
+    </div>
+    <div id="hudQuest" class="hud-quest"></div>
+    <div id="hudTeam" class="hud-team"></div>
+    <!-- 摇杆与动作 -->
+    <div id="joyBase" class="joy-base"><div id="joyKnob" class="joy-knob"></div></div>
+    <button id="btnAction" class="action-btn">对话<br><small>交互</small></button>
+  </section>
+
+  <!-- 战斗页 -->
+  <section id="battleView" class="view hidden">
+    <div class="battle-scene">
+      <div class="bs-top">
+        <div class="bs-side enemy">
+          <div id="bEnemyName" class="bs-name">野怪</div>
+          <div id="bEnemyElem" class="bs-elem"></div>
+          <img id="bEnemyImg" class="bs-img" src="" alt="">
+          <div class="hpbar"><div id="bEnemyHpFill" class="hpfill enemy"></div><span id="bEnemyHpTxt"></span></div>
+        </div>
+        <div class="bs-vs">VS</div>
+        <div class="bs-side mine">
+          <img id="bMyImg" class="bs-img" src="" alt="">
+          <div id="bMyName" class="bs-name"></div>
+          <div class="hpbar"><div id="bMyHpFill" class="hpfill mine"></div><span id="bMyHpTxt"></span></div>
+          <div id="bMyMp" class="bs-mp">MP</div>
+        </div>
+      </div>
+      <div id="bTeamRow" class="b-team-row"></div>
+      <div id="bLog" class="b-log"></div>
+      <div class="b-cmds">
+        <button id="bNormal" class="cmd">⚔️ 普攻</button>
+        <button id="bSpell" class="cmd spell">✨ 知识技能<small>答题·8MP</small></button>
+        <button id="bUlt" class="cmd ult">🔥 必杀技<small>答题·20MP</small></button>
+        <button id="bGuard" class="cmd">🛡️ 防御</button>
+        <button id="bBag" class="cmd">🎒 道具</button>
+        <button id="bRun" class="cmd run">🏃 逃跑</button>
+      </div>
+      <p class="b-tip">答对题目伤害更高 · 属性克制 ×1.6 · 点击下方队伍可换宠</p>
+    </div>
+  </section>
+
+  <!-- 队伍/背包/任务 -->
+  <section id="partyView" class="view hidden">
+    <div class="panel-head"><h2>🐾 我的队伍</h2><button id="btnPartyBack" class="back-btn">← 返回地图</button></div>
+    <div id="partyGrid" class="party-grid"></div>
+    <div class="panel-block"><h3>🎒 背包</h3><div id="bagGrid" class="bag-grid"></div></div>
+    <div class="panel-block"><h3>📜 主线任务</h3><div id="questBox" class="quest-box"></div></div>
+  </section>
+
+  <!-- 答题弹层 -->
+  <div id="quizOverlay" class="overlay hidden">
+    <div class="quiz-card">
+      <div id="quizTitle" class="quiz-title">✨ 知识技能 · 答对发动</div>
+      <div id="quizSubj" class="quiz-subj"></div>
+      <div id="quizQ" class="quiz-q"></div>
+      <div id="quizOpts" class="quiz-opts"></div>
+      <div class="quiz-foot">答对才能释放技能，答错会被敌人反击</div>
+    </div>
+  </div>
+
+  <!-- 对话弹层 -->
+  <div id="dlgOverlay" class="overlay hidden">
+    <div class="dlg-card">
+      <div id="dlgTitle" class="dlg-title"></div>
+      <div id="dlgText" class="dlg-text"></div>
+      <button id="dlgOk" class="big-btn gold">知道了</button>
+    </div>
+  </div>
+
+  <!-- 商店弹层 -->
+  <div id="shopOverlay" class="overlay hidden">
+    <div class="dlg-card">
+      <div class="dlg-title">🧑‍⚕️ 药剂师商店 <small>💰<span id="shopGold">0</span></small></div>
+      <div id="shopList" class="shop-list"></div>
+      <button id="shopClose" class="big-btn ghost">离开商店</button>
+    </div>
+  </div>
+
+  <!-- 战斗背包 -->
+  <div id="battleBagOverlay" class="overlay hidden">
+    <div class="dlg-card">
+      <div class="dlg-title">🎒 战斗道具</div>
+      <div id="battleBagList" class="b-bag-list"></div>
+      <button id="battleBagClose" class="big-btn ghost">返回战斗</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+</div>
+
+<script src="data/knowledge.js?v=1"></script>
+<script src="data/kg/g3.js?v=1"></script>
+<script>window.KG_LOADED=window.KG_LOADED||{};window.KG_LOADED.g3=true;</script>
+<script src="js/data.js?v=1"></script>
+<script src="js/engine.js?v=1"></script>
+<script src="js/world.js?v=1"></script>
+<script src="js/battle.js?v=1"></script>
+<script src="js/ui.js?v=1"></script>
+<script src="js/main.js?v=1"></script>
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+</script>
+</body>
+</html>

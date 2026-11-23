@@ -1,0 +1,156 @@
+/* ============================================================
+ * 精灵大陆 · 知识远征  —  数据层
+ * 宠物 / 怪物 / 技能 / 道具 / 任务 / 地图配置
+ * 存档独立：所有 key 以 rpg. 开头，与 battle 完全隔离
+ * ============================================================ */
+'use strict';
+
+/* ---------- 元素与克制 ---------- */
+var ELEMENTS = {
+  fire:  { name:'火', icon:'🔥', color:'#ff6b3d' },
+  water: { name:'水', icon:'💧', color:'#3aa7ff' },
+  wood:  { name:'木', icon:'🌿', color:'#4fbf6a' },
+  light: { name:'光', icon:'✨', color:'#ffd34d' },
+  dark:  { name:'暗', icon:'🌙', color:'#a377ff' }
+};
+/* 克制：攻方→守方 倍率表；1.6 克制 / 0.7 被克 */
+var ELEM_ADV = { fire:'wood', wood:'water', water:'fire', light:'dark', dark:'light' };
+function elemMult(atk, def){
+  if (ELEM_ADV[atk] === def) return 1.6;
+  if (ELEM_ADV[def] === atk) return 0.7;
+  return 1;
+}
+var RAR = { N:0, R:2, SR:4, SSR:6 };
+var RAR_COLOR = { N:'#9aa3b2', R:'#3b82f6', SR:'#a855f7', SSR:'#f5b301' };
+
+/* ---------- 可选宠物（初始队伍从中选 3 只） ---------- */
+var PETS = [
+  { id:'P001', name:'焰爪犬', emoji:'🔥', elem:'fire',  rar:'R',   skill:'焰爪击', base:{hp:110,atk:26,def:16,spd:18} },
+  { id:'P011', name:'潮汐猫', emoji:'💧', elem:'water', rar:'R',   skill:'潮汐弹', base:{hp:118,atk:24,def:18,spd:16} },
+  { id:'P027', name:'森角鹿', emoji:'🦌', elem:'wood',  rar:'SR',  skill:'森光冲', base:{hp:106,atk:28,def:16,spd:20} },
+  { id:'P035', name:'岩甲龟', emoji:'🐢', elem:'wood',  rar:'R',   skill:'岩甲撞', base:{hp:140,atk:20,def:26,spd:10} },
+  { id:'P042', name:'冰晶狐', emoji:'❄️', elem:'water', rar:'SR',  skill:'冰晶刺', base:{hp:104,atk:29,def:15,spd:22} },
+  { id:'P051', name:'光羽鹤', emoji:'🕊️', elem:'light', rar:'R',   skill:'光羽闪', base:{hp:112,atk:25,def:17,spd:19} },
+  { id:'D201', name:'星羽兽', emoji:'🦅', elem:'light', rar:'SSR', skill:'星羽坠', base:{hp:132,atk:34,def:20,spd:24} },
+  { id:'D203', name:'焰鳞兽', emoji:'🐉', elem:'fire',  rar:'SSR', skill:'炎鳞破', base:{hp:128,atk:36,def:20,spd:21} },
+  { id:'D207', name:'月影兽', emoji:'🌙', elem:'dark',  rar:'SSR', skill:'月影斩', base:{hp:124,atk:35,def:19,spd:25} },
+  { id:'D209', name:'暮影狼', emoji:'🐺', elem:'dark',  rar:'SR',  skill:'暮影扑', base:{hp:108,atk:30,def:16,spd:23} }
+];
+var PET_BY_ID = {}; PETS.forEach(function(p){ PET_BY_ID[p.id] = p; });
+
+/* 进化阶段：等级阈值与图片后缀（P系列在 ../images/gif/，D系列在 ../images/m/） */
+var STAGES = [
+  { lv:1,  key:'baby',    name:'幼生' },
+  { lv:10, key:'growth',  name:'成长' },
+  { lv:22, key:'adult',   name:'成熟' },
+  { lv:36, key:'ultimate',name:'终极' }
+];
+function petImg(id, stageKey){
+  var dir = (id.charAt(0) === 'D') ? '../images/m/' : '../images/gif/';
+  return dir + id + '-' + stageKey + '.gif';
+}
+function stageForLv(lv){
+  var s = STAGES[0];
+  for (var i=0;i<STAGES.length;i++) if (lv >= STAGES[i].lv) s = STAGES[i];
+  return s;
+}
+
+/* ---------- 怪物（野外敌人） ---------- */
+/* 图片在 ../images/mon/ ；elem / base 属性 / exp 经验 / gold 金币 */
+var MONSTERS = [
+  { key:'e01', name:'数据史莱姆', file:'e01-data-slime.png',   elem:'water', base:{hp:70,atk:14,def:8,spd:8},  exp:18, gold:12, zone:0 },
+  { key:'e02', name:'噪点蝙蝠',   file:'e02-noisy-bat.png',    elem:'dark',  base:{hp:62,atk:16,def:7,spd:15}, exp:20, gold:14, zone:0 },
+  { key:'e03', name:'墨汁章鱼',   file:'e03-ink-octopus.png',  elem:'water', base:{hp:88,atk:15,def:11,spd:9}, exp:24, gold:16, zone:1 },
+  { key:'e04', name:'嚎叫野狼',   file:'e04-howling-wolf.png', elem:'wood',  base:{hp:96,atk:20,def:10,spd:16}, exp:30, gold:20, zone:1 },
+  { key:'e05', name:'沙蝎',       file:'e05-sand-scorpion.png',elem:'fire',  base:{hp:104,atk:22,def:12,spd:12},exp:34, gold:22, zone:2 },
+  { key:'e06', name:'字母蛇',     file:'e06-letter-snake.png', elem:'wood',  base:{hp:98,atk:21,def:11,spd:17}, exp:32, gold:21, zone:2 },
+  { key:'e07', name:'算盘甲虫',   file:'e07-abacus-beetle.png',elem:'light', base:{hp:120,atk:19,def:18,spd:6}, exp:38, gold:25, zone:2 },
+  { key:'e08', name:'迷雾水母',   file:'e08-mist-jelly.png',   elem:'water', base:{hp:110,atk:24,def:12,spd:13}, exp:42, gold:28, zone:3 },
+  { key:'e09', name:'错别字蜘蛛', file:'e09-typo-spider.png',  elem:'dark',  base:{hp:116,atk:26,def:13,spd:15}, exp:46, gold:30, zone:3 },
+  { key:'e10', name:'瞌睡幽灵',   file:'e10-doze-ghost.png',   elem:'dark',  base:{hp:132,atk:25,def:15,spd:11}, exp:50, gold:34, zone:3 }
+];
+/* Boss */
+var BOSSES = [
+  { key:'b01', name:'蘑菇王',   file:'b01-mushroom-king.png', elem:'wood',  base:{hp:260,atk:30,def:20,spd:8},  exp:120, gold:150, quest:'q_boss1' },
+  { key:'b02', name:'玩具霸王龙',file:'b02-toy-trex.png',     elem:'fire',  base:{hp:300,atk:36,def:22,spd:12}, exp:160, gold:200, quest:'q_boss2' },
+  { key:'b03', name:'风暴领主', file:'b03-storm-lord.png',    elem:'light', base:{hp:340,atk:40,def:24,spd:18}, exp:210, gold:260, quest:'q_boss3' },
+  { key:'b04', name:'熔岩巨兽', file:'b04-lava-beast.png',    elem:'fire',  base:{hp:380,atk:44,def:26,spd:14}, exp:260, gold:320, quest:'q_boss4' },
+  { key:'b05', name:'冰霜女王', file:'b05-frost-queen.png',   elem:'water', base:{hp:420,atk:46,def:28,spd:20}, exp:320, gold:400, quest:'q_boss5' },
+  { key:'b06', name:'知识魔王', file:'b06-knowledge-lord.png',elem:'dark',  base:{hp:520,atk:52,def:32,spd:22}, exp:500, gold:666, quest:'q_boss6' }
+];
+function monsterImg(m){ return '../images/mon/' + m.file; }
+
+/* ---------- 道具 ---------- */
+var ITEMS = {
+  potion:  { name:'活力药水', emoji:'🧪', desc:'恢复一只宠物 50 HP', price:40 },
+  ether:   { name:'能量水晶', emoji:'💎', desc:'恢复一只宠物 20 MP', price:60 },
+  antidote:{ name:'清醒草',   emoji:'🌿', desc:'解除异常状态', price:30 },
+  candy:   { name:'经验糖果', emoji:'🍬', desc:'给一只宠物 +60 经验', price:80 }
+};
+
+/* ---------- 技能（答题成功释放） ---------- */
+/* power 倍率；mp 消耗；extra 附加效果 */
+var SKILLS = {
+  normal: { name:'普通攻击', mp:0,  power:1.0, desc:'无需答题的稳定一击' },
+  spell:  { name:'知识技能', mp:8,  power:1.8, desc:'答对题目释放，伤害更高' },
+  ult:    { name:'必杀技',   mp:20, power:2.8, desc:'答对题目释放的强力一击' }
+};
+
+/* ---------- 主线任务链 ---------- */
+/* 每个任务：id / title / 目标类型 type(kill|boss|talk|chest|level) / 参数 / 奖励 */
+var QUESTS = [
+  { id:'q1', title:'初入精灵大陆', desc:'击败 3 只野外精灵，证明你的实力', type:'kill', need:3, reward:{gold:80, exp:40}, npc:'村长' },
+  { id:'q_boss1', title:'蘑菇王的威胁', desc:'前往蘑菇森林，击败蘑菇王', type:'boss', boss:'b01', need:1, reward:{gold:200, exp:120}, npc:'村长' },
+  { id:'q2', title:'失踪的宝箱', desc:'在野外开启 2 个宝箱', type:'chest', need:2, reward:{gold:120, exp:60}, npc:'探险家' },
+  { id:'q_boss2', title:'玩具霸王龙', desc:'挑战玩具谷的霸王龙', type:'boss', boss:'b02', need:1, reward:{gold:300, exp:200}, npc:'探险家' },
+  { id:'q3', title:'成长的烦恼', desc:'让任意一只宠物达到 12 级', type:'level', need:12, reward:{gold:150, exp:100}, npc:'训练师' },
+  { id:'q_boss3', title:'风暴领主', desc:'击败风暴高地的领主', type:'boss', boss:'b03', need:1, reward:{gold:400, exp:280}, npc:'训练师' },
+  { id:'q4', title:'知识宝藏', desc:'累计答对 30 道题', type:'quiz', need:30, reward:{gold:250, exp:180}, npc:'学者' },
+  { id:'q_boss4', title:'熔岩巨兽', desc:'深入熔岩洞窟击败巨兽', type:'boss', boss:'b04', need:1, reward:{gold:500, exp:360}, npc:'学者' },
+  { id:'q_boss5', title:'冰霜女王', desc:'挑战冰封之地的女王', type:'boss', boss:'b05', need:1, reward:{gold:650, exp:450}, npc:'村长' },
+  { id:'q_boss6', title:'终章 · 知识魔王', desc:'击败知识魔王，守护知识大陆', type:'boss', boss:'b06', need:1, reward:{gold:1000, exp:800}, npc:'村长' }
+];
+
+/* ---------- 地图配置 ---------- */
+/* 世界 64x48 格；每格 30px。五个区域按 x/y 划分，越靠上/右越危险。 */
+var MAP_CFG = {
+  cols:64, rows:48, tile:30,
+  zones:[
+    { id:0, name:'新手草原', color:'#3c6b3f', y0:30, y1:48, x0:0,  x1:38, monsters:['e01','e02'] },
+    { id:1, name:'蘑菇森林', color:'#2f5d3a', y0:20, y1:30, x0:8,  x1:40, monsters:['e03','e04'] },
+    { id:2, name:'玩具谷/沙漠', color:'#8a7a3f', y0:16, y1:28, x0:40, x1:64, monsters:['e05','e06','e07'] },
+    { id:3, name:'风暴高地', color:'#4a5570', y0:6,  y1:20, x0:20, x1:52, monsters:['e08','e09','e10'] },
+    { id:4, name:'知识圣殿', color:'#5b4a72', y0:0,  y1:10, x0:40, x1:64, monsters:[] }
+  ],
+  /* NPC 位置（格坐标）：村长/探险家/训练师/学者 + 商店 */
+  npcs:[
+    { name:'村长',   x:20, y:40, color:'#ffd777', icon:'👴', role:'quest' },
+    { name:'探险家', x:30, y:42, color:'#8fe3a8', icon:'🧭', role:'quest' },
+    { name:'训练师', x:14, y:36, color:'#7ad0ff', icon:'🥋', role:'quest' },
+    { name:'学者',   x:34, y:38, color:'#d7b3ff', icon:'📖', role:'quest' },
+    { name:'药剂师', x:24, y:42, color:'#ff9db1', icon:'🧑‍⚕️', role:'shop' }
+  ],
+  /* Boss 站位 */
+  bosses:[
+    { key:'b01', x:22, y:24 }, { key:'b02', x:50, y:22 },
+    { key:'b03', x:36, y:12 }, { key:'b04', x:54, y:24 },
+    { key:'b05', x:46, y:6  }, { key:'b06', x:56, y:4  }
+  ],
+  /* 宝箱位置 */
+  chests:[
+    { x:16,y:44 },{ x:28,y:34 },{ x:44,y:26 },{ x:50,y:14 },
+    { x:30,y:22 },{ x:58,y:20 },{ x:40,y:8 },{ x:12,y:26 }
+  ],
+  spawn:{ x:20, y:43 }
+};
+
+/* 怪物按 key 索引 */
+var MON_BY_KEY = {}; MONSTERS.concat(BOSSES).forEach(function(m){ MON_BY_KEY[m.key] = m; });
+
+/* 导出到全局 */
+window.RPG_DATA = {
+  ELEMENTS:ELEMENTS, elemMult:elemMult, RAR:RAR, RAR_COLOR:RAR_COLOR,
+  PETS:PETS, PET_BY_ID:PET_BY_ID, STAGES:STAGES, petImg:petImg, stageForLv:stageForLv,
+  MONSTERS:MONSTERS, BOSSES:BOSSES, MON_BY_KEY:MON_BY_KEY, monsterImg:monsterImg,
+  ITEMS:ITEMS, SKILLS:SKILLS, QUESTS:QUESTS, MAP_CFG:MAP_CFG
+};

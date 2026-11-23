@@ -27,6 +27,8 @@ Battle.start = function(mon, lv, isBoss){
   this.monHp = this.monMaxHp;
   this.turn='player'; this.busy=false; this.logLines=[]; this.usedTexts={};
   this.playerGuard=false; this.enraged=false; this.stunNext=false; this.currentQuiz=null;
+  /* 清空上一场战斗残留的日志 DOM */
+  var box=document.getElementById('bLog'); if(box) box.innerHTML='';
   /* 确保上场的是存活宠物 */
   var ai=E.firstAlive();
   if (ai>=0) E.S.active=ai;

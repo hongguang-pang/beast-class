@@ -2,7 +2,7 @@
  * 精灵大陆 · 知识远征  —  主控 / 装配
  * ============================================================ */
 'use strict';
-var D=window.RPG_DATA, E=window.RPG_ENGINE, W=window.RPG_WORLD, B=window.RPG_BATTLE, U=window.RPG_UI;
+var D=window.RPG_DATA, E=window.RPG_ENGINE, W=window.RPG_WORLD, B=window.RPG_BATTLE, U=window.RPG_UI, A=window.RPG_AUDIO;
 function $(id){ return document.getElementById(id); }
 
 /* 确保年级题库分片加载后，初始化/检测战役（版本变了自动重建关卡） */
@@ -30,6 +30,7 @@ function startGame(teamIds, grade, isNew){
     if (ok) U.updateHUD();
   });
   U.toast('欢迎来到精灵大陆！靠近 NPC 按「对话」接任务');
+  if(A){ A.unlock(); A.playBGM('world'); }
   /* 首次引导 */
   if (isNew || !E.S.seenIntro){
     setTimeout(function(){
@@ -51,11 +52,13 @@ function wire(){
     W.stop();
     B.start(mon, lv, isBoss);
     U.show('battleView');
+    if(A){ A.sfx('encounter'); A.playBGM(isBoss?'boss':'battle'); }
   };
   W.onBoss = function(mon){
     W.stop();
     B.start(mon, 1 + D.BOSSES.findIndex(function(b){return b.key===mon.key;})*8, true);
     U.show('battleView');
+    if(A){ A.sfx('encounter'); A.playBGM('boss'); }
   };
   W.onTalk = function(npc){ U.talkNPC(npc); };
   W.onChest = function(){
@@ -64,16 +67,32 @@ function wire(){
     E.S.gold+=gold; if(potion)E.S.bag.potion=(E.S.bag.potion||0)+potion; E.save();
     U.toast('🎁 宝箱：+'+gold+' 金币'+(potion?' · +1 药水':''));
     U.updateHUD();
+    if(A) A.sfx('chest');
     /* chest 主线/支线进度在 world.js 开箱处已推进，这里不重复 */
   };
   U.toastFn=function(m){ U.toast(m); };
   W.zoneFn=function(name){ window.__curZone=name; var el=$('hudZone'); if(el)el.textContent=name; };
 
   /* 战斗回调 */
-  B.onLog=function(s){ U.battleLog(s); U.updateHUD(); U.renderBattle(); };
+  B.onLog=function(s){
+    U.battleLog(s); U.updateHUD(); U.renderBattle();
+    if(A){
+      if(s.indexOf('答对了')>=0) A.sfx('correct');
+      else if(s.indexOf('答错了')>=0) A.sfx('wrong');
+      else if(s.indexOf('针对')>=0 || s.indexOf('弱点')>=0) A.sfx('target');
+      else if(s.indexOf('眩晕')>=0) A.sfx('stun');
+      else if(s.indexOf('造成')>=0 && s.indexOf('攻击')>=0) A.sfx('hit');
+      else if(s.indexOf('胜利')>=0) A.sfx('win');
+      else if(s.indexOf('升到')>=0) A.sfx('levelup');
+    }
+  };
   B.onTurn=function(){ U.renderBattle(); U.updateHUD(); };
-  B.onQuiz=function(kind, skill){ U.openQuiz(kind, skill); };
-  B.onEnd=function(r){ if(r.win) W.markMobDefeated(); U.battleEnd(r); };
+  B.onQuiz=function(kind, skill){ if(A) A.sfx('click'); U.openQuiz(kind, skill); };
+  B.onEnd=function(r){
+    if(r.win) W.markMobDefeated();
+    U.battleEnd(r);
+    /* 回到地图时由 UI.show('worldStage') 恢复地图音乐 */
+  };
 
   /* 战斗按钮 */
   $('bNormal').addEventListener('click',function(){ B.act('normal'); });
@@ -85,9 +104,19 @@ function wire(){
   /* 答题关闭（不允许中途退出，强制答） */
 
   /* HUD 按钮 */
-  $('hudParty').addEventListener('click',function(){ U.show('partyView'); });
-  $('btnPartyBack').addEventListener('click',function(){ U.show('worldStage'); });
+  $('hudParty').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('partyView'); });
+  $('btnPartyBack').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('worldStage'); });
   $('btnAction').addEventListener('click',function(){ W.interact(); });
+  /* 音乐开关 */
+  var hm=$('hudMusic');
+  function renderMusicBtn(){ if(hm) hm.textContent=A&&A.isMuted()?'🔇':'🔊'; }
+  renderMusicBtn();
+  if(hm) hm.addEventListener('click',function(){
+    if(!A) return;
+    var m=A.toggleMute(); renderMusicBtn();
+    if(!m && W.enabled) A.playBGM('world');
+    U.toast(m?'🔇 音乐已关闭':'🔊 音乐已开启');
+  });
   $('hudMenu').addEventListener('click',function(){
     U.dialog('菜单','🌍 大地图：走动探索<br>📜 队伍：查看宠物、背包、任务<br>⚔️ 战斗：答对题放技能<br><br>进度自动保存在本机，随时回来继续。');
   });
@@ -97,6 +126,7 @@ function wire(){
   U.renderTitle();
   $('titleContinue').addEventListener('click',function(){
     E.load(); U.show('worldStage'); W.resetToSave();
+    if(A){ A.unlock(); A.playBGM('world'); }
     /* 继续游戏时同样检测题库版本，确保关卡覆盖最新知识点 */
     initCampaignForGrade(E.S.grade, function(ok){ if(ok) U.updateHUD(); });
   });

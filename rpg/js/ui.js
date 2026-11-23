@@ -32,7 +32,10 @@ UI.show = function(view){
   if (view==='worldStage'){
     W.enabled=true;
     setTimeout(function(){W.resize(); W.start();},30);
+    /* 回到地图播放地图音乐（战斗音乐由遇敌回调单独切换） */
+    if (window.RPG_AUDIO && !window.RPG_AUDIO.isMuted()) window.RPG_AUDIO.playBGM('world');
   } else { W.enabled=false; }
+  if (view==='titleView'){ if(window.RPG_AUDIO) window.RPG_AUDIO.playBGM('none'); }
   if (view==='partyView') UI.renderParty();
   if (view==='battleView') UI.renderBattle();
   UI.updateHUD();

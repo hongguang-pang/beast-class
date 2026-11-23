@@ -13,6 +13,9 @@ var World = {
   viewW:0, viewH:0,
   keys:{}, joy:{x:0,y:0},
   moving:false, moveTimer:0,
+  vx:0, vy:0,               // 平滑速度（格/秒），带惯性
+  walkPhase:0,              // 行走动画相位
+  footDust:[],              // 脚步尘粒
   obstacles:{},             // 'x,y' -> true
   chests:{},                // 剩余宝箱 key -> {x,y}
   encounterCooldown:0,
@@ -97,6 +100,7 @@ World.resetToSave = function(){
   var S=E.S||E.load();
   this.px = S ? S.player.x : MAP.spawn.x;
   this.py = S ? S.player.y : MAP.spawn.y;
+  this.vx=0; this.vy=0; this.moving=false; this.footDust=[]; this.joy.x=0; this.joy.y=0;
   this.chests = {};
   var self=this;
   MAP.chests.forEach(function(c,i){ if(!(S&&S.chestsOpened[i])) self.chests[i]={x:c.x,y:c.y}; });
@@ -143,13 +147,24 @@ World.bindInput = function(){
   if (act) act.addEventListener('click', function(){ self.interact(); });
 };
 
-World.updateCam = function(){
+World._camTarget = function(){
   var t=this.tile;
   var targetX = this.px*t - this.viewW/2 + t/2;
   var targetY = this.py*t - this.viewH/2 + t/2;
   targetX = Math.max(0, Math.min(MAP.cols*t - this.viewW, targetX));
   targetY = Math.max(0, Math.min(MAP.rows*t - this.viewH, targetY));
-  this.camX = targetX; this.camY = targetY;
+  return {x:targetX, y:targetY};
+};
+/* 瞬间对齐（读档/传送时用） */
+World.updateCam = function(){
+  var p=this._camTarget(); this.camX=p.x; this.camY=p.y;
+};
+/* 平滑跟随：相机以缓动追赶玩家，画面更柔和 */
+World.updateCamSmooth = function(dt){
+  var p=this._camTarget();
+  var k=1-Math.exp(-7*dt);
+  this.camX += (p.x-this.camX)*k;
+  this.camY += (p.y-this.camY)*k;
 };
 
 World.zoneAt = function(x,y){
@@ -174,23 +189,48 @@ World.step = function(dt){
   if (this.keys['arrowup']||this.keys['w']) dy-=1;
   if (this.keys['arrowdown']||this.keys['s']) dy+=1;
   dx += this.joy.x; dy += this.joy.y;
-  var speed = 4.2;  // 格/秒
+  var MAX = 4.6;  // 最高速度（格/秒）
   var len=Math.sqrt(dx*dx+dy*dy);
-  var moving = len>0.15;
-  this.moving=moving;
-  if (!moving) return;
-  dx/=len; dy/=len;
-  if (Math.abs(dx)>Math.abs(dy)) this.lastDir = dx>0?'right':'left';
-  else this.lastDir = dy>0?'down':'up';
-  var nx=this.px+dx*speed*dt, ny=this.py+dy*speed*dt;
-  /* 分轴碰撞 */
-  if (!this.blocked(nx, this.py)) this.px=nx;
-  if (!this.blocked(this.px, ny)) this.py=ny;
-  this.updateCam();
+  var input = len>0.12;
+  if (input){ dx/=len; dy/=len; }
+  /* 目标速度：有输入=最高速，松手=0；用指数缓动逼近，起步/刹车都平滑 */
+  var tvx = input ? dx*MAX : 0, tvy = input ? dy*MAX : 0;
+  var k = 1 - Math.exp(-(input?9:13)*dt);   // 起步稍慢、刹车更快
+  this.vx += (tvx-this.vx)*k;
+  this.vy += (tvy-this.vy)*k;
+  if (Math.abs(this.vx)<0.02) this.vx=0;
+  if (Math.abs(this.vy)<0.02) this.vy=0;
+  var spd=Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+  this.moving = spd>0.25;
+  /* 朝向取速度主导方向 */
+  if (spd>0.4){
+    if (Math.abs(this.vx)>Math.abs(this.vy)) this.lastDir = this.vx>0?'right':'left';
+    else this.lastDir = this.vy>0?'down':'up';
+  }
+  /* 行走相位 & 脚步尘粒 */
+  if (this.moving){
+    this.walkPhase += dt*spd*3.2;
+    if (this.walkPhase - (this._lastDust||0) > 0.9){
+      this._lastDust=this.walkPhase;
+      this.footDust.push({x:this.px, y:this.py+0.42, life:1});
+      if (this.footDust.length>12) this.footDust.shift();
+    }
+  }
+  /* 尘粒衰减 */
+  for (var i=this.footDust.length-1;i>=0;i--){
+    this.footDust[i].life -= dt*1.8;
+    if (this.footDust[i].life<=0) this.footDust.splice(i,1);
+  }
+  if (!this.moving){ this.updateCamSmooth(dt); return; }
+  var nx=this.px+this.vx*dt, ny=this.py+this.vy*dt;
+  /* 分轴碰撞：撞墙时该轴速度归零，避免贴墙抖动 */
+  if (!this.blocked(nx, this.py)) this.px=nx; else this.vx=0;
+  if (!this.blocked(this.px, ny)) this.py=ny; else this.vy=0;
+  this.updateCamSmooth(dt);
   if (E.S) E.S.stats.steps++;
-  /* 随机遇敌：每移动一段距离判定一次 */
-  this.moveTimer += dt;
-  if (this.moveTimer > 0.55){
+  /* 随机遇敌：按实际移动距离判定 */
+  this.moveTimer += spd*dt;
+  if (this.moveTimer > 2.2){
     this.moveTimer=0;
     this.tryEncounter();
   }
@@ -281,6 +321,7 @@ World.markMobDefeated = function(){
 /* ---------- 渲染 ---------- */
 World.draw = function(){
   var c=this.ctx, t=this.tile;
+  var camX0=this.camX, camY0=this.camY;
   c.clearRect(0,0,this.viewW,this.viewH);
   var startX=Math.floor(this.camX/t), startY=Math.floor(this.camY/t);
   var endX=Math.ceil((this.camX+this.viewW)/t), endY=Math.ceil((this.camY+this.viewH)/t);
@@ -328,8 +369,15 @@ World.draw = function(){
     var mon=D.MON_BY_KEY[b.key];
     self.imageSprite(mon?D.monsterImg(mon):'', b.x, b.y, t*1.8, 0, '#ff7a7a');
   });
-  /* 玩家（卡通角色图） */
-  this.imageSprite('../images/npc/player-hero.png', this.px, this.py, t*1.6, 0, 'rgba(0,0,0,.35)');
+  /* 脚步尘粒 */
+  this.footDust.forEach(function(d){
+    var dx2=d.x*t-camX0, dy2=d.y*t-camY0;
+    c.fillStyle='rgba(220,210,190,'+(d.life*0.35)+')';
+    c.beginPath(); c.arc(dx2+t/2, dy2+t/2, t*0.06*(2-d.life), 0, Math.PI*2); c.fill();
+  });
+  /* 玩家（卡通角色图）：行走时上下起伏 + 左右朝向翻转 */
+  var bob=this.moving ? Math.abs(Math.sin(this.walkPhase))*t*0.14 : 0;
+  this.drawPlayer(t*1.6, bob);
   /* 区域名提示 */
   var pz=this.zoneAt(Math.round(this.px),Math.round(this.py));
   if (this.zoneFn) this.zoneFn(pz ? pz.name : '');
@@ -361,6 +409,26 @@ World.imageSprite = function(src, gx, gy, size, bob, shadowColor, label){
     if (c.roundRect) { c.roundRect(sx+t/2-tw/2, sy-sz/2-16, tw, 15, 7); c.fill(); }
     else c.fillRect(sx+t/2-tw/2, sy-sz/2-16, tw, 15);
     c.fillStyle='#fff'; c.fillText(label, sx+t/2, sy-sz/2-8);
+  }
+};
+
+/* 玩家角色绘制：支持左右朝向翻转与行走起伏 */
+World.drawPlayer = function(size, bob){
+  var c=this.ctx, t=this.tile;
+  var sx=this.px*t-this.camX, sy=this.py*t-this.camY+(bob||0);
+  /* 地面阴影（不随起伏浮动，贴地） */
+  c.fillStyle='rgba(0,0,0,.35)';
+  c.beginPath(); c.ellipse(sx+t/2, sy+t*0.86-(bob||0), size*0.3, size*0.1, 0, 0, Math.PI*2); c.fill();
+  var img=this.imgCache['../images/npc/player-hero.png'];
+  var cx=sx+t/2, cy=sy+t/2-size*0.06;
+  if (img && img.complete && img.naturalWidth>0){
+    c.save();
+    if (this.lastDir==='left'){ c.translate(cx,0); c.scale(-1,1); c.translate(-cx,0); }
+    c.drawImage(img, cx-size/2, cy-size/2, size, size);
+    c.restore();
+  } else {
+    c.font=(t)+'px serif'; c.textAlign='center'; c.textBaseline='middle';
+    c.fillText(this.playerSprite||'🧑', cx, cy);
   }
 };
 

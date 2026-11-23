@@ -294,7 +294,18 @@ function saveBag(){ LS.set('battle.bag', JSON.stringify(G.bag)); }
 function addDrop(k){ G.bag[k] = (G.bag[k] || 0) + 1; G.runDrops.push(k); G.sessionDrops.push(k); saveBag(); }
 function loadProgress(){ try { return JSON.parse(LS.get('battle.map.progress') || '{}') || {}; } catch(e){ return {}; } }
 function loadStars(){ try { return JSON.parse(LS.get('battle.map.stars') || '{}') || {}; } catch(e){ return {}; } }
-function nodeState(i){ const n = loadProgress()[G.grade] || 0; return i < n ? 'cleared' : i === n ? 'current' : 'locked'; }
+function nodeState(i){
+  const pi = (window.LEARN && LEARN.PROGRESS) ? LEARN.PROGRESS.info(G.grade) : null;
+  const manual = loadProgress()[G.grade] || 0;
+  if (pi) {
+    /* 已学单元与手动通关取较大者作为「已通过」线；可学单元上限为 reachUnit */
+    const clearedUpTo = Math.max(pi.lastUnit, manual - 1);
+    if (i <= clearedUpTo) return 'cleared';
+    if (i <= pi.reachUnit) return 'current';
+    return 'locked';   // 未学到：置灰锁定
+  }
+  return i < manual ? 'cleared' : i === manual ? 'current' : 'locked';
+}
 function markCleared(i){
   const p = loadProgress(), st = loadStars();
   if ((p[G.grade] || 0) < i + 1){ p[G.grade] = i + 1; LS.set('battle.map.progress', JSON.stringify(p)); }
@@ -476,10 +487,14 @@ function learnProgressText(){
 }
 
 /* 取本关下一个知识点：主线队列优先；队列空则按单元顺序补充 */
+/* v7 不超纲：只出「已学进度范围内」的知识点（诊断回溯的补基础题除外） */
+function inScope(kid){
+  return !(window.LEARN && LEARN.PROGRESS) || LEARN.PROGRESS.isInScope(G.grade, kid);
+}
 function nextTeachKid(){
   while (G.kidPtr < G.kidQueue.length) {
     const kid = G.kidQueue[G.kidPtr++];
-    if (LEARN.questionsFor(G.grade, kid).length) return kid;
+    if (inScope(kid) && LEARN.questionsFor(G.grade, kid).length) return kid;
   }
   return null;
 }
@@ -495,7 +510,7 @@ function sequentialKid(skip){
   for (let n = 0; n < kk.length; n++) {
     _seqCache.i = (_seqCache.i + 1) % kk.length;
     const kid = kk[_seqCache.i];
-    if (kid !== skip && LEARN.questionsFor(G.grade, kid).length) return kid;
+    if (kid !== skip && inScope(kid) && LEARN.questionsFor(G.grade, kid).length) return kid;
   }
   return null;
 }
@@ -631,7 +646,11 @@ function renderGradeInfo(){
   const qn = Object.keys(bank).reduce((s, k) => s + bank[k].length, 0);
   const stages = LEARN ? LEARN.stages(G.grade).length : 0;
   const dataVer = (window.KG_META && window.KG_META.updated) ? ' · 题库 ' + window.KG_META.updated : '';
-  $('gradeInfo').innerHTML = `${g.name}（${g.stage}）· 图谱 <b>${total}</b> 知识点 · <b>${qn}</b> 道题 · <b>${stages}</b> 个单元关卡<br><span class="gi-subj">${subjNames.join(' / ')}${dataVer}</span>`;
+  const pi = (window.LEARN && LEARN.PROGRESS) ? LEARN.PROGRESS.info(G.grade) : null;
+  const progLine = pi
+    ? `<br><span class="gi-progress">📈 学习进度：按已答题推算，应学 <b>${pi.expectedCount}</b> / 全册 ${pi.totalCount} 个知识点 · 已掌握 <b>${pi.masteredCount}</b> 个${pi.lastUnit >= 0 ? ' · 学到「' + escHtml(shortUnit(pi.unitName)) + '」' : ' · 从第 1 单元开始'}</span>`
+    : '';
+  $('gradeInfo').innerHTML = `${g.name}（${g.stage}）· 图谱 <b>${total}</b> 知识点 · <b>${qn}</b> 道题 · <b>${stages}</b> 个单元关卡<br><span class="gi-subj">${subjNames.join(' / ')}${dataVer}</span>${progLine}`;
   /* 切年级后重建关卡缓存 + 关卡表（一个单元一关） */
   G.stages = LEARN ? LEARN.stages(G.grade) : [];
   LEVELS = buildLevels(G.grade);
@@ -1295,22 +1314,66 @@ function renderMap(){
   $('mapSub').textContent = '按单元顺序学 · 已通关 ' + Math.min(prog, LEVELS.length) + ' / ' + LEVELS.length + ' 关' + (unitCnt ? '（' + unitCnt + ' 个知识单元）' : '');
   $('mapTip').textContent = prog >= LEVELS.length ? '🏆 全部单元通关！点「无限远征」继续复习全部知识点。' : '点亮金色据点开始挑战';
   $('bagCount').textContent = Object.keys(G.bag).reduce((a, k) => a + G.bag[k], 0);
-  /* 学习进度条 */
+  /* 学习进度条（按答题自动推算的进度口径） */
   const st = LEARN.stats(G.grade);
-  const totalPts = window.KG_META ? window.KG_META.points : 0;
+  const pi = (window.LEARN && LEARN.PROGRESS) ? LEARN.PROGRESS.info(G.grade) : null;
   if ($('learnStats')) {
     const ptsG = window.KG_POINTS[G.grade] || {};
     const totalPts = Object.keys(ptsG).reduce((a,k)=>a+ptsG[k].length,0);
-    const cover = totalPts ? Math.min(100, Math.round(st.learned / totalPts * 100)) : 0;
+    const expected = pi ? pi.expectedCount : totalPts;              // 按进度应学
+    const mastered = pi ? pi.masteredCount : st.mastered;          // 进度内已掌握
+    const cover = expected ? Math.min(100, Math.round(mastered / expected * 100)) : 0;
+    const unitLabel = pi && pi.lastUnit >= 0 ? shortUnit(pi.unitName) : '第 1 单元';
     $('learnStats').innerHTML =
       `<div class="ls-title">📊 ${((GRADES.find(g=>g.id===G.grade)||{}).name||'')} 学习进度</div>` +
-      `<div class="ls-row"><span>本年级知识点</span><b>${totalPts}</b></div>` +
-      `<div class="ls-row"><span>已学过（覆盖率）</span><b>${st.learned} <small style="color:#ffe0a0">${cover}%</small></b></div>` +
-      `<div class="ls-row"><span>已掌握 / 牢固掌握</span><b>${st.mastered} / ${st.solid}</b></div>` +
+      `<div class="ls-row"><span>按进度学到</span><b>${escHtml(unitLabel)}</b></div>` +
+      `<div class="ls-row"><span>应学 / 全册</span><b>${expected} <small style="color:#ffe0a0">/ ${pi ? pi.totalCount : totalPts}</small></b></div>` +
+      `<div class="ls-row"><span>已掌握（进度内）</span><b>${mastered} <small style="color:#ffe0a0">${cover}%</small></b></div>` +
+      `<div class="ls-row"><span>已学 / 已掌握（全册）</span><b>${st.learned} / ${st.mastered}</b></div>` +
       `<div class="ls-row"><span>累计答对 / 答错</span><b class="ok">${st.ok}</b> / <b class="no">${st.no}</b></div>` +
       `<div class="ls-bar"><i style="width:${cover}%"></i></div>` +
-      `<p class="ls-hint">覆盖率＝见过的知识点占比；答对越多掌握度越高、出现越少，错得多的会更频繁地回来找你。</p>`;
+      `<p class="ls-hint">进度按你做过的题自动推算：学过的单元会解锁下一单元，没学到的知识点暂时不会出现，也不会超纲出题。</p>`;
   }
+}
+
+/* v7 知识点清单：按「已掌握 / 学习中 / 未学到」分组展示知识点名称 */
+function renderKnowledgeList(){
+  const box = $('kpList'); if (!box) return;
+  const pi = (window.LEARN && LEARN.PROGRESS) ? LEARN.PROGRESS.info(G.grade) : null;
+  const pts = window.KG_POINTS[G.grade] || {};
+  const gname = (GRADES.find(g=>g.id===G.grade)||{}).name || '';
+  /* 收集全局去重知识点 */
+  const seen = {}; const groups = { mastered:[], learning:[], future:[] };
+  Object.keys(pts).forEach(subj => {
+    (pts[subj]||[]).forEach(p => {
+      if (seen[p.id]) return; seen[p.id] = 1;
+      const item = { n:p.n, unit:p.unit, subj:subj };
+      if (pi && pi.mastery[p.id]) groups.mastered.push(item);
+      else if (pi && pi.learned[p.id]) groups.learning.push(item);
+      else if (pi && !pi.inScope[p.id]) groups.future.push(item);
+      else groups.learning.push(item);   // 范围内但还没学：算「待学」，归入学习中之前
+    });
+  });
+  const titles = { mastered:'✅ 已掌握', learning:'📖 已学 / 待学（当前进度）', future:'🔒 未学到（暂不出现）' };
+  let html = `<div class="kp-head">${gname} · 知识点清单</div>`;
+  Object.keys(groups).forEach(k => {
+    const arr = groups[k];
+    html += `<div class="kp-group kp-${k}"><div class="kp-gt">${titles[k]} <span>${arr.length}</span></div><div class="kp-items">`;
+    if (k === 'future') {
+      /* 未学知识点只报数量，不提前剧透名称 */
+      html += `<div class="kp-empty">还有 ${arr.length} 个知识点要等学到对应单元才会出现，先专注当前的吧 🌱</div>`;
+    } else if (!arr.length) {
+      html += '<div class="kp-empty">（无）</div>';
+    } else {
+      arr.forEach(it => {
+        const u = shortUnit(it.unit);
+        html += `<div class="kp-item"><span class="kp-sub">${((SUBJ_META[it.subj]||{}).name||it.subj)}</span><span class="kp-name">${escHtml(it.n)}</span>${u ? `<span class="kp-unit">${escHtml(u)}</span>` : ''}</div>`;
+      });
+    }
+    html += '</div></div>';
+  });
+  box.innerHTML = html;
+  $('kpView').classList.remove('hidden');
 }
 function beginLevel(i){ G.chosenLevel = clamp(i, 0, LEVELS.length - 1); startGame('story'); }
 function startEndless(){ G.chosenLevel = 0; startGame('endless'); }
@@ -1431,6 +1494,8 @@ $('nextBtn').addEventListener('click', afterClearToMap);
 $('mapBackBtn').addEventListener('click', () => { SND.tap(); G.state = 'select'; $('mapView').classList.add('hidden'); $('selectView').classList.remove('hidden'); BGM.setTheme('map'); });
 $('bagBtn').addEventListener('click', showBag);
 $('bagClose').addEventListener('click', () => { SND.tap(); $('bagView').classList.add('hidden'); });
+if ($('kpBtn')) $('kpBtn').addEventListener('click', () => { SND.tap(); renderKnowledgeList(); });
+if ($('kpClose')) $('kpClose').addEventListener('click', () => { SND.tap(); $('kpView').classList.add('hidden'); });
 $('retryBtn').addEventListener('click', retry);
 $('againBtn').addEventListener('click', again);
 $('noteBtn').addEventListener('click', useNote);
@@ -1474,6 +1539,9 @@ window.__battle = {
   get bgm(){ return { theme:BGM.theme, playing:BGM.playing, muted:SND.muted }; },
   get bag(){ return Object.assign({}, G.bag); },
   get diag(){ return { next: G.diagNext, rootInfo: G.diagRootInfo, state: window.DIAG ? window.DIAG.stats() : null }; },
+  get progress(){ return (window.LEARN && LEARN.PROGRESS) ? LEARN.PROGRESS.info(G.grade) : null; },
+  inScope(kid){ return inScope(kid); },
+  openKpList(){ renderKnowledgeList(); },
   get drops(){ return (G.runDrops || []).slice(); },
   get sessionDrops(){ return (G.sessionDrops || []).slice(); },
   get map(){ return { progress:loadProgress()[G.grade] || 0, stars:loadStars()[G.grade] || {}, nodes:LEVELS.map((L,i) => nodeState(i)) }; },

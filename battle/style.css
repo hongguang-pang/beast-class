@@ -481,3 +481,33 @@ body { background:#0e1220; }
 .self-btn { padding:8px 16px; margin:2px 6px 0 0; border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; }
 .self-btn.yes { background:#5fbf72; color:#fff; }
 .self-btn.no { background:#e08a90; color:#fff; }
+
+/* ============================================================
+ * v7：学习进度 —— 进度行 / 地图按钮排 / 知识点清单
+ * ============================================================ */
+.gi-progress { color:#8fe3c0; font-size:11px; }
+.gi-progress b { color:#d8ffe8; }
+.map-btn-row { display:flex; gap:10px; justify-content:center; align-items:center; padding:0 18px; }
+.map-btn-row .bag-btn { flex:1; margin:8px 0 2px; }
+.kp-btn { border-color:rgba(110,231,183,.55); background:rgba(110,231,183,.12); color:#bff6dc; }
+
+.kp-card { background:#faf4e6; border-radius:20px; padding:18px 16px; width:100%; max-width:420px; max-height:88%;
+  display:flex; flex-direction:column; box-shadow:0 16px 50px #000a; }
+.kp-card h2 { color:#6b4a12; font-size:19px; letter-spacing:2px; text-align:center; margin:0; }
+.kp-sub { color:#9a8256; font-size:11px; text-align:center; margin:6px 0 10px; line-height:1.5; }
+.kp-list { overflow-y:auto; flex:1; padding-right:4px; }
+.kp-head { color:#7a5a1c; font-size:12px; font-weight:700; text-align:center; margin-bottom:8px; }
+.kp-group { margin-bottom:12px; }
+.kp-gt { font-size:13px; font-weight:700; padding:6px 10px; border-radius:10px 10px 0 0; color:#fff; }
+.kp-gt span { float:right; opacity:.85; font-size:12px; }
+.kp-mastered .kp-gt { background:linear-gradient(135deg,#3fae6b,#1f8f52); }
+.kp-learning .kp-gt { background:linear-gradient(135deg,#4a90d9,#3568b0); }
+.kp-future .kp-gt { background:linear-gradient(135deg,#9aa3b2,#7a8290); }
+.kp-items { background:#fffdf6; border:1px solid #e6d6b0; border-top:none; border-radius:0 0 10px 10px; padding:4px 8px; }
+.kp-item { display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; padding:4px 2px; border-bottom:1px dashed #ecdfc2; font-size:11.5px; }
+.kp-item:last-child { border-bottom:none; }
+.kp-sub { color:#b07a1e; font-size:10px; flex:none; }
+.kp-name { color:#4a3a18; font-weight:600; }
+.kp-unit { color:#a89878; font-size:10px; margin-left:auto; }
+.kp-empty { color:#b6a989; font-size:11px; padding:6px 2px; }
+.kp-card .big-btn { width:100%; margin:12px 0 0; }

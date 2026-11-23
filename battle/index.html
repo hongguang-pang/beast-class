@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 <script>
 /* 加载守护：任何未捕获的错误都显示出来，而不是静默白屏 */
 (function(){
@@ -100,7 +100,10 @@
     </div>
     <div id="learnStats" class="learn-stats"></div>
     <button id="endlessBtn" class="endless-map-btn">♾️ 无限远征 · 一直学下去</button>
-    <button id="bagBtn" class="bag-btn">🎒 我的背包 <span id="bagCount" class="bag-count">0</span></button>
+    <div class="map-btn-row">
+      <button id="kpBtn" class="bag-btn kp-btn">📚 知识点清单</button>
+      <button id="bagBtn" class="bag-btn">🎒 我的背包 <span id="bagCount" class="bag-count">0</span></button>
+    </div>
     <div id="mapPath" class="map-path"></div>
     <p id="mapTip" class="map-tip">点亮金色据点开始挑战</p>
     <button id="mapBackBtn" class="ghost-btn">← 返回组队</button>
@@ -182,6 +185,16 @@
     <p class="sel-foot">下次考试前，再来找知识大陆。</p>
   </div>
 
+  <!-- 知识点清单 -->
+  <div id="kpView" class="overlay hidden">
+    <div class="kp-card">
+      <h2>📚 知识点清单</h2>
+      <p class="kp-sub">按你做过的题自动推算学习进度，未学到的知识点暂不出现</p>
+      <div id="kpList" class="kp-list"></div>
+      <button id="kpClose" class="big-btn">知道了</button>
+    </div>
+  </div>
+
   <!-- 背包 -->
   <div id="bagView" class="overlay hidden">
     <div class="bag-card">
@@ -209,9 +222,9 @@
     </div>
   </div>
 </div>
-<script src="data/knowledge.js?v=12"></script>
+<script src="data/knowledge.js?v=13"></script>
 <!-- 分片版：默认年级用普通 script 标签静态加载（微信 X5 兼容最好，不用同步 XHR/eval） -->
-<script src="data/kg/g3.js?v=12"></script>
+<script src="data/kg/g3.js?v=13"></script>
 <script>window.KG_LOADED = window.KG_LOADED || {}; window.KG_LOADED.g3 = true; window.__kgBootGrade = 'g3';
 /* 若上次选的是别的年级，再动态补加载（script 标签），加载完标记；boot 仍可先渲染 */
 (function(){
@@ -227,8 +240,8 @@
   } catch (e) {}
 })();
 </script>
-<script src="engine.js?v=12"></script>
-<script src="game.js?v=12"></script>
+<script src="engine.js?v=13"></script>
+<script src="game.js?v=13"></script>
 <script>
 /* 注册离线缓存：装到桌面后即使断网/弱网也能秒开，全屏运行 */
 if ('serviceWorker' in navigator) {

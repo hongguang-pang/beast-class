@@ -477,12 +477,86 @@ const LEARN = (function () {
     get state() { return dstate; }
   };
 
+  /* ============================================================
+   * v7 学习进度（按答题自动推算）
+   *  - 学到哪 = 已作答知识点所在的最大单元(stages 下标)
+   *  - 可出题范围 = 已学单元 + 1（留「正在学」的下一单元，避免卡死）
+   *  - 手动通关进度也纳入，避免老用户数据倒退
+   * 目的：不出没学到的知识点；地图/清单/统计口径一致。
+   * ============================================================ */
+  var _progressCache = {}, _progressKey = {};
+  function progressKey(grade) {
+    var g = data[grade] || {};
+    var s = Object.keys(g).map(function (k) { return k + ':' + (g[k].seen || 0) + ':' + (g[k].s || 0) + ':' + (g[k].ok || 0); }).join('|');
+    var mp = '';
+    try { mp = getLS('battle.map.progress') || ''; } catch (e) {}
+    return s + '#' + mp + '#' + Object.keys(window.KG_LOADED || {}).join(',');
+  }
+  function progressInfo(grade) {
+    var key = progressKey(grade);
+    if (_progressCache[grade] && _progressKey[grade] === key) return _progressCache[grade];
+    var sts = stages(grade);
+    var g = data[grade] || {};
+    var learned = {}, mastery = {}, lastUnit = -1;
+    sts.forEach(function (st, ui) {
+      st.kids.forEach(function (k) {
+        var m = g[k];
+        if (m && (m.seen || 0) > 0) { learned[k] = 1; if (ui > lastUnit) lastUnit = ui; }
+        if (m && (m.s || 0) >= 2 && (m.ok || 0) >= 2) mastery[k] = 1;
+      });
+    });
+    /* 老数据：作答过但不在当前 stages 里的也计入 */
+    Object.keys(g).forEach(function (k) {
+      if ((g[k].seen || 0) > 0) learned[k] = 1;
+      if ((g[k].s || 0) >= 2 && (g[k].ok || 0) >= 2) mastery[k] = 1;
+    });
+    var manual = 0;
+    try { var mp = JSON.parse(getLS('battle.map.progress') || '{}') || {}; manual = parseInt(mp[grade] || 0, 10) || 0; } catch (e) {}
+    /* reachUnit：可学到的最远单元。自动推算 lastUnit+1 与手动通关数取大 */
+    var reachUnit = Math.min(sts.length - 1, Math.max(lastUnit + 1, manual));
+    if (reachUnit < 0) reachUnit = 0;
+    var inScope = {};
+    for (var u = 0; u <= reachUnit && u < sts.length; u++) {
+      sts[u].kids.forEach(function (k) { inScope[k] = 1; });
+    }
+    var totalCount = 0; sts.forEach(function (st) { totalCount += st.kids.length; });
+    var info = {
+      grade: grade,
+      lastUnit: lastUnit,
+      reachUnit: reachUnit,
+      manualProgress: manual,
+      learned: learned, mastery: mastery, inScope: inScope,
+      learnedCount: Object.keys(learned).length,
+      masteredCount: Object.keys(mastery).length,
+      expectedCount: Object.keys(inScope).length,
+      totalCount: totalCount,
+      unitName: (sts[reachUnit] || sts[0] || {}).unit || ''
+    };
+    _progressCache[grade] = info; _progressKey[grade] = key;
+    return info;
+  }
+  function isInScope(grade, kid) {
+    if (!kid) return true;
+    var sts = stages(grade), known = false;
+    for (var i = 0; i < sts.length; i++) {
+      if (sts[i].kids.indexOf(kid) >= 0) { known = true; break; }
+    }
+    if (!known) return true;   // 跨年级先修题放行（补基础本就合理）
+    return !!progressInfo(grade).inScope[kid];
+  }
+  function kidsInScope(grade) { return Object.keys(progressInfo(grade).inScope); }
+  var PROGRESS = {
+    info: progressInfo, isInScope: isInScope, kidsInScope: kidsInScope,
+    invalidate: function () { _progressCache = {}; _progressKey = {}; },
+    AHEAD: 1
+  };
+
   return {
     record: record, get: get, resetGrade: resetGrade, weight: weight,
     stages: stages, reviewPick: reviewPick, pickFromKid: pickFromKid, questionsFor: questionsFor,
     judge: judge, normalize: normalize, masteredCount: masteredCount,
     learnedCount: learnedCount, solidCount: solidCount, stats: stats, cloneQ: cloneQ,
-    DIAG: DIAG,
+    DIAG: DIAG, PROGRESS: PROGRESS,
     get data() { return data; }
   };
 })();

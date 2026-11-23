@@ -175,11 +175,58 @@ UI.renderParty = function(){
     });
     sideBox.innerHTML=html;
   }
+  /* 剧情关卡链（当前年级全部知识点/单元） */
+  var cb=$('campaignBox');
+  if (cb && window.RPG_CAMPAIGN && E.S.campaign){
+    var C=window.RPG_CAMPAIGN, camp=E.S.campaign;
+    var cov=C.coverage(E.S);
+    var h='<div class="campaign-summary">📚 '+esc((window.GRADES||[]).find(function(g){return g.id===camp.grade;})||{}).name+
+      ' · 覆盖 '+cov.covered+'/'+cov.total+' 知识点（'+cov.pct+'%）· 关卡 '+cov.levelsCleared+'/'+cov.levelsTotal+'</div>'+
+      '<div class="campaign-progress"><i style="width:'+cov.pct+'%"></i></div>'+
+      '<div class="campaign-list">';
+    camp.levels.forEach(function(L,i){
+      var done=L.kps.filter(function(k){return camp.covered[k];}).length;
+      var pct=L.kps.length?Math.round(done/L.kps.length*100):0;
+      var cleared=camp.cleared[L.id];
+      var weakN=L.kps.filter(function(k){return (camp.weak[k]||0)>=2;}).length;
+      var cls='campaign-item'+(i===camp.cur?' cur':'')+(cleared?' cleared':'');
+      h+='<button class="'+cls+'" data-i="'+i+'">'+
+        '<span class="ci-icon">'+window.RPG_CAMPAIGN.subjIcon(L.subj)+'</span>'+
+        '<span class="ci-body"><b>'+esc(L.title)+'</b><small>'+done+'/'+L.kps.length+' 知识点'+(weakN?' · 🎯'+weakN+'薄弱':'')+'</small>'+
+        '<i class="ci-bar"><em style="width:'+pct+'%"></em></i></span>'+
+        '<span class="ci-mark">'+(cleared?'✓':(i===camp.cur?'▶':'·'))+'</span></button>';
+    });
+    h+='</div>';
+    cb.innerHTML=h;
+    Array.prototype.forEach.call(cb.querySelectorAll('.campaign-item'),function(b){
+      b.addEventListener('click',function(){
+        var idx=+b.getAttribute('data-i');
+        C.gotoLevel(E.S, idx); E.save();
+        UI.toast('已切换到：'+C.curLevel(E.S).title);
+        UI.renderParty();
+      });
+    });
+  }
 };
 
 /* ---------- 战斗界面 ---------- */
 UI.renderBattle = function(){
   if(!B.active) return;
+  /* 章节/知识点覆盖信息条 */
+  var cbar=$('bCampaignBar');
+  if (cbar && window.RPG_CAMPAIGN){
+    var L=window.RPG_CAMPAIGN.curLevel(E.S);
+    var cov=window.RPG_CAMPAIGN.coverage(E.S);
+    if (L){
+      var doneK=L.kps.filter(function(k){ return E.S.campaign.covered[k]; }).length;
+      var weakN=L.kps.filter(function(k){ return (E.S.campaign.weak[k]||0)>=2; }).length;
+      cbar.innerHTML='<span class="bcb-title">'+esc(L.title)+'</span>'+
+        '<span class="bcb-prog">单元知识点 '+doneK+'/'+L.kps.length+'</span>'+
+        '<span class="bcb-global">全年级 '+cov.pct+'%</span>'+
+        (weakN?'<span class="bcb-weak">🎯 薄弱 '+weakN+'</span>':'');
+      cbar.style.display='flex';
+    } else { cbar.style.display='none'; }
+  }
   var mon=B.mon, el=D.ELEMENTS[mon.elem];
   $('bEnemyName').textContent=mon.name+' Lv'+B.monLv+(B.isBoss?' 👹':'');
   $('bEnemyElem').textContent=el.icon+el.name;
@@ -226,15 +273,30 @@ UI.battleLog = function(s){
 
 /* ---------- 答题弹层 ---------- */
 UI.openQuiz = function(kind, skill){
-  var q=E.pickQuestion(E.S.grade, B.usedTexts);
+  var q=null, kid=null, mode=null, L=null;
+  /* 优先按当前剧情关卡的知识点出题（覆盖 + 薄弱巩固） */
+  if (window.RPG_CAMPAIGN){
+    L=window.RPG_CAMPAIGN.curLevel(E.S);
+    var pick=window.RPG_CAMPAIGN.pickBattleQuestion(E.S, B.usedTexts);
+    if (pick){ q=E.formatBankQ(pick.raw); kid=pick.kid; mode=pick.mode; }
+  }
+  /* 关卡无可用题时回退到年级随机题库 */
+  if (!q) q=E.pickQuestion(E.S.grade, B.usedTexts);
   if (!q){ /* 题库不可用，直接当作答对 */
     UI.toast('题库加载中，技能直接发动');
     setTimeout(function(){B.resolveQuiz(true);},300);
     return;
   }
   B.usedTexts[q.q]=1;
+  /* 保存当前题供结算时记录覆盖/薄弱（kid 缺失则从题库按题干反查） */
+  if (!kid && q.kid) kid=q.kid;
+  B.currentQuiz={ q:q, kid:kid, mode:mode, level:L };
   var box=$('quizQ'); box.textContent=q.q;
-  var subj=$('quizSubj'); if(subj) subj.textContent=(q.kn||'知识挑战');
+  var subj=$('quizSubj');
+  if(subj){
+    var tag = mode==='weak' ? '🎯 薄弱巩固 · ' : (L? (window.RPG_CAMPAIGN.subjIcon(L.subj)+' '):'');
+    subj.textContent=tag+(q.kn||'知识挑战');
+  }
   var opts=$('quizOpts');
   if(q.tp==='choice'){
     opts.innerHTML=q.o.map(function(o,i){

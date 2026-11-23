@@ -213,3 +213,29 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .side-tag.open{background:#3a2a5c;color:#b9a7d8;}
 .side-desc{font-size:11px;color:#9d90b5;margin-top:3px;line-height:1.4;}
 .side-desc small{color:#7a6d94;}
+
+/* ===== 剧情关卡链（知识点全覆盖）===== */
+.campaign-box{background:#ffffff08;border:1px solid #ffffff18;border-radius:12px;padding:10px 12px;}
+.campaign-summary{font-size:12px;color:#d8cff0;margin-bottom:6px;}
+.campaign-progress{height:6px;background:#ffffff15;border-radius:4px;overflow:hidden;margin-bottom:10px;}
+.campaign-progress i{display:block;height:100%;background:linear-gradient(90deg,#a78bfa,#ffd35c);border-radius:4px;}
+.campaign-list{max-height:280px;overflow-y:auto;}
+.campaign-item{width:100%;display:flex;align-items:center;gap:8px;padding:7px 8px;margin-bottom:5px;
+  background:#ffffff0c;border:1px solid #ffffff18;border-radius:9px;color:#e9e2f7;text-align:left;cursor:pointer;}
+.campaign-item.cur{border-color:#a78bfa;background:#a78bfa1a;}
+.campaign-item.cleared{opacity:.7;}
+.campaign-item .ci-icon{font-size:20px;flex:0 0 auto;}
+.campaign-item .ci-body{flex:1;min-width:0;}
+.campaign-item .ci-body b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.campaign-item .ci-body small{display:block;font-size:10px;color:#9d90b5;margin:1px 0 3px;}
+.campaign-item .ci-bar{display:block;height:4px;background:#ffffff15;border-radius:3px;overflow:hidden;}
+.campaign-item .ci-bar em{display:block;height:100%;background:#7ee08f;border-radius:3px;}
+.campaign-item .ci-mark{font-size:14px;color:#ffd35c;flex:0 0 auto;}
+
+/* ===== 战斗页章节信息条 ===== */
+.b-campaign-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 10px;margin-bottom:6px;
+  background:#1a1030cc;border:1px solid #a78bfa44;border-radius:10px;font-size:11px;color:#cbb8ee;}
+.b-campaign-bar .bcb-title{font-weight:700;color:#ffd35c;flex:1;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.b-campaign-bar .bcb-prog{color:#8fe3a8;}
+.b-campaign-bar .bcb-global{color:#9d90b5;}
+.b-campaign-bar .bcb-weak{color:#ff9db1;background:#ff5c7a22;padding:1px 6px;border-radius:8px;}

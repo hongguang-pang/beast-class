@@ -11,8 +11,11 @@ var Battle = {
   turn:'player', busy:false, logLines:[],
   pendingSkill:null,          // 等待答题的技能 kind
   usedTexts:{},
-  onEnd:null, onQuiz:null, onLog:null,
-  playerGuard:false
+  onEnd:null, onQuiz:null, onLog:null, onTurn:null,
+  playerGuard:false,
+  enraged:false,        // 弱点被针对（答对解除）
+  stunNext:false,       // 下回合眩晕跳过
+  currentQuiz:null      // 当前正在作答的题（含 kid）
 };
 
 function log(s){ Battle.logLines.push(s); if(Battle.onLog) Battle.onLog(s); }
@@ -23,7 +26,7 @@ Battle.start = function(mon, lv, isBoss){
   this.monMaxHp = Math.round(mon.base.hp*scale);
   this.monHp = this.monMaxHp;
   this.turn='player'; this.busy=false; this.logLines=[]; this.usedTexts={};
-  this.playerGuard=false;
+  this.playerGuard=false; this.enraged=false; this.stunNext=false; this.currentQuiz=null;
   /* 确保上场的是存活宠物 */
   var ai=E.firstAlive();
   if (ai>=0) E.S.active=ai;
@@ -71,18 +74,39 @@ Battle.resolveQuiz = function(correct){
   var pet=E.activePet();
   pet.mp = Math.max(0, pet.mp - skill.mp);
   E.save();
+  var ca = null;
+  if (window.RPG_CAMPAIGN && this.currentQuiz && this.currentQuiz.kid){
+    ca = window.RPG_CAMPAIGN.recordAnswer(E.S, this.currentQuiz.kid, correct);
+  }
   if (correct){
     E.S.stats.quizzes++; E.S.stats.quizOk++;
     E.bumpSide('quiz');
     var moveN = D.moveName(pet.id, kind);
     log('✅ 答对了！'+moveN+' 发动！');
+    /* 答对解除针对性 */
+    if (this.enraged){ this.enraged=false; log('✨ 答对知识点，怪物失去了针对机会！'); }
+    if (ca && ca.cleared && this.onLog) this.onLog('🎉 本单元知识点已全部覆盖，关卡完成！');
     this.playerAttack(skill.power, true, kind);
   } else {
     E.S.stats.quizzes++;
     log('❌ 答错了，技能被打断！');
-    if (this.onLog) this.onLog('答错了，先准确回答才能放出技能哦');
+    if (ca && ca.weak){
+      /* 连错2次：怪物针对弱点 + 概率眩晕 */
+      this.enraged=true;
+      var kn = (window.KG_NAMES && window.KG_NAMES[this.currentQuiz.kid]) || (this.currentQuiz.q && this.currentQuiz.q.kn) || '这个知识点';
+      log('🎯 '+this.mon.name+' 抓住了你的薄弱点「'+kn+'」，开始针对性攻击！');
+      if (this.onLog) this.onLog('薄弱点：'+kn+'（连错'+ca.weakLevel+'次）· 怪物已针对，答对即可解除');
+      /* 连错3次以上眩晕概率提升 */
+      var stunChance = ca.weakLevel>=3 ? 0.5 : 0.3;
+      if (Math.random()<stunChance){ this.stunNext=true; log('💫 你的宠物被弱点冲击眩晕，下回合将无法行动！'); }
+    } else if (ca && ca.weakLevel===1){
+      if (this.onLog) this.onLog('注意：这个知识点答错了，再错一次怪物会针对弱点');
+    } else if (!ca){
+      if (this.onLog) this.onLog('答错了，先准确回答才能放出技能哦');
+    }
     this.enemyTurn();
   }
+  this.currentQuiz=null;
 };
 
 Battle.playerAttack = function(power, isSkill, kind){
@@ -110,10 +134,16 @@ Battle.enemyTurn = function(){
   var pet=E.S.team[idx];
   var r=E.monsterDamage(mon, pet, this.monLv);
   var dmg = this.playerGuard ? Math.round(r.value*0.4) : r.value;
+  /* 🎯 针对性攻击：抓住薄弱点，锁定宠物属性弱点，伤害×1.6 且无视防御减伤 */
+  var enrageTxt='';
+  if (this.enraged){
+    dmg = Math.round(dmg * 1.6);
+    enrageTxt = ' 🎯针对弱点！';
+  }
   pet.hp = Math.max(0, pet.hp - dmg);
   E.save();
   var eff = r.mult>1 ? ' 克制！×'+r.mult : (r.mult<1 ? ' 被抵抗…' : '');
-  log(mon.name+' 攻击 '+D.PET_BY_ID[pet.id].name+'，造成 '+dmg+' 伤害'+eff+(this.playerGuard?'（防御中）':''));
+  log(mon.name+' 攻击 '+D.PET_BY_ID[pet.id].name+'，造成 '+dmg+' 伤害'+eff+(this.playerGuard?'（防御中）':'')+enrageTxt);
   this.playerGuard=false;
   if (pet.hp<=0){
     log(D.PET_BY_ID[pet.id].name+' 倒下了！');
@@ -123,7 +153,18 @@ Battle.enemyTurn = function(){
     log('换上 '+D.PET_BY_ID[E.S.team[next].id].name+' 继续战斗！');
   }
   var self=this;
-  setTimeout(function(){ self.turn='player'; self.busy=false; if(Battle.onTurn) Battle.onTurn(); }, 400);
+  setTimeout(function(){
+    if (self.stunNext){
+      /* 💫 眩晕：跳过玩家这一回合，怪物再攻一次 */
+      self.stunNext=false;
+      log('💫 '+D.PET_BY_ID[E.activePet().id].name+' 处于眩晕，无法行动！');
+      if (self.onLog) self.onLog('眩晕中，跳过本回合（答对薄弱知识点可解除针对）');
+      self.turn='enemy'; self.busy=true;
+      setTimeout(function(){ if(self.active) self.enemyTurn(); }, 500);
+      return;
+    }
+    self.turn='player'; self.busy=false; if(Battle.onTurn) Battle.onTurn();
+  }, 400);
 };
 
 Battle.defend = function(){

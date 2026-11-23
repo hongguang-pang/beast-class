@@ -142,8 +142,11 @@ function pickQuestion(grade, usedTexts){
   }
   if (!all.length) return null;
   var q = all[Math.floor(Math.random()*all.length)];
-  /* 复制并打散选项 */
-  var out = { q:q.q, tp:q.tp, kid:q.kid, kn:q.kn, exp:q.exp, f:q.f };
+  return formatBankQ(q);
+}
+/* 把题库原始题格式化为可作答结构（选项打散/填空转选择）；供 pickQuestion 与关卡战役复用 */
+function formatBankQ(q){
+  var out = { q:q.q, tp:q.tp, kid:q.kid, kn:q.kn, exp:q.exp, f:q.f, unit:q.unit, uidx:q.uidx };
   if (q.tp==='choice' && q.o && q.o.length){
     var opts = q.o.map(function(t,i){ return {t:t, right:i===q.a}; });
     for (var i=opts.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=opts[i];opts[i]=opts[j];opts[j]=t; }
@@ -301,7 +304,7 @@ window.RPG_ENGINE = {
   expNeed:expNeed, addExp:addExp,
   activePet:activePet, alivePets:alivePets, firstAlive:firstAlive, healAll:healAll,
   damage:damage, monsterDamage:monsterDamage, monsterArmor:monsterArmor,
-  ensureGradeLoaded:ensureGradeLoaded, pickQuestion:pickQuestion, judge:judge,
+  ensureGradeLoaded:ensureGradeLoaded, pickQuestion:pickQuestion, formatBankQ:formatBankQ, judge:judge,
   quest:quest, curQuest:curQuest, bumpQuest:bumpQuest, completeQuest:completeQuest, turnInAvailable:turnInAvailable,
   sideQuest:sideQuest, acceptSide:acceptSide, bumpSide:bumpSide, sideTurnInAvailable:sideTurnInAvailable,
   completeSide:completeSide, readySideForNPC:readySideForNPC, openSideForNPC:openSideForNPC, rollDrops:rollDrops

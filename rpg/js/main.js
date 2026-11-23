@@ -5,12 +5,30 @@
 var D=window.RPG_DATA, E=window.RPG_ENGINE, W=window.RPG_WORLD, B=window.RPG_BATTLE, U=window.RPG_UI;
 function $(id){ return document.getElementById(id); }
 
+/* 确保年级题库分片加载后，初始化/检测战役（版本变了自动重建关卡） */
+function initCampaignForGrade(grade, cb){
+  var C=window.RPG_CAMPAIGN; if(!C){ cb&&cb(); return; }
+  E.ensureGradeLoaded(grade, function(ok){
+    if (!ok){ cb&&cb(false); return; }
+    var r=C.initCampaign(E.S, grade, false);
+    E.save();
+    if (r.rebuilt && E.S.seenIntro){
+      U.toast('📚 题库已更新，关卡已按最新知识点重新生成');
+    }
+    cb&&cb(true, r);
+  });
+}
+
 function startGame(teamIds, grade, isNew){
   if (isNew || !E.hasSave()) E.init(teamIds, grade);
   else E.load();
   U.renderTitle();
   U.show('worldStage');
   W.resetToSave();
+  /* 按当前年级知识点生成/校验剧情关卡 */
+  initCampaignForGrade(E.S.grade, function(ok){
+    if (ok) U.updateHUD();
+  });
   U.toast('欢迎来到精灵大陆！靠近 NPC 按「对话」接任务');
   /* 首次引导 */
   if (isNew || !E.S.seenIntro){
@@ -77,7 +95,11 @@ function wire(){
 
   /* 标题页按钮 */
   U.renderTitle();
-  $('titleContinue').addEventListener('click',function(){ E.load(); U.show('worldStage'); W.resetToSave(); });
+  $('titleContinue').addEventListener('click',function(){
+    E.load(); U.show('worldStage'); W.resetToSave();
+    /* 继续游戏时同样检测题库版本，确保关卡覆盖最新知识点 */
+    initCampaignForGrade(E.S.grade, function(ok){ if(ok) U.updateHUD(); });
+  });
   function doNewGame(){
     if (E.hasSave() && !confirm('重新开始会清空当前进度，确定吗？')) return;
     var arr=window.__selPets||[];

@@ -277,14 +277,15 @@ def build(topics, deps, qmap, commit_sha, out_battle):
 
 
 def check_update(workdir):
-    tree = get_tree()
-    sha = {x['path']: x['sha'] for x in tree['tree'] if x['type'] == 'blob'}
-    cur = sha.get('data/topics.json', '')[:10]
+    # 用分支最新 commit sha 作为版本戳（与 build/version.txt 一致）
+    ref = api_get('/repos/%s/git/ref/heads/%s' % (REPO, BRANCH), timeout=60)
+    cur = ref['object']['sha'][:10]
     old = ''
     vf = os.path.join(workdir, 'version.txt')
     if os.path.exists(vf):
         old = open(vf).read().strip()
-    print('上游 topics sha:', cur, '本地记录:', old or '(无)')
+    print('上游最新 commit:', cur, '本地记录:', old or '(无)')
+    # check 只读、不写 version.txt；由 fetch_all 成功生成后再写，避免生成失败导致漏更新
     return cur != old, cur
 
 

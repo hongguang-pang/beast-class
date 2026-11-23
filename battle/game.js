@@ -99,7 +99,11 @@ const G = {
   usedTexts:{},            // 本局已出题干（避免重复）
   answered:false,          // 当前题是否已作答（填空/简答防重复提交）
   inputKind:null,          // 当前题型渲染态
-  reviewStreak:0           // 连续出题计数，用于穿插复习
+  reviewStreak:0,          // 连续出题计数，用于穿插复习
+  /* v6 诊断：答错追根 */
+  diagNext:null,           // 下一题的定向指令 {kid, kind:'confirm'|'root', ...}
+  diagRootInfo:null,       // 当前正在追踪的根因展示信息 {root,path}
+  diagEnabled:true         // 诊断开关（默认开）
 };
 
 /* ---------- 安全存储：无痕模式 / file:// / 微信受限环境下 localStorage 会抛错 ---------- */
@@ -500,6 +504,37 @@ function pickQuestion(){
   const lv = LEVELS[G.level] || LEVELS[0];
   let q = null, kid = null, isReview = false;
 
+  /* v6 诊断：优先出「定向题」——答错后的确认题 / 回溯的根知识题 */
+  if (G.diagNext && window.DIAG) {
+    const d = G.diagNext; G.diagNext = null;
+    const dkid = d.kid;
+    if (dkid) {
+      /* 跨年级先修：若目标知识点在别的年级分片，先确保加载后再出题 */
+      const dp = window.DIAG.pointOf(dkid);
+      const needLoad = dp && dp.grade && dp.grade !== G.grade && !window.KG_LOADED[dp.grade];
+      const doPick = () => {
+        let dq = null;
+        if (d.kind === 'confirm') dq = window.DIAG.softerQuestion(dkid);
+        if (!dq) dq = LEARN.pickFromKid(dp && dp.grade ? dp.grade : G.grade, dkid, {}, 0);
+        if (!dq) dq = LEARN.pickFromKid(G.grade, dkid, {}, 0);
+        if (dq) {
+          q = LEARN.cloneQ ? LEARN.cloneQ(dq) : dq;
+          if (q.tp === 'choice' && q.o && q.o.length) q.a = q.a || 0;
+          q.isDiag = true; q.diagKind = d.kind; q.kid = dkid;
+          q.kn = (dp && dp.n) || q.kn;
+        }
+        finishPick(q, dkid, true, dp && dp.subj);
+      };
+      if (needLoad) {
+        $('battleLog').textContent = '🔍 正在调取前置知识点题目…';
+        window.DIAG.ensureGradeLoaded(dp.grade, doPick);
+        return;
+      }
+      doPick();
+      return;
+    }
+  }
+
   if (G.mode === 'endless') {
     /* 无限模式：每 4 题穿插 1 道复习（错得多/掌握低/到期的优先） */
     G.reviewStreak++;
@@ -517,8 +552,14 @@ function pickQuestion(){
     if (!q) q = fallbackQuestion(lv);   // 单元学完/无题兜底
   }
 
+  finishPick(q, kid, isReview);
+}
+
+/* 统一收尾：把选好的题装进 G 并渲染（诊断题与正常题共用） */
+function finishPick(q, kid, isReview, subjOverride){
+  const lv = LEVELS[G.level] || LEVELS[0];
   if (!q) q = fallbackQuestion(lv);
-  const subj = q.kid ? kidSubj(q.kid) : 'math';
+  const subj = subjOverride || (q.kid ? kidSubj(q.kid) : 'math');
   q.subj = subj;
   q.isReview = isReview;
   G.currentQ = q;
@@ -530,7 +571,7 @@ function pickQuestion(){
   G.questionNo++;
   G.usedTexts[q.q] = 1;
   G.pickedLog = G.pickedLog || [];
-  G.pickedLog.push((isReview ? '复习|' : '新学|') + subj + '|' + (q.kn || q.kid || '生成') + '|' + q.q);
+  G.pickedLog.push((q.isDiag ? '诊断|' : isReview ? '复习|' : '新学|') + subj + '|' + (q.kn || q.kid || '生成') + '|' + q.q);
   renderQuestion();
   /* 知识点推进后刷新顶部单元名 / 关卡进度点（currentUnitName 会据当前 kid 更新 stageIdx） */
   if ($('battleView') && !$('battleView').classList.contains('hidden')) updateHUD();
@@ -589,7 +630,8 @@ function renderGradeInfo(){
   const bank = KG_BANK[G.grade] || {};
   const qn = Object.keys(bank).reduce((s, k) => s + bank[k].length, 0);
   const stages = LEARN ? LEARN.stages(G.grade).length : 0;
-  $('gradeInfo').innerHTML = `${g.name}（${g.stage}）· 图谱 <b>${total}</b> 知识点 · <b>${qn}</b> 道题 · <b>${stages}</b> 个单元关卡<br><span class="gi-subj">${subjNames.join(' / ')}</span>`;
+  const dataVer = (window.KG_META && window.KG_META.updated) ? ' · 题库 ' + window.KG_META.updated : '';
+  $('gradeInfo').innerHTML = `${g.name}（${g.stage}）· 图谱 <b>${total}</b> 知识点 · <b>${qn}</b> 道题 · <b>${stages}</b> 个单元关卡<br><span class="gi-subj">${subjNames.join(' / ')}${dataVer}</span>`;
   /* 切年级后重建关卡缓存 + 关卡表（一个单元一关） */
   G.stages = LEARN ? LEARN.stages(G.grade) : [];
   LEVELS = buildLevels(G.grade);
@@ -879,6 +921,17 @@ function bigVerdict(text, cls){
   $('stage').appendChild(d);
   setTimeout(() => d.remove(), 1100);
 }
+/* v6 诊断提示浮层：显示根因 + 学习路径 */
+function showDiagBanner(html, kind){
+  const old = document.getElementById('diagBanner'); if (old) old.remove();
+  const d = document.createElement('div');
+  d.id = 'diagBanner';
+  d.className = 'diag-banner ' + (kind || '');
+  d.innerHTML = html;
+  const stage = $('stage');
+  if (stage) stage.appendChild(d);
+  setTimeout(() => { if (d.parentNode) { d.style.opacity = '0'; setTimeout(() => d.remove(), 400); } }, 3600);
+}
 function answerQuestion(correct, btn, userText){
   if (G.lock || G.state !== 'battle') return;
   G.lock = true;
@@ -898,6 +951,43 @@ function answerQuestion(correct, btn, userText){
   if (q && q.kid && LEARN) {
     LEARN.record(G.grade, q.kid, correct);
     master = LEARN.get(G.grade, q.kid);
+  }
+  /* v6 诊断：答错追根——决定下一题出确认题还是回溯根知识题 */
+  if (q && q.kid && G.diagEnabled && window.DIAG) {
+    const dec = window.DIAG.onAnswer(q.kid, correct, {
+      confirm: !!q.isDiag && q.diagKind === 'confirm',
+      isRoot:  !!q.isDiag && q.diagKind === 'root'
+    });
+    if (dec.action === 'confirm') {
+      /* 首错：下一题出更简单的确认题 */
+      G.diagNext = { kid: dec.confirmKid || q.kid, kind: 'confirm' };
+      G.diagRootInfo = null;
+      showDiagBanner('<b>🔍 别急，先做一道更简单的确认题</b><br><span>看看这个知识点是不是真的会了</span>', 'confirm');
+    } else if (dec.action === 'weak' && dec.root) {
+      /* 确认题也错：判薄弱，回溯到根知识出题 */
+      G.diagNext = { kid: dec.root, kind: 'root' };
+      G.diagRootInfo = { root: dec.root, path: dec.path || [], kid: q.kid };
+      /* 根知识若在其他年级，预加载分片 */
+      const rp = window.DIAG.pointOf(dec.root);
+      if (rp && rp.grade && rp.grade !== G.grade) window.DIAG.ensureGradeLoaded(rp.grade);
+      const rootName = rp ? rp.n : '前置知识';
+      const gname = rp ? ((window.GRADES.find(x => x.id === rp.grade) || {}).name) : '';
+      showDiagBanner('<b>🎯 找到根因了：可能卡在「' + escHtml(rootName) + '」' + (gname ? '（' + gname + '）' : '') + '</b><br><span>接下来定向检测这个前置知识，先把它补牢</span>', 'weak');
+    } else if (dec.action === 'weak' && dec.noMore) {
+      /* 已经追到最根层还错：不再回溯，提示回归课本 */
+      G.diagNext = null;
+      G.diagRootInfo = { root: q.kid, path: [], kid: q.kid, noMore: true };
+      showDiagBanner('<b>📘 基础环节需要回到课本巩固</b><br><span>这已是前置链条最起点，建议请老师或家长讲一讲</span>', 'weak');
+    } else if (dec.action === 'master') {
+      G.diagNext = null;
+      G.diagRootInfo = null;
+      showDiagBanner('<b>🎉 连续答对，这个知识点掌握牢固了！</b><br><span>已跳过它的前置知识</span>', 'master');
+    } else if (dec.action === 'unstable') {
+      if (!G.diagRootInfo) G.diagNext = null;
+      showDiagBanner('<b>👍 确认题答对了，但还不算牢固</b><br><span>再多练几次就稳了</span>', 'unstable');
+    } else if (dec.action === 'continue') {
+      if (!G.diagRootInfo) G.diagNext = null;
+    }
   }
   if (correct) {
     const t = activeT();
@@ -1383,6 +1473,7 @@ window.__battle = {
   setMute(m){ SND.muted = !!m; LS.set('battle.muted', m ? '1' : '0'); BGM.toggleMute(); },
   get bgm(){ return { theme:BGM.theme, playing:BGM.playing, muted:SND.muted }; },
   get bag(){ return Object.assign({}, G.bag); },
+  get diag(){ return { next: G.diagNext, rootInfo: G.diagRootInfo, state: window.DIAG ? window.DIAG.stats() : null }; },
   get drops(){ return (G.runDrops || []).slice(); },
   get sessionDrops(){ return (G.sessionDrops || []).slice(); },
   get map(){ return { progress:loadProgress()[G.grade] || 0, stars:loadStars()[G.grade] || {}, nodes:LEVELS.map((L,i) => nodeState(i)) }; },
@@ -1419,6 +1510,20 @@ function safeBoot(){
     boot(); window.__bootOk = true;
     /* 慢网下加载守护定时器可能先于 boot 误报红条，启动成功后清掉 */
     var bar = document.getElementById('__errbar'); if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
+    /* v6 诊断：后台预加载全部分片，建立跨年级知识点/题库索引，供答错回溯根知识使用。
+       串行加载避免阻塞首屏；失败静默（不影响正常闯关）。 */
+    try {
+      if (window.KG_API && window.KG_SHARDS && window.DIAG) {
+        var gs = Object.keys(window.KG_SHARDS).filter(g => !window.KG_API.loaded(g));
+        var i = 0;
+        var loadNext = () => {
+          if (i >= gs.length) { try { window.DIAG.buildIndex(); } catch (e) {} return; }
+          var g = gs[i++];
+          window.KG_API.load(g, () => setTimeout(loadNext, 0));
+        };
+        setTimeout(loadNext, 1500);
+      }
+    } catch (e) {}
   }
   catch (e) {
     console.error('[启动失败]', e);

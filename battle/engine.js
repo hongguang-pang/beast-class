@@ -285,12 +285,206 @@ const LEARN = (function () {
     return false;
   }
 
+  /* ============================================================
+   * v6 诊断内核 DIAG —— 答错追根（参考 cn-math-taxonomy 自适应诊断算法）
+   * 思路：
+   *  - 同一知识点连对 N 题(默认3)才算掌握，掌握后跳过其所有先修(祖先)
+   *  - 答错：先出一道「更简单的确认题」；确认题也错→判「薄弱」并沿 deps 硬边
+   *    回溯到最深的未掌握先修(根知识)，定向出根知识题检测
+   *  - 确认题答对→判「不稳」，不回溯
+   *  - 输出：根因 + 从低年级到当前的学习路径 + 课标
+   * 数据：知识点带 deps(先修 id)；跨年级先修按需加载分片
+   * ============================================================ */
+  var DIAG_KEY = 'battle.diag.v6';
+  var dstate = {};
+  try { dstate = JSON.parse(getLS(DIAG_KEY) || '{}') || {}; } catch (e) { dstate = {}; }
+  var CONFIRM_NEED = 3;          // 连对几题算掌握
+  var MAX_DEPTH = 12;            // 回溯最大深度
+
+  function dsave() { setLS(DIAG_KEY, JSON.stringify(dstate)); }
+  function dget(kid) {
+    return dstate[kid] || (dstate[kid] = { streak: 0, status: 'learning', seen: 0 });
+  }
+  function isMastered(kid) { return !!(dstate[kid] && dstate[kid].status === 'mastered'); }
+
+  /* 全局知识点索引：跨年级合并。分片未加载时先建已加载部分 */
+  var pointIndex = null, bankIndex = null;
+  function buildIndexAll(force) {
+    if (pointIndex && !force) return;
+    pointIndex = {}; bankIndex = {};
+    var pts = window.KG_POINTS || {}, bank = window.KG_BANK || {};
+    Object.keys(pts).forEach(function (g) {
+      Object.keys(pts[g]).forEach(function (s) {
+        (pts[g][s] || []).forEach(function (p) {
+          pointIndex[p.id] = { id: p.id, n: p.n, unit: p.unit, deps: p.deps || [], grade: g, subj: s, uidx: p.uidx || 0 };
+        });
+      });
+    });
+    Object.keys(bank).forEach(function (g) {
+      Object.keys(bank[g]).forEach(function (s) {
+        (bank[g][s] || []).forEach(function (q) {
+          if (!q.kid) return;
+          (bankIndex[q.kid] || (bankIndex[q.kid] = [])).push(q);
+        });
+      });
+    });
+  }
+  /* 需要某先修分片时请求加载（异步），loaded 后回调 */
+  function ensureGradeLoaded(grade, cb) {
+    if (!grade || (window.KG_LOADED && window.KG_LOADED[grade]) || !window.KG_API) { cb && cb(); return; }
+    window.KG_API.load(grade, function () { cb && cb(); });
+  }
+  /* 直接先修（硬边：把 deps 都当必须先学的硬依赖） */
+  function prereqs(kid) {
+    buildIndexAll();
+    var p = pointIndex[kid];
+    return p ? (p.deps || []).slice() : [];
+  }
+  function pointOf(kid) { buildIndexAll(); return pointIndex[kid] || null; }
+  function questionsOf(kid) { buildIndexAll(); return bankIndex[kid] || []; }
+  function hasQuestions(kid) { return questionsOf(kid).length > 0; }
+
+  /* 判定掌握：status=mastered 视为已掌握 */
+  function mastered(kid) { return isMastered(kid); }
+
+  /* 沿 deps 递归找「最深的、未掌握、且有题可出」的先修 = 根知识。
+     返回 {root, path}；path 从根到当前 kid（不含当前），用于学习路径展示。 */
+  function findRoot(kid, _depth, _seen) {
+    buildIndexAll();
+    _depth = _depth || 0; _seen = _seen || {};
+    if (_depth >= MAX_DEPTH) return null;
+    var deps = prereqs(kid);
+    if (!deps.length) return null;
+    var best = null;
+    deps.forEach(function (d) {
+      if (_seen[d]) return;
+      _seen[d] = 1;
+      /* 只沿「未掌握」的边回溯：已掌握的祖先跳过（等价于文章中连对后跳过祖先） */
+      if (mastered(d)) return;
+      var sub = findRoot(d, _depth + 1, _seen);
+      var cand;
+      if (sub && hasQuestions(sub.root)) {
+        cand = { root: sub.root, path: sub.path.concat([d]) };
+      } else if (hasQuestions(d)) {
+        cand = { root: d, path: [d] };
+      }
+      if (cand && (!best || cand.path.length > best.path.length)) best = cand;
+    });
+    return best;
+  }
+
+  /* 记录一次作答，返回诊断决策。
+     opts.confirm === true 表示这道题是「确认题」(更简单、同一知识点)
+     opts.isRoot  === true 表示这道题是回溯出的根知识题
+     返回：{action:'master'|'confirm'|'weak'|'unstable'|'continue', kid, root, path, confirmKid, ...} */
+  function onAnswer(kid, correct, opts) {
+    opts = opts || {};
+    buildIndexAll();
+    var st = dget(kid);
+    st.seen++;
+    if (correct) {
+      st.streak = (st.streak || 0) + 1;
+      if (opts.confirm) {
+        /* 确认题答对：判「不稳」，不回溯，但连对计数保留推进 */
+        st.status = st.streak >= CONFIRM_NEED ? 'mastered' : 'unstable';
+        dsave();
+        return { action: st.status === 'mastered' ? 'master' : 'unstable', kid: kid, streak: st.streak, confirm: true };
+      }
+      if (st.streak >= CONFIRM_NEED) {
+        st.status = 'mastered';
+        dsave();
+        /* 掌握后：跳过所有祖先——把直接先修及以上也标记为跳过(不回溯) */
+        markAncestorsSkipped(kid);
+        return { action: 'master', kid: kid, streak: st.streak };
+      }
+      st.status = st.status === 'weak' ? 'unstable' : 'learning';
+      dsave();
+      return { action: 'continue', kid: kid, streak: st.streak };
+    }
+    /* 答错 */
+    st.streak = 0;
+    st.status = 'weak';
+    dsave();
+    /* 已进入追踪阶段（确认题或根知识题）答错：判薄弱，沿先修回溯根知识 */
+    if (opts.confirm || opts.isRoot) {
+      var deeper = findRoot(kid);
+      if (deeper && deeper.root && deeper.root !== kid) {
+        return { action: 'weak', kid: kid, root: deeper.root, path: deeper.path, isRoot: true, confirmKid: null };
+      }
+      return { action: 'weak', kid: kid, root: kid, path: [], isRoot: true, noMore: true };
+    }
+    /* 首错：出一道更简单的确认题（同知识点） */
+    var soft = softerQuestion(kid);
+    return { action: 'confirm', kid: kid, confirmKid: kid, confirm: true, softer: !!soft };
+  }
+
+  /* 掌握后把祖先标记为 mastered（跳过其先修，不再回溯） */
+  function markAncestorsSkipped(kid, _seen) {
+    _seen = _seen || {};
+    prereqs(kid).forEach(function (d) {
+      if (_seen[d]) return; _seen[d] = 1;
+      if (dstate[d] && dstate[d].status === 'weak') { dstate[d].status = 'skipped'; dsave(); }
+      markAncestorsSkipped(d, _seen);
+    });
+  }
+
+  /* 取一道更简单的确认题：优先 f（难度）低的、优先 choice 题 */
+  function softerQuestion(kid) {
+    var arr = questionsOf(kid);
+    if (!arr.length) return null;
+    var sorted = arr.slice().sort(function (a, b) { return (a.f || 0) - (b.f || 0); });
+    var easy = sorted.filter(function (q) { return (q.f || 0) <= 1 && q.tp === 'choice' && q.o && q.o.length; });
+    var pool = easy.length ? easy : sorted.filter(function (q) { return q.tp === 'choice' && q.o && q.o.length; });
+    return pool[0] || sorted[0] || null;
+  }
+
+  /* 学习路径：从根到 kid 的知识点名称数组（按年级从低到高） */
+  function learningPath(rootKid, targetKid) {
+    buildIndexAll();
+    var path = [], cur = targetKid, guard = 0;
+    while (cur && cur !== rootKid && guard++ < MAX_DEPTH) {
+      var p = pointIndex[cur];
+      if (!p) break;
+      path.push({ id: p.id, n: p.n, grade: p.grade, unit: p.unit });
+      /* 取第一个未掌握先修作为路径上一环 */
+      var up = (p.deps || []).filter(function (d) { return !mastered(d); })[0] || (p.deps || [])[0];
+      cur = up;
+    }
+    if (rootKid && pointIndex[rootKid]) {
+      var r = pointIndex[rootKid];
+      path.push({ id: r.id, n: r.n, grade: r.grade, unit: r.unit });
+    }
+    path.reverse();
+    return path;
+  }
+
+  function diagReset() { dstate = {}; dsave(); }
+  function diagStats() {
+    var all = Object.keys(dstate), weak = 0, unstable = 0, mastered = 0;
+    all.forEach(function (k) {
+      var s = dstate[k].status;
+      if (s === 'weak') weak++; else if (s === 'unstable') unstable++; else if (s === 'mastered') mastered++;
+    });
+    return { total: all.length, weak: weak, unstable: unstable, mastered: mastered };
+  }
+
+  var DIAG = {
+    onAnswer: onAnswer, findRoot: findRoot, pointOf: pointOf, questionsOf: questionsOf,
+    prereqs: prereqs, softerQuestion: softerQuestion, learningPath: learningPath,
+    isMastered: isMastered, ensureGradeLoaded: ensureGradeLoaded,
+    buildIndex: function () { return buildIndexAll(true); }, reset: diagReset, stats: diagStats,
+    CONFIRM_NEED: CONFIRM_NEED,
+    get state() { return dstate; }
+  };
+
   return {
     record: record, get: get, resetGrade: resetGrade, weight: weight,
     stages: stages, reviewPick: reviewPick, pickFromKid: pickFromKid, questionsFor: questionsFor,
     judge: judge, normalize: normalize, masteredCount: masteredCount,
     learnedCount: learnedCount, solidCount: solidCount, stats: stats, cloneQ: cloneQ,
+    DIAG: DIAG,
     get data() { return data; }
   };
 })();
 if (typeof window !== 'undefined') window.LEARN = LEARN;
+if (typeof window !== 'undefined') window.DIAG = LEARN.DIAG;

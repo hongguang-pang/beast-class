@@ -203,6 +203,27 @@ body { background:#0e1220; }
 .dmg.bad { color:#ff8fa8; }
 @keyframes dmgUp { 0%{transform:translateY(0) scale(.6);opacity:0} 20%{transform:translateY(-10px) scale(1.2);opacity:1} 100%{transform:translateY(-66px) scale(1);opacity:0} }
 
+/* ---------- v6 诊断提示浮层（答错追根） ---------- */
+.diag-banner{
+  position:absolute; left:50%; top:14%; transform:translateX(-50%); z-index:20;
+  width:min(92%,460px); box-sizing:border-box; padding:12px 16px; border-radius:16px;
+  text-align:center; font-size:13px; line-height:1.6; pointer-events:none;
+  background:rgba(30,20,55,.94); border:1.5px solid rgba(255,255,255,.22);
+  box-shadow:0 10px 34px rgba(0,0,0,.4); color:#f3ecff;
+  animation:diagIn .32s cubic-bezier(.2,1.4,.4,1); transition:opacity .4s;
+}
+.diag-banner b{font-size:14px}
+.diag-banner span{opacity:.82; font-size:12px}
+.diag-banner.confirm{border-color:#ffd76e; background:rgba(60,42,12,.95)}
+.diag-banner.confirm b{color:#ffe08a}
+.diag-banner.weak{border-color:#ff8fb0; background:rgba(74,16,40,.95)}
+.diag-banner.weak b{color:#ffb3c8}
+.diag-banner.master{border-color:#7ae0ff; background:rgba(12,48,66,.95)}
+.diag-banner.master b{color:#a6ecff}
+.diag-banner.unstable{border-color:#c4a8f0}
+.diag-banner.unstable b{color:#d9c2ff}
+@keyframes diagIn{0%{opacity:0; transform:translateX(-50%) translateY(-14px) scale(.92)}100%{opacity:1; transform:translateX(-50%) translateY(0) scale(1)}}
+
 /* ---------- 对错大字 ---------- */
 .verdict {
   position:absolute; left:0; right:0; z-index:12; text-align:center;

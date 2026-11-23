@@ -4,10 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#1a1030">
+<meta name="description" content="精灵大陆 · 知识远征：靠知识守护的大陆，带着宠物队伍自由探索、战斗、成长。">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="精灵大陆">
 <title>精灵大陆 · 知识远征</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="style.css?v=4">
+<style>
+#btnInstall{display:none;margin:12px auto 4px;padding:9px 20px;border-radius:22px;cursor:pointer;
+  background:linear-gradient(135deg,#a78bfa,#7c3aed);border:1px solid rgba(255,255,255,.28);
+  color:#fff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:.5px;
+  box-shadow:0 4px 16px rgba(124,58,237,.45);}
+#btnInstall:active{transform:translateY(1px);}
+</style>
 </head>
 <body>
 <div id="app">
@@ -25,6 +38,7 @@
         <div id="starterGrid" class="starter-grid"></div>
         <button id="btnStartAdventure" class="big-btn gold" disabled>开始冒险</button>
         <button id="titleContinue" class="big-btn ghost" style="display:none">继续上次冒险</button>
+        <button id="btnInstall" class="text-btn" style="display:none">📲 安装到桌面</button>
         <button id="titleNew" class="text-btn">重新开始游戏</button>
       </div>
     </div>
@@ -142,7 +156,35 @@
 <script src="js/ui.js?v=4"></script>
 <script src="js/main.js?v=4"></script>
 <script>
+/* ===== PWA：Service Worker 注册 ===== */
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+
+/* ===== PWA：安装到桌面引导 ===== */
+(function(){
+  var btn=document.getElementById('btnInstall');
+  var deferred=null;
+  var isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  var standalone=window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
+  if(standalone)return; // 已经是安装态则不显示
+  function showBtn(){ if(btn)btn.style.display='block'; }
+  // Chrome / Edge / Android：捕获安装事件
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault(); deferred=e; showBtn();
+  });
+  if(btn)btn.addEventListener('click',function(){
+    if(deferred){
+      deferred.prompt();
+      deferred.userChoice.then(function(r){ if(r.outcome==='accepted')btn.style.display='none'; deferred=null; });
+    }else if(isIOS){
+      alert('添加到主屏幕：\n1. 点底部「分享」按钮\n2. 选择「添加到主屏幕」\n3. 点「添加」即可从桌面打开');
+    }else{
+      alert('安装方法：\n点击浏览器菜单（⋮）→「安装应用 / 添加到主屏幕」即可。');
+    }
+  });
+  // iOS Safari 无 beforeinstallprompt，直接常显按钮给引导
+  if(isIOS)showBtn();
+  window.addEventListener('appinstalled',function(){ if(btn)btn.style.display='none'; });
+})();
 </script>
 </body>
 </html>

@@ -1,7 +1,8 @@
 /* 精灵大陆 · 知识远征 离线缓存（scope=/rpg/，与主站/诊断站隔离） */
-const VERSION = 'rpg-v1.3.0';
+const VERSION = 'rpg-v1.4.0';
 const SHELL = [
-  './','./index.html','./style.css?v=4',
+  './','./index.html','./style.css?v=4','./manifest.webmanifest',
+  './icons/icon-192.png','./icons/icon-512.png','./icons/icon-192-maskable.png','./icons/icon-512-maskable.png',
   './data/knowledge.js?v=4','./data/kg/g1.js?v=4','./data/kg/g2.js?v=4','./data/kg/g3.js?v=4',
   './data/kg/g4.js?v=4','./data/kg/g5.js?v=4','./data/kg/g6.js?v=4','./data/kg/g7.js?v=4',
   './data/kg/g8.js?v=4','./data/kg/g9.js?v=4','./data/kg/g10.js?v=4','./data/kg/g11.js?v=4','./data/kg/g12.js?v=4',

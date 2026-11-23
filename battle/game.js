@@ -1311,8 +1311,10 @@ function renderMap(){
     wrap.appendChild(b);
   });
   const unitCnt = (G.stages || []).length;
-  $('mapSub').textContent = '按单元顺序学 · 已通关 ' + Math.min(prog, LEVELS.length) + ' / ' + LEVELS.length + ' 关' + (unitCnt ? '（' + unitCnt + ' 个知识单元）' : '');
-  $('mapTip').textContent = prog >= LEVELS.length ? '🏆 全部单元通关！点「无限远征」继续复习全部知识点。' : '点亮金色据点开始挑战';
+  const piMap = (window.LEARN && LEARN.PROGRESS) ? LEARN.PROGRESS.info(G.grade) : null;
+  const reached = piMap ? Math.min(piMap.reachUnit + 1, LEVELS.length) : Math.min(prog, LEVELS.length);
+  $('mapSub').textContent = '按学习进度解锁 · 已学到 ' + reached + ' / ' + LEVELS.length + ' 单元' + (unitCnt ? '（共 ' + unitCnt + ' 个知识单元）' : '');
+  $('mapTip').textContent = (piMap && piMap.reachUnit >= LEVELS.length - 1) ? '🏆 全部单元已解锁！点「无限远征」复习全部知识点。' : '点亮金色据点开始挑战 · 未学单元暂时锁定';
   $('bagCount').textContent = Object.keys(G.bag).reduce((a, k) => a + G.bag[k], 0);
   /* 学习进度条（按答题自动推算的进度口径） */
   const st = LEARN.stats(G.grade);

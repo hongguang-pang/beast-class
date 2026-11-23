@@ -742,7 +742,7 @@
       '<button data-r="family"><b>🏠 我是家长 · 陪孩子</b><span>1-3 个孩子的积分与学情分析</span></button>' +
       '<button data-r="class"><b>👩‍🏫 我是老师 · 带一个班</b><span>全班名单、学情分析、光荣榜</span></button>' +
       '</div>' +
-      '<div class="w-ver">版本 v3.56 · 修复个别学生头像空白（图片失败降级emoji+取消懒加载+类型迁移兜底）· 宠物图放大<br>' +
+      '<div class="w-ver">版本 v3.58 · 头像大小统一 · 宠物图放大 · SSR特效<br>' +
       '<span style="font-size:11px">建档时设置密码，换设备凭「名字+密码」找回全部进度</span><br>' +
       '<a class="w-help" href="help.html">📖 使用说明（新手必看）</a></div>' +
       '<button class="btn ghost w-mig" id="wMig">📲 已有数据？扫码迁移过来</button>';
@@ -1052,6 +1052,7 @@
       (doneToday ? '今天已完成，明天再来' : '10 道题 · 语数英科全科') + '</small></div><i class="gc-go">GO</i></a>' +
       '<a class="game-card gc-quest" href="#/quest"><span class="gc-em">🗺️</span><div><b>知识冒险闯关</b><small>' +
       (k.className ? esc(k.className) + ' · ' : '') + gname + (k.classCode ? ' · 年级随班级' : '') + '</small></div><i class="gc-go">GO</i></a>' +
+      '<a class="game-card gc-diag" href="battle/" target="_blank" rel="noopener"><span class="gc-em">🎯</span><div><b>知识诊断 · 追根</b><small>答错自动找到薄弱根知识 · 定向检测</small></div><i class="gc-go">GO</i></a>' +
       '<a class="game-card gc-novel" href="#/novel"><span class="gc-em">📖</span><div><b>冒险小说</b><small>' +
       esc((window.BPGames && window.BPGames.novelBrief) ? window.BPGames.novelBrief(k) : '每个年级一本书 · 主角就是你') + '</small></div><i class="gc-go">GO</i></a>' +
       '</div>' +

@@ -46,7 +46,7 @@ function wire(){
     E.S.gold+=gold; if(potion)E.S.bag.potion=(E.S.bag.potion||0)+potion; E.save();
     U.toast('🎁 宝箱：+'+gold+' 金币'+(potion?' · +1 药水':''));
     U.updateHUD();
-    E.bumpQuest('chest');
+    /* chest 主线/支线进度在 world.js 开箱处已推进，这里不重复 */
   };
   U.toastFn=function(m){ U.toast(m); };
   W.zoneFn=function(name){ window.__curZone=name; var el=$('hudZone'); if(el)el.textContent=name; };

@@ -1,12 +1,15 @@
 /* 精灵大陆 · 知识远征 离线缓存（scope=/rpg/，与主站/诊断站隔离） */
-const VERSION = 'rpg-v1.4.0';
+const VERSION = 'rpg-v1.5.0';
 const SHELL = [
-  './','./index.html','./style.css?v=4','./manifest.webmanifest',
+  './','./index.html','./style.css?v=5','./manifest.webmanifest',
   './icons/icon-192.png','./icons/icon-512.png','./icons/icon-192-maskable.png','./icons/icon-512-maskable.png',
-  './data/knowledge.js?v=4','./data/kg/g1.js?v=4','./data/kg/g2.js?v=4','./data/kg/g3.js?v=4',
-  './data/kg/g4.js?v=4','./data/kg/g5.js?v=4','./data/kg/g6.js?v=4','./data/kg/g7.js?v=4',
-  './data/kg/g8.js?v=4','./data/kg/g9.js?v=4','./data/kg/g10.js?v=4','./data/kg/g11.js?v=4','./data/kg/g12.js?v=4',
-  './js/data.js?v=4','./js/engine.js?v=4','./js/world.js?v=4','./js/battle.js?v=4','./js/ui.js?v=4','./js/main.js?v=4',
+  './images/pets/P001-baby.png','./images/pets/P011-baby.png','./images/pets/P027-baby.png','./images/pets/P035-baby.png',
+  './images/pets/P042-baby.png','./images/pets/P051-baby.png','./images/pets/D201-baby.png','./images/pets/D203-baby.png',
+  './images/pets/D207-baby.png','./images/pets/D209-baby.png',
+  './data/knowledge.js?v=5','./data/kg/g1.js?v=5','./data/kg/g2.js?v=5','./data/kg/g3.js?v=5',
+  './data/kg/g4.js?v=5','./data/kg/g5.js?v=5','./data/kg/g6.js?v=5','./data/kg/g7.js?v=5',
+  './data/kg/g8.js?v=5','./data/kg/g9.js?v=5','./data/kg/g10.js?v=5','./data/kg/g11.js?v=5','./data/kg/g12.js?v=5',
+  './js/data.js?v=5','./js/engine.js?v=5','./js/world.js?v=5','./js/battle.js?v=5','./js/ui.js?v=5','./js/main.js?v=5',
   './images/npc/player-hero.png','./images/npc/npc-chief.png','./images/npc/npc-explorer.png','./images/npc/npc-trainer.png','./images/npc/npc-scholar.png','./images/npc/npc-pharmacist.png',
   './images/mon/e11-fire-spirit.png','./images/mon/e12-moss-golem.png','./images/mon/e13-water-slime.png','./images/mon/e14-shadow-bat.png','./images/mon/e15-star-sprite.png','./images/mon/e16-crystal-golem.png'
 ];

@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 <style>
 #btnInstall{display:none;margin:12px auto 4px;padding:9px 20px;border-radius:22px;cursor:pointer;
   background:linear-gradient(135deg,#a78bfa,#7c3aed);border:1px solid rgba(255,255,255,.28);
@@ -72,11 +72,13 @@
         <div class="bs-side enemy">
           <div id="bEnemyName" class="bs-name">野怪</div>
           <div id="bEnemyElem" class="bs-elem"></div>
+          <div id="bEnemyPh" class="bs-ph" style="display:none">👾</div>
           <img id="bEnemyImg" class="bs-img" src="" alt="">
           <div class="hpbar"><div id="bEnemyHpFill" class="hpfill enemy"></div><span id="bEnemyHpTxt"></span></div>
         </div>
         <div class="bs-vs">VS</div>
         <div class="bs-side mine">
+          <div id="bMyPh" class="bs-ph" style="display:none">🐾</div>
           <img id="bMyImg" class="bs-img" src="" alt="">
           <div id="bMyName" class="bs-name"></div>
           <div class="hpbar"><div id="bMyHpFill" class="hpfill mine"></div><span id="bMyHpTxt"></span></div>
@@ -103,6 +105,7 @@
     <div id="partyGrid" class="party-grid"></div>
     <div class="panel-block"><h3>🎒 背包</h3><div id="bagGrid" class="bag-grid"></div></div>
     <div class="panel-block"><h3>📜 主线任务</h3><div id="questBox" class="quest-box"></div></div>
+    <div class="panel-block"><h3>🔀 支线委托</h3><div id="sideBox" class="side-box"></div></div>
   </section>
 
   <!-- 答题弹层 -->
@@ -146,15 +149,15 @@
   <div id="toast" class="toast hidden"></div>
 </div>
 
-<script src="data/knowledge.js?v=4"></script>
-<script src="data/kg/g3.js?v=4"></script>
+<script src="data/knowledge.js?v=5"></script>
+<script src="data/kg/g3.js?v=5"></script>
 <script>window.KG_LOADED=window.KG_LOADED||{};window.KG_LOADED.g3=true;</script>
-<script src="js/data.js?v=4"></script>
-<script src="js/engine.js?v=4"></script>
-<script src="js/world.js?v=4"></script>
-<script src="js/battle.js?v=4"></script>
-<script src="js/ui.js?v=4"></script>
-<script src="js/main.js?v=4"></script>
+<script src="js/data.js?v=5"></script>
+<script src="js/engine.js?v=5"></script>
+<script src="js/world.js?v=5"></script>
+<script src="js/battle.js?v=5"></script>
+<script src="js/ui.js?v=5"></script>
+<script src="js/main.js?v=5"></script>
 <script>
 /* ===== PWA：Service Worker 注册 ===== */
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}

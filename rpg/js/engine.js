@@ -27,6 +27,7 @@ function newSave(teamIds, grade){
     gold:120,
     player:{ x:D.MAP_CFG.spawn.x, y:D.MAP_CFG.spawn.y },
     quests:{ active:'q1', done:{}, prog:{} },
+    side:{ accepted:{}, done:{}, prog:{} },
     stats:{ kills:0, quizzes:0, quizOk:0, bosses:0, chests:0, steps:0 },
     chestsOpened:{},
     bossDefeated:{},
@@ -66,7 +67,17 @@ function addExp(pet, amount, log){
 var S = null;
 function load(){
   try { S = JSON.parse(lsGet(SAVE_KEY) || 'null'); } catch(e){ S=null; }
+  if (S) migrate(S);
   return S;
+}
+/* 旧存档迁移：给老版本存档补齐新增字段，保证升级不丢档 */
+function migrate(s){
+  if (!s.side) s.side = { accepted:{}, done:{}, prog:{} };
+  if (!s.side.accepted) s.side.accepted = {};
+  if (!s.side.done) s.side.done = {};
+  if (!s.side.prog) s.side.prog = {};
+  if (!s.chestsOpened) s.chestsOpened = {};
+  if (!s.bossDefeated) s.bossDefeated = {};
 }
 function save(){ if (S) lsSet(SAVE_KEY, JSON.stringify(S)); }
 function hasSave(){ return !!load(); }
@@ -212,6 +223,76 @@ function turnInAvailable(){
   return (S.quests.prog[q.id]||0) >= q.need;
 }
 
+/* ---------- 支线任务 ---------- */
+function sideQuest(id){ return D.SIDE_QUESTS.find(function(q){return q.id===id;}); }
+function acceptSide(id){
+  if (!S) return null;
+  var q=sideQuest(id); if(!q) return null;
+  if (S.side.done[id]) return { q:q, status:'done' };
+  if (S.side.accepted[id]) return { q:q, status:'accepted' };
+  S.side.accepted[id]=1; S.side.prog[id]=0; save();
+  return { q:q, status:'new' };
+}
+/* 支线进度推进：击杀/答题/开箱/等级/Boss 都会调用，遍历所有已接支线 */
+function bumpSide(type, param){
+  if (!S) return [];
+  var changed=[];
+  D.SIDE_QUESTS.forEach(function(q){
+    if (!S.side.accepted[q.id] || S.side.done[q.id]) return;
+    var prog=S.side.prog[q.id]||0;
+    if (q.type==='boss'){ if (param===q.boss) prog=q.need; else return; }
+    else if (q.type==='level'){
+      var maxLv=Math.max.apply(null,S.team.map(function(p){return p.lv;}));
+      prog=maxLv;
+    }
+    else if (type===q.type){ prog+=1; }
+    else return;
+    var was=prog;
+    S.side.prog[q.id]=prog;
+    changed.push({ q:q, prog:prog, done:prog>=q.need, gained:prog-was });
+  });
+  if (changed.length) save();
+  return changed;
+}
+function sideTurnInAvailable(id){
+  if (!S) return false;
+  var q=sideQuest(id); if(!q||!S.side.accepted[id]||S.side.done[id]) return false;
+  return (S.side.prog[id]||0) >= q.need;
+}
+function completeSide(id){
+  if (!S) return null;
+  var q=sideQuest(id); if(!q||!sideTurnInAvailable(id)) return null;
+  S.side.done[id]=1;
+  S.gold+=q.reward.gold;
+  var ups=[]; addExp(S.team[0], q.reward.exp, ups);
+  save();
+  return { q:q, ups:ups };
+}
+/* 某 NPC 可交付的支线（已接且完成） */
+function readySideForNPC(name){
+  if (!S) return [];
+  return D.SIDE_QUESTS.filter(function(q){ return q.npc===name && sideTurnInAvailable(q.id); });
+}
+/* 某 NPC 可接取的支线（未接未完成） */
+function openSideForNPC(name){
+  if (!S) return [];
+  return D.SIDE_QUESTS.filter(function(q){ return q.npc===name && !S.side.accepted[q.id] && !S.side.done[q.id]; });
+}
+
+/* ---------- 战斗掉落 ---------- */
+function rollDrops(isBoss){
+  var table=isBoss ? D.DROPS.boss : D.DROPS.common;
+  var got=[];
+  table.forEach(function(d){
+    if (Math.random() < d.rate){
+      var n = d.min + Math.floor(Math.random()*(d.max-d.min+1));
+      if (n>0){ S.bag[d.item]=(S.bag[d.item]||0)+n; got.push({ item:d.item, n:n }); }
+    }
+  });
+  if (got.length) save();
+  return got;
+}
+
 window.RPG_ENGINE = {
   SAVE_KEY:SAVE_KEY, lsGet:lsGet, lsSet:lsSet,
   load:load, save:save, hasSave:hasSave, init:init, reset:reset,
@@ -221,5 +302,7 @@ window.RPG_ENGINE = {
   activePet:activePet, alivePets:alivePets, firstAlive:firstAlive, healAll:healAll,
   damage:damage, monsterDamage:monsterDamage, monsterArmor:monsterArmor,
   ensureGradeLoaded:ensureGradeLoaded, pickQuestion:pickQuestion, judge:judge,
-  quest:quest, curQuest:curQuest, bumpQuest:bumpQuest, completeQuest:completeQuest, turnInAvailable:turnInAvailable
+  quest:quest, curQuest:curQuest, bumpQuest:bumpQuest, completeQuest:completeQuest, turnInAvailable:turnInAvailable,
+  sideQuest:sideQuest, acceptSide:acceptSide, bumpSide:bumpSide, sideTurnInAvailable:sideTurnInAvailable,
+  completeSide:completeSide, readySideForNPC:readySideForNPC, openSideForNPC:openSideForNPC, rollDrops:rollDrops
 };

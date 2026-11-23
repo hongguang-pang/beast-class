@@ -226,7 +226,7 @@ World.checkTileEvent = function(){
     var c=self.chests[i];
     if (Math.abs(c.x-gx)<=0 && Math.abs(c.y-gy)<=0){
       delete self.chests[i];
-      if (E.S){ E.S.chestsOpened[i]=1; E.S.stats.chests++; E.bumpQuest('chest'); E.save(); }
+      if (E.S){ E.S.chestsOpened[i]=1; E.S.stats.chests++; E.bumpQuest('chest'); E.bumpSide('chest'); E.save(); }
       if (self.onChest) self.onChest(i);
     }
   });

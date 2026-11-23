@@ -12,6 +12,17 @@ var UI = {
 };
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+/* 宠物图统一渲染：图片加载失败时回退显示 emoji，绝不空白 */
+function petImgTag(id, stageKey, cls){
+  var pet=D.PET_BY_ID[id]||{emoji:'❔'};
+  var fb=pet.emoji||'❔';
+  return '<span class="petimg'+(cls?' '+cls:'')+'" title="'+esc(pet.name)+'">'+
+    '<span class="petimg-emoji">'+fb+'</span>'+
+    '<img src="'+D.petImg(id,stageKey)+'" alt="'+esc(pet.name)+'" '+
+    'onload="this.style.display=\'inline\';this.previousElementSibling.style.display=\'none\'" '+
+    'onerror="this.style.display=\'none\';this.previousElementSibling.style.display=\'inline\'">'+
+    '</span>';
+}
 
 UI.show = function(view){
   this.view=view;
@@ -44,7 +55,7 @@ UI.updateHUD = function(){
       var pct=Math.round(p.hp/E.curMaxHp(p)*100);
       var color=pct>50?'#7ee08f':pct>25?'#ffd35c':'#ff7a7a';
       return '<div class="ht-item'+(i===S.active?' on':'')+'" data-i="'+i+'">'+
-        '<img src="'+D.petImg(p.id,st.key)+'" onerror="this.style.display=\'none\'">'+
+        petImgTag(p.id, st.key)+
         '<span class="ht-name">'+esc(pet.name)+'</span>'+
         '<span class="ht-hp"><i style="width:'+pct+'%;background:'+color+'"></i></span>'+
         '<span class="ht-lv">Lv'+p.lv+'</span></div>';
@@ -63,12 +74,13 @@ UI.updateHUD = function(){
 UI.renderTitle = function(){
   var saved=E.hasSave();
   $('titleContinue').style.display=saved?'':'none';
-  $('titleNew').textContent=saved?'重新开始游戏':'开始冒险';
+  $('titleNew').textContent='重新开始游戏';
+  $('titleNew').style.display=saved?'':'none'; /* 无存档时隐藏，避免与主「开始冒险」按钮文字重复 */
   var grid=$('starterGrid');
   if (grid && !grid.dataset.built){
     grid.innerHTML=D.PETS.map(function(p){
       return '<button class="starter" data-id="'+p.id+'" style="--rar:'+D.RAR_COLOR[p.rar]+'">'+
-        '<img src="'+D.petImg(p.id,'adult')+'" onerror="this.style.display=\'none\'">'+
+        petImgTag(p.id,'adult')+
         '<div class="st-name">'+esc(p.name)+'</div>'+
         '<div class="st-meta"><span style="color:'+D.ELEMENTS[p.elem].color+'">'+D.ELEMENTS[p.elem].icon+D.ELEMENTS[p.elem].name+'</span> · <span style="color:'+D.RAR_COLOR[p.rar]+'">'+p.rar+'</span></div>'+
         '</button>';
@@ -99,7 +111,7 @@ UI.renderParty = function(){
     var hp=Math.round(p.hp/E.curMaxHp(p)*100), mp=Math.round(p.mp/E.curMaxMp(p)*100);
     var nextExp=E.expNeed(p.lv);
     return '<div class="pet-card'+(i===S.active?' on':'')+'">'+
-      '<div class="pc-top"><img src="'+D.petImg(p.id,st.key)+'" onerror="this.style.display=\'none\'">'+
+      '<div class="pc-top">'+petImgTag(p.id,st.key)+
       '<div class="pc-title"><b>'+esc(pet.name)+'</b><span class="pc-rar" style="color:'+D.RAR_COLOR[pet.rar]+'">'+pet.rar+'</span>'+
       '<div class="pc-sub" style="color:'+D.ELEMENTS[pet.elem].color+'">'+D.ELEMENTS[pet.elem].icon+D.ELEMENTS[pet.elem].name+' · '+st.name+' · Lv'+p.lv+'</div></div></div>'+
       '<div class="pc-bars">'+
@@ -147,6 +159,22 @@ UI.renderParty = function(){
       questBox.innerHTML='<div class="q-title">🏆 全部主线完成！</div><div class="q-desc">你是知识大陆的守护者了。</div>';
     }
   }
+  /* 支线任务列表 */
+  var sideBox=$('sideBox');
+  if (sideBox){
+    var sides=D.SIDE_QUESTS;
+    var html='<div class="side-head">🔀 支线委托 <small>找对应 NPC 接取/交付</small></div>';
+    sides.forEach(function(s){
+      var accepted=E.S.side.accepted[s.id], done=E.S.side.done[s.id];
+      var prog=E.S.side.prog[s.id]||0;
+      var stat = done?'<span class="side-tag done">✓ 完成</span>'
+        : accepted?('<span class="side-tag doing">'+(prog>=s.need?'可交付':Math.min(prog,s.need)+'/'+s.need)+'</span>')
+        : '<span class="side-tag open">未接取</span>';
+      html+='<div class="side-item'+(done?' dim':'')+'"><div class="side-row"><b>'+esc(s.title)+'</b>'+stat+'</div>'+
+        '<div class="side-desc">'+esc(s.desc)+' <small>· '+esc(s.npc)+'</small></div></div>';
+    });
+    sideBox.innerHTML=html;
+  }
 };
 
 /* ---------- 战斗界面 ---------- */
@@ -156,13 +184,20 @@ UI.renderBattle = function(){
   $('bEnemyName').textContent=mon.name+' Lv'+B.monLv+(B.isBoss?' 👹':'');
   $('bEnemyElem').textContent=el.icon+el.name;
   $('bEnemyElem').style.color=el.color;
-  $('bEnemyImg').src=D.monsterImg(mon);
+  var eImg=$('bEnemyImg');
+  eImg.onerror=function(){ this.style.display='none'; var ph=$('bEnemyPh'); if(ph)ph.style.display='flex'; };
+  eImg.onload=function(){ this.style.display='block'; var ph=$('bEnemyPh'); if(ph)ph.style.display='none'; };
+  eImg.src=D.monsterImg(mon);
   var pct=Math.round(B.monHp/B.monMaxHp*100);
   $('bEnemyHpFill').style.width=pct+'%';
   $('bEnemyHpTxt').textContent=B.monHp+'/'+B.monMaxHp;
   var pet=E.activePet(), p=D.PET_BY_ID[pet.id], st=D.stageForLv(pet.lv);
   $('bMyName').textContent=p.name+' Lv'+pet.lv;
-  $('bMyImg').src=D.petImg(p.id,st.key);
+  var mImg=$('bMyImg');
+  mImg.onerror=function(){ this.style.display='none'; var ph=$('bMyPh'); if(ph)ph.style.display='flex'; };
+  mImg.onload=function(){ this.style.display='block'; var ph=$('bMyPh'); if(ph)ph.style.display='none'; };
+  mImg.src=D.petImg(p.id,st.key);
+  var mPh=$('bMyPh'); if(mPh) mPh.textContent=p.emoji||'❔';
   var hp=Math.round(pet.hp/E.curMaxHp(pet)*100);
   $('bMyHpFill').style.width=hp+'%';
   $('bMyHpTxt').textContent=pet.hp+'/'+E.curMaxHp(pet);
@@ -236,7 +271,7 @@ UI.dialog = function(title, text, onClose){
   btn.addEventListener('click',handler);
 };
 
-/* ---------- NPC 交互 ---------- */
+/* ---------- NPC 交互：主线 + 支线 ---------- */
 UI.talkNPC = function(npc){
   if (npc.role==='shop'){
     UI.dialog(npc.name+' · 药剂师','欢迎光临！用金币买些补给吧。<br>活力药水 40 · 能量水晶 60 · 经验糖果 80',function(){
@@ -244,20 +279,54 @@ UI.talkNPC = function(npc){
     });
     return;
   }
+  /* 优先：可交付的支线 */
+  var readySides=E.readySideForNPC(npc.name);
+  if (readySides.length){
+    var rs=readySides[0];
+    UI.dialog(npc.name,'「'+esc(rs.title)+'」完成了！辛苦你了。',function(){
+      var r=E.completeSide(rs.id);
+      UI.toast('支线完成！+'+r.q.reward.gold+' 金币 · +'+r.q.reward.exp+' 经验');
+      UI.updateHUD(); UI.renderParty();
+    });
+    return;
+  }
+  /* 主线交付 */
   var q=E.curQuest();
-  if (!q){ UI.dialog(npc.name,'知识大陆就交给你守护了，去冒险吧！'); return; }
-  var ready=E.turnInAvailable();
-  if (q.npc===npc.name && ready){
+  if (q && q.npc===npc.name && E.turnInAvailable()){
     UI.dialog(npc.name,'太棒了！你完成了「'+esc(q.title)+'」。',function(){
       var r=E.completeQuest();
       UI.toast('任务完成！+'+r.q.reward.gold+' 金币 · +'+r.q.reward.exp+' 经验');
       UI.updateHUD();
       if(r.next) setTimeout(function(){UI.dialog(npc.name,'下一个任务：「'+esc(r.next.title)+'」<br>'+esc(r.next.desc));},250);
     });
-  } else if (q.npc===npc.name){
+    return;
+  }
+  /* 可接取的支线（列出，玩家点选） */
+  var openSides=E.openSideForNPC(npc.name);
+  if (openSides.length){
+    var os=openSides[0];
+    UI.dialog(npc.name,'我这里有个小委托：<br><b>'+esc(os.title)+'</b><br>'+esc(os.desc)+
+      '<br><small>奖励：'+os.reward.gold+' 金币 · '+os.reward.exp+' 经验</small>',function(){
+      E.acceptSide(os.id);
+      UI.toast('已接取支线：'+os.title);
+      UI.renderParty();
+    });
+    return;
+  }
+  /* 在进行的支线进度提示 */
+  var doing=D.SIDE_QUESTS.filter(function(s){return npc.name===s.npc && E.S.side.accepted[s.id] && !E.S.side.done[s.id];});
+  if (doing.length){
+    var ds=doing[0];
+    UI.dialog(npc.name,'「'+esc(ds.title)+'」<br>'+esc(ds.desc)+'<br><small>进度 '+(E.S.side.prog[ds.id]||0)+'/'+ds.need+'</small>');
+    return;
+  }
+  /* 主线进度或默认 */
+  if (q && q.npc===npc.name){
     UI.dialog(npc.name,'「'+esc(q.title)+'」<br>'+esc(q.desc)+'<br><small>进度 '+(E.S.quests.prog[q.id]||0)+'/'+q.need+'</small>');
+  } else if (q){
+    UI.dialog(npc.name,'主线去找 '+esc(q.npc)+' 吧。我这边暂时没有委托了。');
   } else {
-    UI.dialog(npc.name,'我现在没有任务交给你。去找 '+esc(q.npc)+' 看看吧。');
+    UI.dialog(npc.name,'知识大陆就交给你守护了，去冒险吧！');
   }
 };
 UI.shop = function(){
@@ -283,6 +352,11 @@ UI.shop = function(){
 UI.battleEnd = function(r){
   if (r.win){
     var msg='🎉 胜利！<br>获得 '+r.exp+' 经验 · '+r.gold+' 金币';
+    if (r.drops && r.drops.length){
+      msg+='<br><span style="color:#8fe3a8">🎁 掉落：'+r.drops.map(function(d){
+        var it=D.ITEMS[d.item]; return (it?it.emoji:'🎁')+(it?it.name:d.item)+'×'+d.n;
+      }).join('、')+'</span>';
+    }
     if (r.ups && r.ups.length) msg+='<br><b style="color:#ffd35c">'+r.ups.join('<br>')+'</b>';
     UI.dialog('战斗胜利', msg, function(){ UI.show('worldStage'); });
   } else {

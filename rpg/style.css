@@ -179,3 +179,37 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
   .starter img{height:34px;}
   .bs-img{width:78px;height:78px;}
 }
+
+
+/* ===== PWA/图片：统一定尺寸 + emoji 兜底 ===== */
+.petimg{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;line-height:1;}
+.petimg>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;}
+.petimg-emoji{font-style:normal;line-height:1;display:inline;}
+/* 选队卡片：占满宽度 */
+.starter .petimg{width:100%;height:48px;}
+/* 队伍缩略栏 */
+.ht-item .petimg{width:22px;height:22px;font-size:18px;}
+/* 队伍卡大头 */
+.pc-top .petimg{width:58px;height:58px;font-size:44px;}
+/* 战斗页占位 */
+.bs-ph{width:96px;height:96px;display:flex;align-items:center;justify-content:center;font-size:64px;margin:6px auto;}
+@media(max-width:600px){
+  .starter .petimg{height:38px;}
+  .bs-ph{width:78px;height:78px;font-size:52px;}
+}
+
+/* ===== 支线委托列表 ===== */
+.side-box{background:#ffffff08;border:1px solid #ffffff18;border-radius:12px;padding:10px 12px;}
+.side-head{font-size:13px;color:#c9b6ef;margin-bottom:8px;font-weight:700;}
+.side-head small{font-weight:400;color:#8a7aa8;font-size:11px;}
+.side-item{padding:8px 0;border-bottom:1px solid #ffffff10;}
+.side-item:last-child{border-bottom:none;}
+.side-item.dim{opacity:.55;}
+.side-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.side-row b{font-size:13px;color:#e9e2f7;}
+.side-tag{font-size:10px;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+.side-tag.done{background:#1e5e3a;color:#8fe3a8;}
+.side-tag.doing{background:#5a4310;color:#ffd35c;}
+.side-tag.open{background:#3a2a5c;color:#b9a7d8;}
+.side-desc{font-size:11px;color:#9d90b5;margin-top:3px;line-height:1.4;}
+.side-desc small{color:#7a6d94;}

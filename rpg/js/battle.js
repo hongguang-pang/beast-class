@@ -73,6 +73,7 @@ Battle.resolveQuiz = function(correct){
   E.save();
   if (correct){
     E.S.stats.quizzes++; E.S.stats.quizOk++;
+    E.bumpSide('quiz');
     var moveN = D.moveName(pet.id, kind);
     log('✅ 答对了！'+moveN+' 发动！');
     this.playerAttack(skill.power, true, kind);
@@ -158,9 +159,16 @@ Battle.win = function(){
   E.alivePets().forEach(function(p){ E.addExp(p, exp, ups); });
   var qp = E.bumpQuest('kill', this.mon.key);
   if (this.isBoss) E.bumpQuest('boss', this.mon.key);
+  /* 支线进度：击杀 / Boss / 等级 */
+  E.bumpSide('kill', this.mon.key);
+  if (this.isBoss) E.bumpSide('boss', this.mon.key);
+  E.bumpSide('level');
+  /* 战斗掉落 */
+  var drops = E.rollDrops(this.isBoss);
+  var dropTxt = drops.map(function(d){ return (D.ITEMS[d.item]?D.ITEMS[d.item].emoji:'🎁')+D.ITEMS[d.item].name+'×'+d.n; }).join('、');
   E.save();
-  log('🎉 胜利！获得 '+exp+' 经验、'+gold+' 金币');
-  if (this.onEnd) this.onEnd({ win:true, exp:exp, gold:gold, ups:ups, quest:qp, isBoss:this.isBoss, mon:this.mon });
+  log('🎉 胜利！获得 '+exp+' 经验、'+gold+' 金币'+(dropTxt?'；掉落 '+dropTxt:''));
+  if (this.onEnd) this.onEnd({ win:true, exp:exp, gold:gold, ups:ups, quest:qp, drops:drops, isBoss:this.isBoss, mon:this.mon });
 };
 
 Battle.lose = function(){

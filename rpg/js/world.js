@@ -20,7 +20,10 @@ var World = {
   onEncounter:null, onTalk:null, onChest:null, onBoss:null,
   toast:null, toastTimer:0,
   playerSprite:'🧑',
-  lastDir:'down'
+  lastDir:'down',
+  imgCache:{},            // 图片缓存：路径 -> Image
+  mobs:[],                // 地图上可见的野生怪物 [{key,x,y,img,phase}]
+  mobRespawn:{}           // 怪物击杀后重生计时 key->时间戳
 };
 
 function key(x,y){ return x+','+y; }
@@ -29,10 +32,38 @@ World.init = function(canvas){
   this.canvas = canvas; this.ctx = canvas.getContext('2d');
   this.buildObstacles();
   this.resetToSave();
+  this.buildMobs();
+  this.preloadImages();
   this.bindInput();
   this.resize();
   var self=this;
   window.addEventListener('resize', function(){ self.resize(); });
+};
+/* 预加载 NPC/怪物图片 */
+World.preloadImages = function(){
+  var self=this;
+  function load(src){ if(self.imgCache[src])return; var im=new Image(); im.src=src; self.imgCache[src]=im; }
+  load('../images/npc/player-hero.png');
+  MAP.npcs.forEach(function(n){ load(D.npcImg(n)); });
+  D.MONSTERS.concat(D.BOSSES).forEach(function(m){ load(D.monsterImg(m)); });
+};
+/* 在地图上按区域生成可见怪物（固定点位，确定性） */
+World.buildMobs = function(){
+  this.mobs=[];
+  var self=this;
+  function h(x,y,s){ var n=Math.sin(x*127.1+y*311.7+(s||0)*74.7)*43758.5453; return n-Math.floor(n); }
+  MAP.zones.forEach(function(z){
+    if (!z.monsters.length) return;
+    var count = z.id<=1 ? 5 : 6;
+    for(var i=0;i<count;i++){
+      var x=z.x0+Math.floor(h(i,1,z.id)*(z.x1-z.x0));
+      var y=z.y0+Math.floor(h(i,2,z.id)*(z.y1-z.y0));
+      if(self.blocked(x,y)) continue;
+      if(Math.abs(x-20)<=8&&y>=36) continue; // 村庄安全区不放
+      var mk=z.monsters[Math.floor(h(i,3,z.id)*z.monsters.length)];
+      self.mobs.push({ key:mk, x:x, y:y, phase:h(i,4,z.id)*6 });
+    }
+  });
 };
 World.resize = function(){
   var stage = document.getElementById('worldStage');
@@ -189,8 +220,8 @@ World.tryEncounter = function(){
 
 World.checkTileEvent = function(){
   var gx=Math.round(this.px), gy=Math.round(this.py);
+  var self=this, now=Date.now();
   /* 宝箱：靠近自动开 */
-  var self=this;
   Object.keys(this.chests).forEach(function(i){
     var c=self.chests[i];
     if (Math.abs(c.x-gx)<=0 && Math.abs(c.y-gy)<=0){
@@ -199,11 +230,39 @@ World.checkTileEvent = function(){
       if (self.onChest) self.onChest(i);
     }
   });
+  /* 踩到可见怪物：自动遇敌 */
+  for (var j=0;j<self.mobs.length;j++){
+    var m=self.mobs[j];
+    var rk='mob_'+m.x+'_'+m.y;
+    if (self.mobRespawn[rk] && now-self.mobRespawn[rk]<20000) continue;
+    if (m.x===gx && m.y===gy){
+      var mon=D.MON_BY_KEY[m.key]; var z=self.zoneAt(m.x,m.y);
+      var lv=1+(z?z.id:0)*4+Math.floor(Math.random()*3);
+      self.pendingMob=m;
+      if (self.onEncounter) self.onEncounter(mon, lv, false);
+      break;
+    }
+  }
 };
 
-/* 主动交互（靠近 NPC / Boss 时点交互键） */
+/* 主动交互（靠近怪物 / NPC / Boss 时点交互键）；同时踩到怪物也会自动遇敌 */
 World.interact = function(){
   var gx=Math.round(this.px), gy=Math.round(this.py);
+  /* 优先检测附近可见怪物 */
+  var self=this, now=Date.now(), nearMob=null;
+  this.mobs.some(function(m){
+    if (self.mobRespawn['mob_'+m.x+'_'+m.y] && now-self.mobRespawn['mob_'+m.x+'_'+m.y]<20000) return false;
+    if (Math.abs(m.x-gx)<=1 && Math.abs(m.y-gy)<=1){ nearMob=m; return true; }
+    return false;
+  });
+  if (nearMob){
+    var mon=D.MON_BY_KEY[nearMob.key];
+    var z=this.zoneAt(nearMob.x,nearMob.y);
+    var lv=1+(z?z.id:0)*4+Math.floor(Math.random()*3);
+    this.pendingMob=nearMob;
+    if (this.onEncounter) this.onEncounter(mon, lv, false);
+    return;
+  }
   var npc = MAP.npcs.find(function(n){ return Math.abs(n.x-gx)<=2 && Math.abs(n.y-gy)<=2; });
   if (npc){ if (this.onTalk) this.onTalk(npc); return; }
   var boss = MAP.bosses.find(function(b){ return Math.abs(b.x-gx)<=2 && Math.abs(b.y-gy)<=2; });
@@ -213,6 +272,10 @@ World.interact = function(){
     return;
   }
   if (this.toastFn) this.toastFn('附近没有可交互的对象');
+};
+/* 战斗胜利后，标记该可见怪物暂离（20秒重生） */
+World.markMobDefeated = function(){
+  if (this.pendingMob){ this.mobRespawn['mob_'+this.pendingMob.x+'_'+this.pendingMob.y]=Date.now(); this.pendingMob=null; }
 };
 
 /* ---------- 渲染 ---------- */
@@ -246,15 +309,27 @@ World.draw = function(){
     var ch=self.chests[i];
     self.sprite('🎁', ch.x, ch.y, true);
   });
-  /* NPC */
-  MAP.npcs.forEach(function(n){ self.sprite(n.icon, n.x, n.y, true, n.color); });
-  /* Boss */
+  /* 可见野生怪物（用生成的卡通图，带轻微上下浮动） */
+  var now=Date.now();
+  this.mobs.forEach(function(m){
+    var rk='mob_'+m.x+'_'+m.y;
+    if (self.mobRespawn[rk] && now-self.mobRespawn[rk]<20000) return; // 击杀后20秒重生
+    var mon=D.MON_BY_KEY[m.key]; if(!mon)return;
+    var bob=Math.sin(now/500+m.phase)*2;
+    self.imageSprite(D.monsterImg(mon), m.x, m.y, t*1.15, bob, 'rgba(0,0,0,.22)');
+  });
+  /* NPC（用生成的卡通图，带名字标签；阴影统一深色避免浅色块） */
+  MAP.npcs.forEach(function(n){
+    self.imageSprite(D.npcImg(n), n.x, n.y, t*1.5, 0, 'rgba(0,0,0,.3)', n.name);
+  });
+  /* Boss（用怪物图） */
   MAP.bosses.forEach(function(b){
     if (E.S && E.S.bossDefeated[b.key]) return;
-    self.sprite('👹', b.x, b.y, true, '#ff7a7a');
+    var mon=D.MON_BY_KEY[b.key];
+    self.imageSprite(mon?D.monsterImg(mon):'', b.x, b.y, t*1.8, 0, '#ff7a7a');
   });
-  /* 玩家 */
-  this.sprite(this.playerSprite, this.px, this.py, true, '#ffe9a8');
+  /* 玩家（卡通角色图） */
+  this.imageSprite('../images/npc/player-hero.png', this.px, this.py, t*1.6, 0, 'rgba(0,0,0,.35)');
   /* 区域名提示 */
   var pz=this.zoneAt(Math.round(this.px),Math.round(this.py));
   if (this.zoneFn) this.zoneFn(pz ? pz.name : '');
@@ -265,6 +340,28 @@ World.sprite = function(emoji, gx, gy, shadow, color){
   if (shadow){ c.fillStyle=color||'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(sx+t/2,sy+t*0.82,t*0.34,t*0.13,0,0,Math.PI*2); c.fill(); }
   c.font=(t*0.95)+'px serif'; c.textAlign='center'; c.textBaseline='middle';
   c.fillText(emoji, sx+t/2, sy+t/2);
+};
+/* 用图片绘制 sprite（透明底卡通图），失败时回退 emoji */
+World.imageSprite = function(src, gx, gy, size, bob, shadowColor, label){
+  var c=this.ctx,t=this.tile;
+  var sx=gx*t-this.camX, sy=gy*t-this.camY+(bob||0);
+  var sz=size||t*1.2;
+  /* 地面阴影 */
+  if (shadowColor){ c.fillStyle=shadowColor; c.beginPath(); c.ellipse(sx+t/2,sy+t*0.86,sz*0.32,sz*0.11,0,0,Math.PI*2); c.fill(); }
+  var img=this.imgCache[src];
+  if (img && img.complete && img.naturalWidth>0){
+    c.drawImage(img, sx+t/2-sz/2, sy+t/2-sz/2, sz, sz);
+  }
+  /* 名字标签 */
+  if (label){
+    c.font='bold 11px sans-serif'; c.textAlign='center'; c.textBaseline='middle';
+    var tw=c.measureText(label).width+10;
+    c.fillStyle='rgba(0,0,0,.6)';
+    c.beginPath();
+    if (c.roundRect) { c.roundRect(sx+t/2-tw/2, sy-sz/2-16, tw, 15, 7); c.fill(); }
+    else c.fillRect(sx+t/2-tw/2, sy-sz/2-16, tw, 15);
+    c.fillStyle='#fff'; c.fillText(label, sx+t/2, sy-sz/2-8);
+  }
 };
 
 World.start = function(){

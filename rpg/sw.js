@@ -1,11 +1,13 @@
 /* 精灵大陆 · 知识远征 离线缓存（scope=/rpg/，与主站/诊断站隔离） */
-const VERSION = 'rpg-v1.0.0';
+const VERSION = 'rpg-v1.2.0';
 const SHELL = [
-  './','./index.html','./style.css?v=1',
-  './data/knowledge.js?v=1','./data/kg/g1.js?v=1','./data/kg/g2.js?v=1','./data/kg/g3.js?v=1',
-  './data/kg/g4.js?v=1','./data/kg/g5.js?v=1','./data/kg/g6.js?v=1','./data/kg/g7.js?v=1',
-  './data/kg/g8.js?v=1','./data/kg/g9.js?v=1','./data/kg/g10.js?v=1','./data/kg/g11.js?v=1','./data/kg/g12.js?v=1',
-  './js/data.js?v=1','./js/engine.js?v=1','./js/world.js?v=1','./js/battle.js?v=1','./js/ui.js?v=1','./js/main.js?v=1'
+  './','./index.html','./style.css?v=3',
+  './data/knowledge.js?v=3','./data/kg/g1.js?v=3','./data/kg/g2.js?v=3','./data/kg/g3.js?v=3',
+  './data/kg/g4.js?v=3','./data/kg/g5.js?v=3','./data/kg/g6.js?v=3','./data/kg/g7.js?v=3',
+  './data/kg/g8.js?v=3','./data/kg/g9.js?v=3','./data/kg/g10.js?v=3','./data/kg/g11.js?v=3','./data/kg/g12.js?v=3',
+  './js/data.js?v=3','./js/engine.js?v=3','./js/world.js?v=3','./js/battle.js?v=3','./js/ui.js?v=3','./js/main.js?v=3',
+  './images/npc/player-hero.png','./images/npc/npc-chief.png','./images/npc/npc-explorer.png','./images/npc/npc-trainer.png','./images/npc/npc-scholar.png','./images/npc/npc-pharmacist.png',
+  './images/mon/e11-fire-spirit.png','./images/mon/e12-moss-golem.png','./images/mon/e13-water-slime.png','./images/mon/e14-shadow-bat.png','./images/mon/e15-star-sprite.png','./images/mon/e16-crystal-golem.png'
 ];
 self.addEventListener('install',(e)=>{
   e.waitUntil(caches.open(VERSION).then((c)=>c.addAll(SHELL).catch(()=>{})).then(()=>self.skipWaiting()));

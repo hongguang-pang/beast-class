@@ -55,7 +55,7 @@ function wire(){
   B.onLog=function(s){ U.battleLog(s); U.updateHUD(); U.renderBattle(); };
   B.onTurn=function(){ U.renderBattle(); U.updateHUD(); };
   B.onQuiz=function(kind, skill){ U.openQuiz(kind, skill); };
-  B.onEnd=function(r){ U.battleEnd(r); };
+  B.onEnd=function(r){ if(r.win) W.markMobDefeated(); U.battleEnd(r); };
 
   /* 战斗按钮 */
   $('bNormal').addEventListener('click',function(){ B.act('normal'); });

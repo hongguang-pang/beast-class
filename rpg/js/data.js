@@ -67,7 +67,14 @@ var MONSTERS = [
   { key:'e07', name:'算盘甲虫',   file:'e07-abacus-beetle.png',elem:'light', base:{hp:120,atk:19,def:18,spd:6}, exp:38, gold:25, zone:2 },
   { key:'e08', name:'迷雾水母',   file:'e08-mist-jelly.png',   elem:'water', base:{hp:110,atk:24,def:12,spd:13}, exp:42, gold:28, zone:3 },
   { key:'e09', name:'错别字蜘蛛', file:'e09-typo-spider.png',  elem:'dark',  base:{hp:116,atk:26,def:13,spd:15}, exp:46, gold:30, zone:3 },
-  { key:'e10', name:'瞌睡幽灵',   file:'e10-doze-ghost.png',   elem:'dark',  base:{hp:132,atk:25,def:15,spd:11}, exp:50, gold:34, zone:3 }
+  { key:'e10', name:'瞌睡幽灵',   file:'e10-doze-ghost.png',   elem:'dark',  base:{hp:132,atk:25,def:15,spd:11}, exp:50, gold:34, zone:3 },
+  /* 新增怪物（AI 生成卡通图，地图可见） */
+  { key:'e11', name:'火焰精灵',   file:'e11-fire-spirit.png',  elem:'fire',  base:{hp:92, atk:21,def:10,spd:14}, exp:28, gold:18, zone:0 },
+  { key:'e12', name:'苔藓守卫',   file:'e12-moss-golem.png',   elem:'wood',  base:{hp:108,atk:18,def:16,spd:8},  exp:32, gold:20, zone:1 },
+  { key:'e13', name:'水滴史莱姆', file:'e13-water-slime.png',  elem:'water', base:{hp:100,atk:20,def:12,spd:12}, exp:30, gold:19, zone:1 },
+  { key:'e14', name:'暗影蝠',     file:'e14-shadow-bat.png',   elem:'dark',  base:{hp:88, atk:24,def:9, spd:18}, exp:36, gold:23, zone:3 },
+  { key:'e15', name:'星光精灵',   file:'e15-star-sprite.png',  elem:'light', base:{hp:96, atk:22,def:11,spd:15}, exp:34, gold:22, zone:2 },
+  { key:'e16', name:'晶岩兽',     file:'e16-crystal-golem.png',elem:'light', base:{hp:126,atk:23,def:19,spd:7},  exp:42, gold:27, zone:3 }
 ];
 /* Boss */
 var BOSSES = [
@@ -79,6 +86,8 @@ var BOSSES = [
   { key:'b06', name:'知识魔王', file:'b06-knowledge-lord.png',elem:'dark',  base:{hp:520,atk:52,def:32,spd:22}, exp:500, gold:666, quest:'q_boss6' }
 ];
 function monsterImg(m){ return '../images/mon/' + m.file; }
+function npcImg(n){ return '../images/npc/' + n.img; }
+/* Boss 也用 monsterImg（文件在 images/mon/） */
 
 /* ---------- 道具 ---------- */
 var ITEMS = {
@@ -116,19 +125,19 @@ var QUESTS = [
 var MAP_CFG = {
   cols:64, rows:48, tile:30,
   zones:[
-    { id:0, name:'新手草原', color:'#3c6b3f', y0:30, y1:48, x0:0,  x1:38, monsters:['e01','e02'] },
-    { id:1, name:'蘑菇森林', color:'#2f5d3a', y0:20, y1:30, x0:8,  x1:40, monsters:['e03','e04'] },
-    { id:2, name:'玩具谷/沙漠', color:'#8a7a3f', y0:16, y1:28, x0:40, x1:64, monsters:['e05','e06','e07'] },
-    { id:3, name:'风暴高地', color:'#4a5570', y0:6,  y1:20, x0:20, x1:52, monsters:['e08','e09','e10'] },
+    { id:0, name:'新手草原', color:'#3c6b3f', y0:30, y1:48, x0:0,  x1:38, monsters:['e01','e02','e11'] },
+    { id:1, name:'蘑菇森林', color:'#2f5d3a', y0:20, y1:30, x0:8,  x1:40, monsters:['e03','e04','e12','e13'] },
+    { id:2, name:'玩具谷/沙漠', color:'#8a7a3f', y0:16, y1:28, x0:40, x1:64, monsters:['e05','e06','e07','e15'] },
+    { id:3, name:'风暴高地', color:'#4a5570', y0:6,  y1:20, x0:20, x1:52, monsters:['e08','e09','e10','e14','e16'] },
     { id:4, name:'知识圣殿', color:'#5b4a72', y0:0,  y1:10, x0:40, x1:64, monsters:[] }
   ],
   /* NPC 位置（格坐标）：村长/探险家/训练师/学者 + 商店 */
   npcs:[
-    { name:'村长',   x:20, y:40, color:'#ffd777', icon:'👴', role:'quest' },
-    { name:'探险家', x:30, y:42, color:'#8fe3a8', icon:'🧭', role:'quest' },
-    { name:'训练师', x:14, y:36, color:'#7ad0ff', icon:'🥋', role:'quest' },
-    { name:'学者',   x:34, y:38, color:'#d7b3ff', icon:'📖', role:'quest' },
-    { name:'药剂师', x:24, y:42, color:'#ff9db1', icon:'🧑‍⚕️', role:'shop' }
+    { name:'村长',   x:20, y:40, color:'#ffd777', icon:'👴', img:'npc-chief.png',      role:'quest' },
+    { name:'探险家', x:30, y:42, color:'#8fe3a8', icon:'🧭', img:'npc-explorer.png',   role:'quest' },
+    { name:'训练师', x:14, y:36, color:'#7ad0ff', icon:'🥋', img:'npc-trainer.png',    role:'quest' },
+    { name:'学者',   x:34, y:38, color:'#d7b3ff', icon:'📖', img:'npc-scholar.png',    role:'quest' },
+    { name:'药剂师', x:24, y:42, color:'#ff9db1', icon:'🧑‍⚕️', img:'npc-pharmacist.png', role:'shop' }
   ],
   /* Boss 站位 */
   bosses:[
@@ -151,6 +160,6 @@ var MON_BY_KEY = {}; MONSTERS.concat(BOSSES).forEach(function(m){ MON_BY_KEY[m.k
 window.RPG_DATA = {
   ELEMENTS:ELEMENTS, elemMult:elemMult, RAR:RAR, RAR_COLOR:RAR_COLOR,
   PETS:PETS, PET_BY_ID:PET_BY_ID, STAGES:STAGES, petImg:petImg, stageForLv:stageForLv,
-  MONSTERS:MONSTERS, BOSSES:BOSSES, MON_BY_KEY:MON_BY_KEY, monsterImg:monsterImg,
+  MONSTERS:MONSTERS, BOSSES:BOSSES, MON_BY_KEY:MON_BY_KEY, monsterImg:monsterImg, npcImg:npcImg,
   ITEMS:ITEMS, SKILLS:SKILLS, QUESTS:QUESTS, MAP_CFG:MAP_CFG
 };

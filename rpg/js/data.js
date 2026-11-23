@@ -23,20 +23,29 @@ function elemMult(atk, def){
 var RAR = { N:0, R:2, SR:4, SSR:6 };
 var RAR_COLOR = { N:'#9aa3b2', R:'#3b82f6', SR:'#a855f7', SSR:'#f5b301' };
 
-/* ---------- 可选宠物（初始队伍从中选 3 只） ---------- */
+/* ---------- 可选宠物（初始队伍从中选 3 只） ----------
+ * moves: {normal:普攻, spell:知识技(答题), ult:必杀技(答题)} 个性化炫酷招式名
+ */
 var PETS = [
-  { id:'P001', name:'焰爪犬', emoji:'🔥', elem:'fire',  rar:'R',   skill:'焰爪击', base:{hp:110,atk:26,def:16,spd:18} },
-  { id:'P011', name:'潮汐猫', emoji:'💧', elem:'water', rar:'R',   skill:'潮汐弹', base:{hp:118,atk:24,def:18,spd:16} },
-  { id:'P027', name:'森角鹿', emoji:'🦌', elem:'wood',  rar:'SR',  skill:'森光冲', base:{hp:106,atk:28,def:16,spd:20} },
-  { id:'P035', name:'岩甲龟', emoji:'🐢', elem:'wood',  rar:'R',   skill:'岩甲撞', base:{hp:140,atk:20,def:26,spd:10} },
-  { id:'P042', name:'冰晶狐', emoji:'❄️', elem:'water', rar:'SR',  skill:'冰晶刺', base:{hp:104,atk:29,def:15,spd:22} },
-  { id:'P051', name:'光羽鹤', emoji:'🕊️', elem:'light', rar:'R',   skill:'光羽闪', base:{hp:112,atk:25,def:17,spd:19} },
-  { id:'D201', name:'星羽兽', emoji:'🦅', elem:'light', rar:'SSR', skill:'星羽坠', base:{hp:132,atk:34,def:20,spd:24} },
-  { id:'D203', name:'焰鳞兽', emoji:'🐉', elem:'fire',  rar:'SSR', skill:'炎鳞破', base:{hp:128,atk:36,def:20,spd:21} },
-  { id:'D207', name:'月影兽', emoji:'🌙', elem:'dark',  rar:'SSR', skill:'月影斩', base:{hp:124,atk:35,def:19,spd:25} },
-  { id:'D209', name:'暮影狼', emoji:'🐺', elem:'dark',  rar:'SR',  skill:'暮影扑', base:{hp:108,atk:30,def:16,spd:23} }
+  { id:'P001', name:'焰爪犬', emoji:'🔥', elem:'fire',  rar:'R',   skill:'焰爪击', base:{hp:110,atk:26,def:16,spd:18}, moves:{normal:'烈焰扑咬', spell:'赤焰·燎原爪', ult:'炎狱·焚天裂爪' } },
+  { id:'P011', name:'潮汐猫', emoji:'💧', elem:'water', rar:'R',   skill:'潮汐弹', base:{hp:118,atk:24,def:18,spd:16}, moves:{normal:'浪花拍击', spell:'涌潮·回旋浪', ult:'深海·万潮归墟' } },
+  { id:'P027', name:'森角鹿', emoji:'🦌', elem:'wood',  rar:'SR',  skill:'森光冲', base:{hp:106,atk:28,def:16,spd:20}, moves:{normal:'荆棘突刺', spell:'森罗·万叶斩', ult:'苍翠·世界树之怒' } },
+  { id:'P035', name:'岩甲龟', emoji:'🐢', elem:'wood',  rar:'R',   skill:'岩甲撞', base:{hp:140,atk:20,def:26,spd:10}, moves:{normal:'岩甲撞击', spell:'磐岩·崩山击', ult:'地脉·不动如山崩' } },
+  { id:'P042', name:'冰晶狐', emoji:'❄️', elem:'water', rar:'SR',  skill:'冰晶刺', base:{hp:104,atk:29,def:15,spd:22}, moves:{normal:'冰棱弹射', spell:'寒霜·千冰刺', ult:'极寒·冰封万里' } },
+  { id:'P051', name:'光羽鹤', emoji:'🕊️', elem:'light', rar:'R',   skill:'光羽闪', base:{hp:112,atk:25,def:17,spd:19}, moves:{normal:'光羽疾斩', spell:'圣光·羽翼风暴', ult:'曜日·天羽降临' } },
+  { id:'D201', name:'星羽兽', emoji:'🦅', elem:'light', rar:'SSR', skill:'星羽坠', base:{hp:132,atk:34,def:20,spd:24}, moves:{normal:'星羽疾刺', spell:'星陨·银河坠', ult:'璀璨·星辰崩裂击' } },
+  { id:'D203', name:'焰鳞兽', emoji:'🐉', elem:'fire',  rar:'SSR', skill:'炎鳞破', base:{hp:128,atk:36,def:20,spd:21}, moves:{normal:'炎鳞冲撞', spell:'熔岩·龙焰吐息', ult:'焚世·炎龙灭世' } },
+  { id:'D207', name:'月影兽', emoji:'🌙', elem:'dark',  rar:'SSR', skill:'月影斩', base:{hp:124,atk:35,def:19,spd:25}, moves:{normal:'暗月刃', spell:'月蚀·暗影绞杀', ult:'永夜·月影终结' } },
+  { id:'D209', name:'暮影狼', emoji:'🐺', elem:'dark',  rar:'SR',  skill:'暮影扑', base:{hp:108,atk:30,def:16,spd:23}, moves:{normal:'暗影扑咬', spell:'暮色·狂影袭', ult:'深渊·影狼噬魂' } }
 ];
 var PET_BY_ID = {}; PETS.forEach(function(p){ PET_BY_ID[p.id] = p; });
+/* 取某宠物某类招式的炫酷名称（normal/spell/ult），无则回退通用名 */
+function moveName(petId, kind){
+  var p = PET_BY_ID[petId];
+  var d = SKILLS[kind] || SKILLS.normal;
+  if (p && p.moves && p.moves[kind]) return p.moves[kind];
+  return d.name;
+}
 
 /* 进化阶段：等级阈值与图片后缀（P系列在 ../images/gif/，D系列在 ../images/m/） */
 var STAGES = [
@@ -159,7 +168,7 @@ var MON_BY_KEY = {}; MONSTERS.concat(BOSSES).forEach(function(m){ MON_BY_KEY[m.k
 /* 导出到全局 */
 window.RPG_DATA = {
   ELEMENTS:ELEMENTS, elemMult:elemMult, RAR:RAR, RAR_COLOR:RAR_COLOR,
-  PETS:PETS, PET_BY_ID:PET_BY_ID, STAGES:STAGES, petImg:petImg, stageForLv:stageForLv,
+  PETS:PETS, PET_BY_ID:PET_BY_ID, STAGES:STAGES, petImg:petImg, stageForLv:stageForLv, moveName:moveName,
   MONSTERS:MONSTERS, BOSSES:BOSSES, MON_BY_KEY:MON_BY_KEY, monsterImg:monsterImg, npcImg:npcImg,
   ITEMS:ITEMS, SKILLS:SKILLS, QUESTS:QUESTS, MAP_CFG:MAP_CFG
 };

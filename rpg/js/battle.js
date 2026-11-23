@@ -38,10 +38,10 @@ Battle.act = function(action, arg){
   if (!pet || pet.hp<=0){ this.petFaint(); return; }
   if (action==='normal'){
     this.busy=true;
-    this.playerAttack(1.0, false);
+    this.playerAttack(1.0, false, 'normal');
   } else if (action==='spell' || action==='ult'){
     var skill = action==='ult' ? D.SKILLS.ult : D.SKILLS.spell;
-    if (pet.mp < skill.mp){ log('💧 MP 不足，无法使用'+skill.name); return; }
+    if (pet.mp < skill.mp){ log('💧 MP 不足，无法使用'+D.moveName(pet.id, action)); return; }
     this.pendingSkill = action;
     this.busy=true;
     if (this.onQuiz) this.onQuiz(action, skill);
@@ -73,8 +73,9 @@ Battle.resolveQuiz = function(correct){
   E.save();
   if (correct){
     E.S.stats.quizzes++; E.S.stats.quizOk++;
-    log('✅ 答对了！'+skill.name+' 发动！');
-    this.playerAttack(skill.power, true);
+    var moveN = D.moveName(pet.id, kind);
+    log('✅ 答对了！'+moveN+' 发动！');
+    this.playerAttack(skill.power, true, kind);
   } else {
     E.S.stats.quizzes++;
     log('❌ 答错了，技能被打断！');
@@ -83,15 +84,19 @@ Battle.resolveQuiz = function(correct){
   }
 };
 
-Battle.playerAttack = function(power, isSkill){
+Battle.playerAttack = function(power, isSkill, kind){
   var pet=E.activePet();
-  var r=E.damage(pet, 'atk', this.mon, power);
+  var r=E.damage(pet, 'atk', this.mon, power, isSkill, this.monLv);
   this.monHp -= r.value;
   var eff = r.mult>1 ? ' 克制！×'+r.mult : (r.mult<1 ? ' 效果不佳…' : '');
-  log((isSkill?'✨':'⚔️')+D.PET_BY_ID[pet.id].name+' 造成 '+r.value+' 伤害'+eff);
+  var moveN = D.moveName(pet.id, kind || (isSkill?'spell':'normal'));
+  var armored = r.armorCut ? '（护甲吸收，普攻收效甚微·用知识技能破防！）' : '';
+  log((isSkill?'✨':'⚔️')+moveN+' 造成 '+r.value+' 伤害'+eff+armored);
   if (this.monHp<=0){ this.monHp=0; this.win(); return; }
-  /* 知识技能答对额外回一点 MP */
-  if (isSkill){ pet.mp=Math.min(E.curMaxMp(pet), pet.mp+2); E.save(); }
+  /* 知识技能答对额外回一点 MP；普攻也能回少量 MP 供继续放技能 */
+  if (isSkill){ pet.mp=Math.min(E.curMaxMp(pet), pet.mp+2); }
+  else { pet.mp=Math.min(E.curMaxMp(pet), pet.mp+2); }
+  E.save();
   setTimeout(function(){ Battle.enemyTurn(); }, 350);
 };
 
@@ -102,7 +107,7 @@ Battle.enemyTurn = function(){
   if (idx<0){ this.lose(); return; }
   E.S.active=idx;
   var pet=E.S.team[idx];
-  var r=E.monsterDamage(mon, pet);
+  var r=E.monsterDamage(mon, pet, this.monLv);
   var dmg = this.playerGuard ? Math.round(r.value*0.4) : r.value;
   pet.hp = Math.max(0, pet.hp - dmg);
   E.save();

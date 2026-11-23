@@ -56,7 +56,8 @@ function addExp(pet, amount, log){
     var afterStage = D.stageForLv(pet.lv).key;
     /* 升级回满并提升上限 */
     pet.hp = curMaxHp(pet); pet.mp = curMaxMp(pet);
-    if (log) log.push(pet.id + ' 升到 Lv' + pet.lv + (beforeStage!==afterStage ? ' · 进化为'+D.stageForLv(pet.lv).name+'形态！' : ''));
+    var petName = (D.PET_BY_ID[pet.id] && D.PET_BY_ID[pet.id].name) || pet.id;
+    if (log) log.push(petName + ' 升到 Lv' + pet.lv + (beforeStage!==afterStage ? ' · 进化为'+D.stageForLv(pet.lv).name+'形态！' : ''));
   }
   return lvUp;
 }
@@ -79,15 +80,27 @@ function firstAlive(){ for (var i=0;i<S.team.length;i++) if (S.team[i].hp>0) ret
 function healAll(){ S.team.forEach(function(p){ p.hp=curMaxHp(p); p.mp=curMaxMp(p); }); save(); }
 
 /* ---------- 伤害公式 ---------- */
-function damage(atkPet, atkStat, defMon, power){
+/* 护甲：怪物等级越高护甲越厚。普攻被护甲大幅削减，答题技能可破防无视护甲。
+ * 这样中后期怪物「不答题放技能就几乎打不动」，逼用户持续答题。 */
+function monsterArmor(defMon, monLv){
+  var lv = monLv || 1;
+  if (lv <= 2) return 0;                       // 前两级无护甲，新手友好
+  return Math.round((lv-2) * (3.2 + defMon.base.def*0.25));
+}
+function damage(atkPet, atkStat, defMon, power, isSkill, monLv){
   var a = petStat(atkPet,'atk');
   var d = defMon.base.def;
   var mult = D.elemMult(D.PET_BY_ID[atkPet.id].elem, defMon.elem);
-  var base = Math.max(1, Math.round((a*power - d*0.5) * (0.9 + Math.random()*0.2)));
-  return { value: Math.max(1, Math.round(base*mult)), mult:mult };
+  var armor = isSkill ? 0 : monsterArmor(defMon, monLv);  // 技能破防，无视护甲
+  var raw = a*power - d*0.5 - armor;
+  /* 普攻被护甲压到极低时，保底仅 1~2 点（体现「必须答题」） */
+  var base = Math.max(isSkill ? 1 : 1, Math.round(raw * (0.9 + Math.random()*0.2)));
+  var value = Math.max(1, Math.round(base*mult));
+  return { value: value, mult:mult, armorCut: (!isSkill && armor>0 && raw <= a*power*0.35) };
 }
-function monsterDamage(mon, targetPet){
-  var a = mon.base.atk;
+function monsterDamage(mon, targetPet, monLv){
+  var lv = monLv || 1;
+  var a = mon.base.atk * (1 + (lv-1)*0.13);   // 怪物伤害随等级成长
   var d = petStat(targetPet,'def');
   var mult = D.elemMult(mon.elem, D.PET_BY_ID[targetPet.id].elem);
   var base = Math.max(1, Math.round((a - d*0.4) * (0.9+Math.random()*0.2)));
@@ -206,7 +219,7 @@ window.RPG_ENGINE = {
   maxHp:maxHp, maxMp:maxMp, petStat:petStat, curMaxHp:curMaxHp, curMaxMp:curMaxMp,
   expNeed:expNeed, addExp:addExp,
   activePet:activePet, alivePets:alivePets, firstAlive:firstAlive, healAll:healAll,
-  damage:damage, monsterDamage:monsterDamage,
+  damage:damage, monsterDamage:monsterDamage, monsterArmor:monsterArmor,
   ensureGradeLoaded:ensureGradeLoaded, pickQuestion:pickQuestion, judge:judge,
   quest:quest, curQuest:curQuest, bumpQuest:bumpQuest, completeQuest:completeQuest, turnInAvailable:turnInAvailable
 };

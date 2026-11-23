@@ -167,6 +167,11 @@ UI.renderBattle = function(){
   $('bMyHpFill').style.width=hp+'%';
   $('bMyHpTxt').textContent=pet.hp+'/'+E.curMaxHp(pet);
   $('bMyMp').textContent='MP '+pet.mp+'/'+E.curMaxMp(pet);
+  /* 个性化炫酷招式名（随当前出战宠物变化） */
+  var nNormal=D.moveName(pet.id,'normal'), nSpell=D.moveName(pet.id,'spell'), nUlt=D.moveName(pet.id,'ult');
+  if($('bNormal')) $('bNormal').innerHTML='⚔️ '+esc(nNormal);
+  if($('bSpell')) $('bSpell').innerHTML='✨ '+esc(nSpell)+'<small>答题·'+D.SKILLS.spell.mp+'MP</small>';
+  if($('bUlt')) $('bUlt').innerHTML='🔥 '+esc(nUlt)+'<small>答题·'+D.SKILLS.ult.mp+'MP</small>';
   /* 队伍切换小按钮 */
   var row=$('bTeamRow');
   row.innerHTML=E.S.team.map(function(pp,i){
@@ -214,7 +219,9 @@ UI.openQuiz = function(kind, skill){
     inp.addEventListener('keydown',function(e){ if(e.key==='Enter') submit(); });
     setTimeout(function(){inp.focus();},80);
   }
-  $('quizTitle').textContent = kind==='ult'?'🔥 必杀技 · 答对发动':'✨ 知识技能 · 答对发动';
+  var activePet=E.activePet();
+  var moveN=D.moveName(activePet.id, kind);
+  $('quizTitle').textContent = (kind==='ult'?'🔥 ':'✨ ')+moveN+' · 答对发动';
   $('quizOverlay').classList.remove('hidden');
 };
 function closeQuiz(){ $('quizOverlay').classList.add('hidden'); }

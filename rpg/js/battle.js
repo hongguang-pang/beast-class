@@ -4,7 +4,7 @@
  * 属性克制、队伍切换、答题判定、经验掉落、Boss 剧情
  * ============================================================ */
 'use strict';
-var D = window.RPG_DATA, E = window.RPG_ENGINE;
+var D = window.RPG_DATA, E = window.RPG_ENGINE, FX = window.RPG_FX;
 
 var Battle = {
   active:false, mon:null, monLv:1, monHp:0, monMaxHp:0, isBoss:false,
@@ -27,8 +27,9 @@ Battle.start = function(mon, lv, isBoss){
   this.monHp = this.monMaxHp;
   this.turn='player'; this.busy=false; this.logLines=[]; this.usedTexts={};
   this.playerGuard=false; this.enraged=false; this.stunNext=false; this.currentQuiz=null;
-  /* 清空上一场战斗残留的日志 DOM */
+  /* 清空上一场战斗残留的日志与特效 */
   var box=document.getElementById('bLog'); if(box) box.innerHTML='';
+  if (FX) FX.clear();
   /* 确保上场的是存活宠物 */
   var ai=E.firstAlive();
   if (ai>=0) E.S.active=ai;
@@ -91,6 +92,7 @@ Battle.resolveQuiz = function(correct){
     this.playerAttack(skill.power, true, kind);
   } else {
     E.S.stats.quizzes++;
+    if (FX){ FX.shake(4,0.2); FX.flash('rgba(120,40,160,.22)'); }
     log('❌ 答错了，技能被打断！');
     if (ca && ca.weak){
       /* 连错2次：怪物针对弱点 + 概率眩晕 */
@@ -113,11 +115,27 @@ Battle.resolveQuiz = function(correct){
 
 Battle.playerAttack = function(power, isSkill, kind){
   var pet=E.activePet();
+  var pdef=D.PET_BY_ID[pet.id];
+  var elem=pdef?pdef.elem:'light';
+  /* 特效：技能先魔法阵蓄力，再属性爆发；普攻为属性斩击 */
+  if (FX){
+    if (isSkill){
+      FX.circle('bMyImg', elem);
+      (function(el,big){ setTimeout(function(){ FX.burst('bEnemyImg', el, big); }, 220); })(elem, kind==='ult');
+    } else {
+      FX.slash('bEnemyImg', FX.palette[elem]||FX.palette.hit);
+    }
+  }
   var r=E.damage(pet, 'atk', this.mon, power, isSkill, this.monLv);
+  var crit = power>1.2 || r.mult>1;   // 高倍技能或属性克制 → 暴击视觉
   this.monHp -= r.value;
   var eff = r.mult>1 ? ' 克制！×'+r.mult : (r.mult<1 ? ' 效果不佳…' : '');
   var moveN = D.moveName(pet.id, kind || (isSkill?'spell':'normal'));
   var armored = r.armorCut ? '（护甲吸收，普攻收效甚微·用知识技能破防！）' : '';
+  /* 命中特效：冲击环 + 震屏 + 伤害飘字（延迟到爆发帧对齐） */
+  if (FX){
+    (function(val,cr){ setTimeout(function(){ FX.hit('bEnemyImg',cr); FX.damage('bEnemyImg',val,cr); }, isSkill?250:90); })(r.value, crit||r.mult>1);
+  }
   log((isSkill?'✨':'⚔️')+moveN+' 造成 '+r.value+' 伤害'+eff+armored);
   if (this.monHp<=0){ this.monHp=0; this.win(); return; }
   /* 知识技能答对额外回一点 MP；普攻也能回少量 MP 供继续放技能 */
@@ -144,6 +162,8 @@ Battle.enemyTurn = function(){
   }
   pet.hp = Math.max(0, pet.hp - dmg);
   E.save();
+  /* 玩家受击特效：红闪 + 震屏 + 伤害飘字 */
+  if (FX){ FX.slash('bMyImg', FX.palette.hit); FX.hurt('bMyImg'); FX.damage('bMyImg', dmg, this.enraged); }
   var eff = r.mult>1 ? ' 克制！×'+r.mult : (r.mult<1 ? ' 被抵抗…' : '');
   log(mon.name+' 攻击 '+D.PET_BY_ID[pet.id].name+'，造成 '+dmg+' 伤害'+eff+(this.playerGuard?'（防御中）':'')+enrageTxt);
   this.playerGuard=false;
@@ -179,8 +199,8 @@ Battle.defend = function(){
 Battle.useItem = function(k){
   if (!E.S.bag[k] || E.S.bag[k]<=0){ log('没有这个道具了'); this.busy=false; return; }
   var pet=E.activePet();
-  if (k==='potion'){ pet.hp=Math.min(E.curMaxHp(pet),pet.hp+50); log('🧪 恢复 50 HP'); }
-  else if (k==='ether'){ pet.mp=Math.min(E.curMaxMp(pet),pet.mp+20); log('💎 恢复 20 MP'); }
+  if (k==='potion'){ pet.hp=Math.min(E.curMaxHp(pet),pet.hp+50); log('🧪 恢复 50 HP'); if(FX)FX.healText('bMyImg',50); }
+  else if (k==='ether'){ pet.mp=Math.min(E.curMaxMp(pet),pet.mp+20); log('💎 恢复 20 MP'); if(FX)FX.healText('bMyImg',20); }
   else if (k==='antidote'){ log('🌿 使用了清醒草'); }
   else if (k==='candy'){ E.addExp(pet,60); log('🍬 获得 60 经验'); }
   E.S.bag[k]--; E.save(); this.busy=true; this.enemyTurn();
@@ -211,6 +231,12 @@ Battle.win = function(){
   var dropTxt = drops.map(function(d){ return (D.ITEMS[d.item]?D.ITEMS[d.item].emoji:'🎁')+D.ITEMS[d.item].name+'×'+d.n; }).join('、');
   E.save();
   log('🎉 胜利！获得 '+exp+' 经验、'+gold+' 金币'+(dropTxt?'；掉落 '+dropTxt:''));
+  /* 胜利特效：礼花 + 掉落光柱 + 升级光柱 */
+  if (FX){
+    FX.victory(this.isBoss);
+    FX.lootBeam();
+    if (ups && ups.length) (function(){ setTimeout(function(){ FX.levelUp('bMyImg'); }, 500); })();
+  }
   if (this.onEnd) this.onEnd({ win:true, exp:exp, gold:gold, ups:ups, quest:qp, drops:drops, isBoss:this.isBoss, mon:this.mon });
 };
 

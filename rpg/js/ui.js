@@ -423,7 +423,8 @@ UI.battleEnd = function(r){
       }).join('、')+'</span>';
     }
     if (r.ups && r.ups.length) msg+='<br><b style="color:#ffd35c">'+r.ups.join('<br>')+'</b>';
-    UI.dialog('战斗胜利', msg, function(){ UI.show('worldStage'); });
+    /* 延迟弹窗，先让胜利礼花特效展示 */
+    setTimeout(function(){ UI.dialog('战斗胜利', msg, function(){ UI.show('worldStage'); }); }, 850);
   } else {
     UI.dialog('战斗失败', '队伍体力不支，被送回村庄休整。<br>'+(r.lost?('损失了 '+r.lost+' 金币'):'别灰心，再试一次！'), function(){
       E.S.player.x=D.MAP_CFG.spawn.x; E.S.player.y=D.MAP_CFG.spawn.y;

@@ -195,6 +195,7 @@ window.__rpg = {
   /* 初始化世界地图（canvas/碰撞/输入）——必须在 show 之前 */
   var canvas=document.getElementById('worldCanvas');
   if (canvas && window.RPG_WORLD.init) window.RPG_WORLD.init(canvas);
+  if (window.RPG_FX && window.RPG_FX.init) window.RPG_FX.init();
   U.show('titleView');
   window.__rpgBootOk=true;
 })();

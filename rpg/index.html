@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 <style>
 #btnInstall{display:none;margin:12px auto 4px;padding:9px 20px;border-radius:22px;cursor:pointer;
   background:linear-gradient(135deg,#a78bfa,#7c3aed);border:1px solid rgba(255,255,255,.28);
@@ -68,6 +68,8 @@
 
   <!-- 战斗页 -->
   <section id="battleView" class="view hidden">
+    <canvas id="fxCanvas"></canvas>
+    <div id="fxFlash"></div>
     <div class="battle-scene">
       <div id="bCampaignBar" class="b-campaign-bar"></div>
       <div class="bs-top">
@@ -152,17 +154,18 @@
   <div id="toast" class="toast hidden"></div>
 </div>
 
-<script src="data/knowledge.js?v=7"></script>
-<script src="data/kg/g3.js?v=7"></script>
+<script src="data/knowledge.js?v=8"></script>
+<script src="data/kg/g3.js?v=8"></script>
 <script>window.KG_LOADED=window.KG_LOADED||{};window.KG_LOADED.g3=true;</script>
-<script src="js/data.js?v=7"></script>
-<script src="js/audio.js?v=7"></script>
-<script src="js/engine.js?v=7"></script>
-<script src="js/campaign.js?v=7"></script>
-<script src="js/world.js?v=7"></script>
-<script src="js/battle.js?v=7"></script>
-<script src="js/ui.js?v=7"></script>
-<script src="js/main.js?v=7"></script>
+<script src="js/data.js?v=8"></script>
+<script src="js/audio.js?v=8"></script>
+<script src="js/fx.js?v=8"></script>
+<script src="js/engine.js?v=8"></script>
+<script src="js/campaign.js?v=8"></script>
+<script src="js/world.js?v=8"></script>
+<script src="js/battle.js?v=8"></script>
+<script src="js/ui.js?v=8"></script>
+<script src="js/main.js?v=8"></script>
 <script>
 /* ===== PWA：Service Worker 注册 ===== */
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}

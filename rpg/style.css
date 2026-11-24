@@ -72,8 +72,11 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .action-btn small{font-size:10px;opacity:.8;}
 
 /* ---------- 战斗 ---------- */
-#battleView{background:linear-gradient(180deg,#2a1e46,#160e2c);overflow-y:auto;}
-.battle-scene{padding:14px 14px 20px;min-height:100%;}
+#battleView{background:linear-gradient(180deg,#2a1e46,#160e2c);overflow-y:auto;position:relative;}
+/* 特效覆盖层：覆盖可视区，不拦截点击 */
+#fxCanvas{position:fixed;top:0;left:0;z-index:5;pointer-events:none;}
+#fxFlash{position:fixed;inset:0;z-index:60;background:transparent;opacity:0;pointer-events:none;transition:opacity .3s ease-out;}
+.battle-scene{padding:14px 14px 20px;min-height:100%;position:relative;z-index:2;will-change:transform;}
 .bs-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-top:6px;}
 .bs-side{flex:1;text-align:center;padding:10px 6px;border-radius:16px;background:#ffffff0d;border:1px solid #ffffff1a;}
 .bs-side.enemy{background:#4a1e2a55;border-color:#ff7a7a44;}

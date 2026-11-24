@@ -378,9 +378,32 @@ World.draw = function(){
   /* 玩家（卡通角色图）：行走时上下起伏 + 左右朝向翻转 */
   var bob=this.moving ? Math.abs(Math.sin(this.walkPhase))*t*0.14 : 0;
   this.drawPlayer(t*1.6, bob);
+  /* 环境氛围粒子：萤火虫/星光（轻量，随时间浮动，不占状态） */
+  this.drawAmbient(now);
   /* 区域名提示 */
   var pz=this.zoneAt(Math.round(this.px),Math.round(this.py));
   if (this.zoneFn) this.zoneFn(pz ? pz.name : '');
+};
+/* 地图氛围粒子：漂浮的光点，营造森林萤火虫/魔法大陆氛围 */
+World.drawAmbient = function(now){
+  var c=this.ctx;
+  if (!this._amb){
+    this._amb=[];
+    for (var i=0;i<26;i++) this._amb.push({ x:Math.random(), y:Math.random(), p:Math.random()*6.28, s:0.6+Math.random()*1.2, warm:Math.random()<0.5 });
+  }
+  for (var i=0;i<this._amb.length;i++){
+    var a=this._amb[i];
+    /* 在可视区内循环漂移 */
+    var ax=((a.x + Math.sin(now/2600+a.p)*0.02)%1+1)%1;
+    var ay=((a.y + now/9000*a.s)%1+1)%1;
+    var px=ax*this.viewW, py=ay*this.viewH;
+    var glow=0.45+0.55*(0.5+0.5*Math.sin(now/380+a.p));
+    c.save(); c.globalAlpha=glow*0.7;
+    c.shadowBlur=8*a.s; c.shadowColor=a.warm?'#ffd873':'#9fe8ff';
+    c.fillStyle=a.warm?'#ffecae':'#d8f4ff';
+    c.beginPath(); c.arc(px,py,1.6*a.s,0,6.28); c.fill();
+    c.restore();
+  }
 };
 World.sprite = function(emoji, gx, gy, shadow, color){
   var c=this.ctx,t=this.tile;

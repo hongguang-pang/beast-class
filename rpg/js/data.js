@@ -111,7 +111,9 @@ function petImg(id, stageKey){
   var pd = window.RPG_PETDEX && window.RPG_PETDEX.byId(id);
   if (pd) return window.RPG_PETDEX.BASE + pd.file;
   /* 统一使用 RPG 独立目录的轻量静态 PNG（128x128），加载快、尺寸一致 */
-  return 'images/pets/' + id + '-' + stageKey + '.png';
+  var sc='';
+  try{ var m=location.search.match(/[?&]sharecode=([^&]+)/); if(m) sc='?sharecode='+encodeURIComponent(m[1]); }catch(e){}
+  return 'images/pets/' + id + '-' + stageKey + '.png' + sc;
 }
 function stageForLv(lv){
   var s = STAGES[0];
@@ -149,8 +151,17 @@ var BOSSES = [
   { key:'b05', name:'冰霜女王', file:'b05-frost-queen.png',   elem:'water', base:{hp:420,atk:46,def:28,spd:20}, exp:320, gold:400, quest:'q_boss5' },
   { key:'b06', name:'知识魔王', file:'b06-knowledge-lord.png',elem:'dark',  base:{hp:520,atk:52,def:32,spd:22}, exp:500, gold:666, quest:'q_boss6' }
 ];
-function monsterImg(m){ return '../images/mon/' + m.file; }
-function npcImg(n){ return '../images/npc/' + n.img; }
+/* 国内节点子资源请求需携带 sharecode：从当前页 URL 提取并追加到图片路径，
+ * GitHub Pages 等无 sharecode 的环境 getSharecode 返回空串，行为不变。 */
+function getSharecode(){
+  try{
+    var m=location.search.match(/[?&]sharecode=([^&]+)/);
+    return m ? ('?sharecode='+encodeURIComponent(m[1])) : '';
+  }catch(e){ return ''; }
+}
+var _sc=getSharecode();
+function monsterImg(m){ return '../images/mon/' + m.file + _sc; }
+function npcImg(n){ return '../images/npc/' + n.img + _sc; }
 /* Boss 也用 monsterImg（文件在 images/mon/） */
 
 /* ---------- 道具 ---------- */

@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 <style>
 #btnInstall{display:none;margin:12px auto 4px;padding:9px 20px;border-radius:22px;cursor:pointer;
   background:linear-gradient(135deg,#a78bfa,#7c3aed);border:1px solid rgba(255,255,255,.28);
@@ -41,6 +41,7 @@
         <button id="btnStory" class="text-btn">📜 世界观与剧情</button>
         <button id="btnPetPark" class="text-btn">🎪 伙伴乐园（动画宠物）</button>
         <button id="btnCodex" class="text-btn">📖 图鉴与成就勋章</button>
+        <button id="btnTalents" class="text-btn">🌟 技能天赋树</button>
         <button id="btnTutorial" class="text-btn">❔ 新手引导</button>
         <button id="btnInstall" class="text-btn" style="display:none">📲 安装到桌面</button>
         <button id="titleNew" class="text-btn">重新开始游戏</button>
@@ -62,6 +63,7 @@
         <button id="hudPark" class="hud-btn" title="伙伴乐园">🎪</button>
         <button id="hudCodex" class="hud-btn" title="图鉴与成就">📖</button>
         <button id="hudSwitch" class="hud-btn" title="切换宠物">🔄 换宠</button>
+        <button id="hudTalents" class="hud-btn" title="技能天赋树">🌟 天赋</button>
         <button id="hudParty" class="hud-btn">🐾 队伍</button>
         <button id="hudTutorial" class="hud-btn" title="新手引导">❔</button>
         <button id="hudMenu" class="hud-btn">❓</button>
@@ -151,6 +153,14 @@
     <div id="codexBody" class="codex-body"></div>
   </section>
 
+  <!-- 技能天赋树 -->
+  <section id="talentsView" class="view hidden">
+    <div class="panel-head"><h2>🌟 技能天赋树</h2><button id="btnTalentsBack" class="back-btn">← 返回</button></div>
+    <div id="talentTop" class="talent-top"></div>
+    <div id="talentTree" class="talent-tree"></div>
+    <p class="talent-tip">答对题目、首次掌握知识点即可获得 ✨知识星尘，用来点亮天赋。<br>天赋加成对全队生效，暴击与经验加成在战斗中直接体现。</p>
+  </section>
+
   <!-- 答题弹层 -->
   <div id="quizOverlay" class="overlay hidden">
     <div class="quiz-card">
@@ -167,6 +177,7 @@
     <div class="dlg-card">
       <div id="dlgTitle" class="dlg-title"></div>
       <div id="dlgText" class="dlg-text"></div>
+      <div id="dlgActions" class="dlg-actions"></div>
       <button id="dlgOk" class="big-btn gold">知道了</button>
     </div>
   </div>
@@ -210,20 +221,22 @@
 <script src="data/kg/g3.js?v=8"></script>
 <script>window.KG_LOADED=window.KG_LOADED||{};window.KG_LOADED.g3=true;</script>
 <script src="js/petdex.js?v=9"></script>
-<script src="js/data.js?v=12"></script>
+<script src="js/data.js?v=14"></script>
 <script src="js/audio.js?v=9"></script>
 <script src="js/fx.js?v=8"></script>
-<script src="js/engine.js?v=12"></script>
+<script src="js/engine.js?v=14"></script>
 <script src="js/codex.js?v=12"></script>
-<script src="js/campaign.js?v=8"></script>
+<script src="js/campaign.js?v=14"></script>
 <script src="js/story.js?v=12"></script>
+<script src="js/npcfriend.js?v=14"></script>
+<script src="js/talents.js?v=14"></script>
 <script src="js/mapart.js?v=13"></script>
-<script src="js/world.js?v=13"></script>
-<script src="js/battle.js?v=12"></script>
-<script src="js/ui.js?v=12"></script>
+<script src="js/world.js?v=14"></script>
+<script src="js/battle.js?v=14"></script>
+<script src="js/ui.js?v=14"></script>
 <script src="js/petdexpark.js?v=9"></script>
 <script src="js/tutorial.js?v=12"></script>
-<script src="js/main.js?v=12"></script>
+<script src="js/main.js?v=14"></script>
 <script>
 /* ===== PWA：Service Worker 注册 ===== */
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}

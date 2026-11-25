@@ -113,8 +113,9 @@ function curLevel(S){
 function recordAnswer(S, kid, correct){
   if (!S || !S.campaign) return { weak:false };
   var c = S.campaign;
-  var res = { weak:false, weakKid:kid, justCovered:false, cleared:false, weakLevel:0 };
+  var res = { weak:false, weakKid:kid, justCovered:false, newlyCovered:false, cleared:false, weakLevel:0 };
   if (correct){
+    if (!c.covered[kid]) res.newlyCovered = true;   /* 首次覆盖，用于天赋星尘结算 */
     c.covered[kid] = 1;
     res.justCovered = true;
     if (c.weak[kid]) delete c.weak[kid];   /* 答对即解除弱点锁定 */

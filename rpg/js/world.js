@@ -48,7 +48,9 @@ World.init = function(canvas){
 World.preloadImages = function(){
   var self=this;
   function load(src){ if(self.imgCache[src])return; var im=new Image(); im.src=src; self.imgCache[src]=im; }
-  load('../images/npc/player-hero.png');
+  var hero=D.npcImg({img:'player-hero.png'});   /* 带 sharecode 容错 */
+  load(hero);
+  this._heroSrc=hero;
   MAP.npcs.forEach(function(n){ load(D.npcImg(n)); });
   D.MONSTERS.concat(D.BOSSES).forEach(function(m){ load(D.monsterImg(m)); });
 };
@@ -365,9 +367,15 @@ World.draw = function(){
     var bob=Math.sin(now/500+m.phase)*2;
     self.imageSprite(D.monsterImg(mon), m.x, m.y, t*1.15, bob, 'rgba(0,0,0,.22)');
   });
-  /* NPC（用生成的卡通图，带名字标签；阴影统一深色避免浅色块） */
+  /* NPC（用生成的卡通图，带名字标签；好感度高时头顶显示爱心） */
   MAP.npcs.forEach(function(n){
     self.imageSprite(D.npcImg(n), n.x, n.y, t*1.5, 0, 'rgba(0,0,0,.3)', n.name);
+    if (window.RPG_NPCFRIEND && window.RPG_NPCFRIEND.level(n.name)>=1){
+      var hx=n.x*t-this.camX+t/2, hy=n.y*t-this.camY-t*0.55;
+      var pulse=0.85+0.15*Math.sin(now/300+n.x);
+      c.save(); c.globalAlpha=pulse; c.font=(t*0.5)+'px serif'; c.textAlign='center'; c.textBaseline='middle';
+      c.fillText(window.RPG_NPCFRIEND.level(n.name)>=3?'💗':'💛', hx, hy); c.restore();
+    }
   });
   /* Boss（用怪物图） */
   MAP.bosses.forEach(function(b){
@@ -505,7 +513,7 @@ World.drawPlayer = function(size, bob){
   /* 地面阴影（不随起伏浮动，贴地） */
   c.fillStyle='rgba(0,0,0,.35)';
   c.beginPath(); c.ellipse(sx+t/2, sy+t*0.86-(bob||0), size*0.3, size*0.1, 0, 0, Math.PI*2); c.fill();
-  var img=this.imgCache['../images/npc/player-hero.png'];
+  var img=this.imgCache[this._heroSrc||'../images/npc/player-hero.png'];
   var cx=sx+t/2, cy=sy+t/2-size*0.06;
   if (img && img.complete && img.naturalWidth>0){
     c.save();

@@ -33,6 +33,8 @@ function newSave(teamIds, grade){
     chestsOpened:{},
     bossDefeated:{},
     codex:{ pets:{}, mons:{}, ach:{} },
+    npcFriend:{},   /* NPC 好感度：name -> 数值 */
+    talents:{ cloud:0, spent:0, nodes:{} },  /* 天赋树：星尘/已投入/已解锁节点 */
     seenIntro:false
   };
 }
@@ -41,7 +43,10 @@ function maxMp(p){ return 30 + D.RAR[p.rar]*2; }
 function petStat(pet, key){
   var base = D.PET_BY_ID[pet.id];
   var growth = 1 + (pet.lv-1)*0.09;
-  return Math.round(base.base[key] * growth) + (key==='hp' ? D.RAR[base.rar]*4 : 0);
+  var val = base.base[key] * growth;
+  /* 天赋加成：atk/def/hp/spd 对应分支倍率 */
+  if (window.RPG_TALENTS && window.RPG_TALENTS.statMult) val *= window.RPG_TALENTS.statMult(key);
+  return Math.round(val) + (key==='hp' ? D.RAR[base.rar]*4 : 0);
 }
 function curMaxHp(pet){ return petStat(pet,'hp'); }
 function curMaxMp(pet){ return D.PET_BY_ID[pet.id] ? maxMp(D.PET_BY_ID[pet.id]) : 30; }
@@ -49,6 +54,7 @@ function curMaxMp(pet){ return D.PET_BY_ID[pet.id] ? maxMp(D.PET_BY_ID[pet.id]) 
 /* ---------- 经验与升级 ---------- */
 function expNeed(lv){ return Math.round(30 * Math.pow(lv, 1.45)); }
 function addExp(pet, amount, log){
+  if (window.RPG_TALENTS && window.RPG_TALENTS.expMult) amount=Math.round(amount*window.RPG_TALENTS.expMult());
   pet.exp += amount;
   var lvUp = 0;
   while (pet.lv < 60 && pet.exp >= expNeed(pet.lv)) {
@@ -87,6 +93,11 @@ function migrate(s){
   if (!s.codex.pets) s.codex.pets = {};
   if (!s.codex.mons) s.codex.mons = {};
   if (!s.codex.ach) s.codex.ach = {};
+  if (!s.npcFriend) s.npcFriend = {};
+  if (!s.talents) s.talents = { cloud:0, spent:0, nodes:{} };
+  if (typeof s.talents.cloud !== 'number') s.talents.cloud = 0;
+  if (typeof s.talents.spent !== 'number') s.talents.spent = 0;
+  if (!s.talents.nodes) s.talents.nodes = {};
   /* 老档初始化引导标记：已有队伍视为已引导过，避免突然弹教程 */
   if (typeof s.tutorialDone !== 'boolean') s.tutorialDone = false;
 }

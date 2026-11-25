@@ -98,6 +98,11 @@ Battle.resolveQuiz = function(correct){
   }
   if (correct){
     E.S.stats.quizzes++; E.S.stats.quizOk++;
+    /* 首次覆盖知识点 → 知识星尘（天赋树资源） */
+    if (ca && ca.newlyCovered && window.RPG_TALENTS){
+      var dust=window.RPG_TALENTS.earnFromCoverage(1);
+      if (dust>0) log('✨ 掌握新知识点，获得 '+dust+' 知识星尘（可用于解锁天赋）');
+    }
     E.save(); /* 立即检查答题类成就 */
     E.bumpSide('quiz');
     var moveN = D.moveName(pet.id, kind);
@@ -147,7 +152,10 @@ Battle.playerAttack = function(power, isSkill, kind){
   var pdef=D.PET_BY_ID[pet.id];
   var elem=pdef?pdef.elem:'light';
   var subjectCrit = isSkill && this.critNext;   /* 答题暴击：伤害翻倍 */
-  if (subjectCrit) power = power * 2;           /* 暴击 ×2 伤害 */
+  if (subjectCrit){
+    var cb = (window.RPG_TALENTS && window.RPG_TALENTS.critBonus) ? window.RPG_TALENTS.critBonus() : 0;
+    power = power * (2 + cb);                    /* 暴击 ×2（暗影/烈焰天赋可提升至 ×3+） */
+  }
   /* 特效：技能先魔法阵蓄力，再属性爆发；普攻为属性斩击 */
   if (FX){
     if (isSkill){
@@ -253,6 +261,7 @@ Battle.win = function(){
   else E.S.stats.kills++;
   /* 怪兽图鉴：记录每种怪兽/Boss 的击败次数 */
   if (window.RPG_CODEX) window.RPG_CODEX.recordMon(this.mon.key);
+  if (window.RPG_TALENTS && window.RPG_TALENTS.goldMult) gold=Math.round(gold*window.RPG_TALENTS.goldMult());
   E.S.gold+=gold;
   var ups=[];
   E.alivePets().forEach(function(p){ E.addExp(p, exp, ups); });

@@ -27,6 +27,8 @@ function startGame(teamIds, grade, isNew){
   W.resetToSave();
   /* 按当前年级知识点生成/校验剧情关卡 */
   initCampaignForGrade(E.S.grade, function(ok){
+    /* 天赋树：老档按已覆盖知识点一次性补发知识星尘（仅一次） */
+    if (window.RPG_TALENTS) window.RPG_TALENTS.seedFromSave();
     if (ok) U.updateHUD();
   });
   U.toast('欢迎来到知识大陆！靠近 NPC 按「对话」接任务');
@@ -147,6 +149,19 @@ function wire(){
     if(A)A.sfx('click');
     U.show(codexFrom);
     if(codexFrom==='worldStage' && window.RPG_WORLD) W.resetToSave();
+  });
+  /* 技能天赋树入口（标题页 + 地图 HUD） */
+  var talentsFrom='titleView';
+  function openTalents(from){ talentsFrom=from||'titleView'; U.show('talentsView'); }
+  var btnTalents=$('btnTalents');
+  if(btnTalents) btnTalents.addEventListener('click',function(){ openTalents('titleView'); });
+  var hudTalents=$('hudTalents');
+  if(hudTalents) hudTalents.addEventListener('click',function(){ if(A)A.sfx('click'); openTalents('worldStage'); });
+  var btnTalentsBack=$('btnTalentsBack');
+  if(btnTalentsBack) btnTalentsBack.addEventListener('click',function(){
+    if(A)A.sfx('click');
+    U.show(talentsFrom);
+    if(talentsFrom==='worldStage' && window.RPG_WORLD) W.resetToSave();
   });
   Array.prototype.forEach.call(document.querySelectorAll('.codex-tab'),function(b){
     b.addEventListener('click',function(){

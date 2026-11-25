@@ -16,28 +16,27 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){retur
  * Petdex 动画伙伴（_pd）：用 CSS steps 精灵动画渲染 idle 状态 */
 function petImgTag(id, stageKey, cls){
   var pet=D.PET_BY_ID[id]||{emoji:'❔'};
-  /* Petdex 动画宠物：注入 keyframes 并用精灵动画 div */
+  var wrap='<span class="petimg'+(cls?' '+cls:'')+'" title="'+esc(pet.name)+'">';
+  /* Petdex 动画宠物：百分比自适应精灵，按容器 contain 缩放，与静态图观感一致 */
   if (pet._pd && window.RPG_PETDEX){
     var PD=window.RPG_PETDEX, pd=PD.byId(id);
     if (pd){
       PD.injectKeyframes();
-      var scale=(cls&&cls.indexOf('battle')>=0)?2:1;
-      return '<span class="petimg'+(cls?' '+cls:'')+'" title="'+esc(pet.name)+'">'+
-        '<div class="pd-sprite" style="'+PD.spriteStyle(pd,0,scale,8)+'"></div></span>';
+      return wrap+'<span class="petimg-emoji">'+ (pet.emoji||'🐾') +'</span>'+
+        '<div class="pd-sprite pd-fluid" data-pd="'+id+'" data-state="idle" style="'+PD.fluidSpriteStyle(pd,0,8)+'"></div></span>';
     }
   }
   var fb=pet.emoji||'❔';
-  return '<span class="petimg'+(cls?' '+cls:'')+'" title="'+esc(pet.name)+'">'+
-    '<span class="petimg-emoji">'+fb+'</span>'+
+  return wrap+'<span class="petimg-emoji">'+fb+'</span>'+
     '<img src="'+D.petImg(id,stageKey)+'" alt="'+esc(pet.name)+'" '+
-    'onload="this.style.display=\'inline\';this.previousElementSibling.style.display=\'none\'" '+
+    'onload="this.style.display=\'block\';this.previousElementSibling.style.display=\'none\'" '+
     'onerror="this.style.display=\'none\';this.previousElementSibling.style.display=\'inline\'">'+
     '</span>';
 }
 
 UI.show = function(view){
   this.view=view;
-  ['titleView','partyView','worldStage','battleView','codexView','switchView'].forEach(function(v){
+  ['titleView','partyView','worldStage','battleView','codexView','switchView','talentsView'].forEach(function(v){
     var el=$(v); if(el) el.classList.toggle('hidden', v!==view);
   });
   if (view==='worldStage'){
@@ -50,6 +49,7 @@ UI.show = function(view){
   if (view==='partyView') UI.renderParty();
   if (view==='codexView') UI.renderCodex();
   if (view==='switchView') UI.renderSwitch();
+  if (view==='talentsView') UI.renderTalents();
   if (view==='battleView') UI.renderBattle();
   UI.updateHUD();
 };
@@ -313,6 +313,43 @@ UI.renderSwitch = function(){
 /* 音频快捷调用（避免与全局 A 变量冲突） */
 function A$(){ try{ if(window.RPG_AUDIO) window.RPG_AUDIO.sfx.apply(window.RPG_AUDIO,arguments); }catch(e){} }
 
+/* ---------- 技能天赋树 ---------- */
+UI.renderTalents = function(){
+  var T=window.RPG_TALENTS; if(!T) return;
+  var top=$('talentTop');
+  if(top) top.innerHTML='<div class="tt-dust">✨ 知识星尘 '+T.cloud()+'</div>'+
+    '<div class="tt-meta">已点亮 '+T.unlockedCount()+'/'+T.NODES.length+' 个天赋 · 累计投入 '+T.spent()+' 星尘</div>';
+  var tree=$('talentTree'); if(!tree) return;
+  tree.innerHTML=T.BRANCHES.map(function(br){
+    var pr=T.branchProgress(br.elem);
+    var nodes=T.NODES.filter(function(n){ return n.b===br.elem; });
+    var cards=nodes.map(function(n){
+      var un=T.isUnlocked(n.id), can=T.canUnlock(n.id);
+      var cls=un?'unlocked':(can?'available':'locked');
+      var lock=un?'✓':(!n.req||T.isUnlocked(n.req)?'':'🔒');
+      return '<div class="tn '+cls+'" data-id="'+n.id+'" style="--bc:'+br.color+'">'+
+        (lock?'<span class="tn-lock">'+lock+'</span>':'')+
+        '<span class="tn-ico">'+n.icon+'</span>'+
+        '<span class="tn-name">'+esc(n.name)+'</span>'+
+        '<span class="tn-desc">'+esc(n.desc)+'</span>'+
+        '<span class="tn-cost">'+(un?'已点亮':('✨'+n.cost))+'</span></div>';
+    }).join('');
+    return '<div class="tb" style="--bc:'+br.color+'">'+
+      '<div class="tb-head"><span class="tb-icon">'+br.icon+'</span>'+
+      '<span class="tb-name">'+br.name+'</span>'+
+      '<span class="tb-prog">'+pr.done+'/'+pr.total+'</span></div>'+
+      '<div class="tb-nodes">'+cards+'</div></div>';
+  }).join('');
+  Array.prototype.forEach.call(tree.querySelectorAll('.tn'),function(el){
+    el.addEventListener('click',function(){
+      var id=el.getAttribute('data-id');
+      var r=T.unlock(id);
+      if(r.ok){ UI.toast('🌟 '+r.msg); UI.renderTalents(); UI.updateHUD(); }
+      else { UI.toast(T.isUnlocked(id)?'这个天赋已点亮':(T.cloud()<T.NODE_BY_ID[id].cost?'星尘不足（还差 '+(T.NODE_BY_ID[id].cost-T.cloud())+'）':'需要先点亮前置天赋')); }
+    });
+  });
+};
+
 /* ---------- 战斗界面 ---------- */
 UI.renderBattle = function(){
   if(!B.active) return;
@@ -352,13 +389,16 @@ UI.renderBattle = function(){
     mImg.style.display='none';
     var ph0=$('bMyPh'); if(ph0) ph0.style.display='none';
     var PD=window.RPG_PETDEX; PD.injectKeyframes();
-    var wrap=mImg.parentNode;
+    /* 与静态图共用 96px bs-img 槽位：fluid 精灵按容器 contain，尺寸观感一致 */
     var ani=document.createElement('div');
-    ani.id='bMyPdAni'; ani.className='pd-sprite battle-pd';
+    ani.id='bMyPdAni'; ani.className='pd-sprite pd-fluid battle-pd';
+    ani.setAttribute('data-pd',p.id);
     ani.setAttribute('data-state','idle');
-    ani.setAttribute('data-scale','2.2');
-    ani.style.cssText=PD.spriteStyle(pdFight,0,2.2,8);
-    wrap.insertBefore(ani,mImg.nextSibling);
+    ani.style.cssText=PD.fluidSpriteStyle(pdFight,0,8);
+    /* 战斗槽位：绝对居中于 bs-img 同尺寸方框 */
+    ani.style.left='50%'; ani.style.top='50%'; ani.style.width='96px'; ani.style.height='96px';
+    ani.style.transform='translate(-50%,-50%)';
+    mImg.parentNode.insertBefore(ani,mImg.nextSibling);
   } else {
     mImg.onerror=function(){ this.style.display='none'; var ph=$('bMyPh'); if(ph)ph.style.display='flex'; };
     mImg.onload=function(){ this.style.display='block'; var ph=$('bMyPh'); if(ph)ph.style.display='none'; };
@@ -447,9 +487,20 @@ UI.openQuiz = function(kind, skill){
 function closeQuiz(){ $('quizOverlay').classList.add('hidden'); }
 
 /* ---------- 剧情对话 ---------- */
-UI.dialog = function(title, text, onClose){
+UI.dialog = function(title, text, onClose, actions){
   $('dlgTitle').textContent=title;
   $('dlgText').innerHTML=text;
+  /* 自定义动作按钮（如 NPC 闲聊/赠礼），每次打开先清空 */
+  var acts=$('dlgActions'); if(acts){ acts.innerHTML=''; }
+  if (acts && actions && actions.length){
+    actions.forEach(function(a){
+      var b=document.createElement('button');
+      b.className='dlg-act'+(a.alt?' alt':'');
+      b.innerHTML=a.label+(a.sub?'<small>'+a.sub+'</small>':'');
+      b.addEventListener('click',function(){ if(a.fn) a.fn(); });
+      acts.appendChild(b);
+    });
+  }
   $('dlgOverlay').classList.remove('hidden');
   var btn=$('dlgOk');
   var handler=function(){ $('dlgOverlay').classList.add('hidden'); btn.removeEventListener('click',handler); if(onClose)onClose(); };
@@ -467,17 +518,57 @@ function storyHeader(npc){
   if (!window.RPG_STORY) return '';
   var q=E.curQuest();
   var ctx={ quest:q, allDone:!q };
-  return window.RPG_STORY.npcLines(npc, ctx);
+  var html=window.RPG_STORY.npcLines(npc, ctx);
+  /* 去掉首行重复的「名字·称号」（已在 dlgTitle 显示） */
+  var firstBreak=html.indexOf('<br>');
+  if (firstBreak>=0 && html.indexOf(npc.name+' · ')>=0) html=html.slice(firstBreak+4);
+  return html;
 }
 UI.talkNPC = function(npc){
   if (npc.role==='shop'){
     UI.dialog(npc.name+' · 药剂师','欢迎光临！用金币买些补给吧。<br>活力药水 40 · 能量水晶 60 · 经验糖果 80',function(){
       UI.shop();
-    });
+    }, [{label:'💬 闲聊',fn:function(){ UI.npcChat(npc); }}]);
     return;
   }
-  /* 开场：先展示 NPC 身世与任务背景，确认后再进入任务分支 */
-  UI.dialog(storyTitle(npc), storyHeader(npc), function(){ UI.talkNPCQuest(npc); });
+  /* 开场：展示身世与任务背景 + 好感信息 + 闲聊/赠礼按钮 */
+  var NF=window.RPG_NPCFRIEND;
+  var extra = NF ? NF.friendBarHTML(npc.name) : '';
+  var actions = NF ? [
+    { label:'💬 闲聊', fn:function(){ UI.npcChat(npc); } },
+    { label:'🎁 赠礼', alt:true, sub:'30 金币', fn:function(){ UI.npcGift(npc); } }
+  ] : null;
+  UI.dialog(storyTitle(npc), storyHeader(npc)+extra, function(){ UI.talkNPCQuest(npc); }, actions);
+};
+
+/* NPC 闲聊：按好感度给台词，每次 +2 好感（有上限，避免刷） */
+UI.npcChat = function(npc){
+  var NF=window.RPG_NPCFRIEND; if(!NF) return;
+  var line=NF.chatLine(npc.name);
+  var r=NF.addFriend(npc.name,2);
+  var tip = r.levelUp ? '<br><b style="color:#c2185b">💖 好感提升！你们成为了「'+NF.LEVELS[r.level].name+'」</b>' : '';
+  UI.dialog(npc.name, '“'+esc(line)+'”'+tip+NF.friendBarHTML(npc.name),
+    function(){ UI.talkNPCQuest(npc); },
+    [{label:'🎁 赠礼',alt:true,sub:'30 金币',fn:function(){ UI.npcGift(npc); }}]);
+};
+
+/* NPC 赠礼：消耗 30 金币，好感 +8（喜好道具 +15） */
+UI.npcGift = function(npc){
+  var NF=window.RPG_NPCFRIEND; if(!NF) return;
+  if (!E.S || E.S.gold<30){ UI.toast('金币不足（需要 30）'); return; }
+  /* 挑一件背包里有的、NPC 喜欢的道具作为礼物，否则送通用礼盒 */
+  var likes=NF.giftInfo(npc.name), giftId=null;
+  for (var i=0;i<likes.length;i++){ if((E.S.bag[likes[i]]||0)>0){ giftId=likes[i]; break; } }
+  if (giftId) E.S.bag[giftId]--;
+  E.S.gold-=30;
+  var line=NF.giftLine(npc.name, giftId||'giftbox');
+  var r=NF.addFriend(npc.name, giftId?15:8);
+  E.save(); UI.updateHUD();
+  var giftName = giftId ? (window.RPG_DATA.ITEMS[giftId]&&window.RPG_DATA.ITEMS[giftId].name||giftId) : '精美礼盒';
+  var tip = r.levelUp ? '<br><b style="color:#c2185b">💖 好感提升！你们成为了「'+NF.LEVELS[r.level].name+'」</b>' : '';
+  UI.dialog(npc.name, '你送上了 '+esc(giftName)+'。<br>“'+esc(line)+'”'+tip+NF.friendBarHTML(npc.name),
+    function(){ UI.talkNPCQuest(npc); },
+    [{label:'💬 继续聊聊',fn:function(){ UI.npcChat(npc); }}]);
 };
 
 /* NPC 任务分支（原 talkNPC 主体） */

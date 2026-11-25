@@ -31,7 +31,20 @@
       'image-rendering:pixelated;'+
       'animation:pd_'+p.id+'_'+row+' '+dur+'s steps(7) infinite;';
   }
-  /* 注入所有 @keyframes（一次性） */
+  /* 百分比自适应精灵样式：精灵按容器 contain 缩放，与静态 PNG(object-fit:contain)
+   * 视觉尺寸一致，解决各界面大小/样式不统一的问题。容器需为正方形且给定宽高。 */
+  function fluidSpriteStyle(p, row, fps, noSize){
+    fps=fps||8;
+    var dur=(8/fps).toFixed(2);
+    var py = p.rows>1 ? (row/(p.rows-1)*100).toFixed(3) : 0;
+    return (noSize?'':'width:100%;height:100%;')+
+      'background-image:url('+BASE+p.file+');'+
+      'background-size:'+p.cols*100+'% '+p.rows*100+'%;'+
+      'background-repeat:no-repeat;'+
+      'background-position:0% '+py+'%;'+
+      'animation:pdf_'+p.id+'_'+row+' '+dur+'s steps(7) infinite;';
+  }
+  /* 注入所有 @keyframes（一次性）：像素版 + 百分比自适应版 */
   function injectKeyframes(){
     if(document.getElementById('pd-kf')) return;
     var css='';
@@ -39,6 +52,8 @@
       STATES.forEach(function(s){
         var row=s[1], dy=-row*p.fh;
         css+='@keyframes pd_'+p.id+'_'+row+'{from{background-position:0px '+dy+'px}to{background-position:'+(-7*p.fw)+'px '+dy+'px}}';
+        var py = p.rows>1 ? (row/(p.rows-1)*100).toFixed(3) : 0;
+        css+='@keyframes pdf_'+p.id+'_'+row+'{from{background-position:0% '+py+'%}to{background-position:100% '+py+'%}}';
       });
     });
     var st=document.createElement('style'); st.id='pd-kf'; st.textContent=css;
@@ -76,14 +91,24 @@
     injectKeyframes();
     var row=STATE_ROW[state]!=null?STATE_ROW[state]:0;
     var sp=el.querySelector('.pd-sprite')||el;
-    sp.style.cssText=spriteStyle(p,row,parseFloat(el.getAttribute('data-scale'))||1.6,8);
+    var py = p.rows>1 ? (row/(p.rows-1)*100).toFixed(3) : 0;
+    if (sp.classList && sp.classList.contains('pd-fluid')){
+      /* 仅刷新动画相关属性，不覆盖 width/height/left/top/transform（战斗槽位定位） */
+      sp.style.backgroundImage='url('+BASE+p.file+')';
+      sp.style.backgroundSize=p.cols*100+'% '+p.rows*100+'%';
+      sp.style.backgroundPosition='0% '+py+'%';
+      sp.style.animation='pdf_'+p.id+'_'+row+' 1s steps(7) infinite';
+    } else {
+      sp.style.cssText=spriteStyle(p,row,parseFloat(el.getAttribute('data-scale'))||1.6,8);
+    }
     el.setAttribute('data-state',state);
   }
 
   window.RPG_PETDEX={
     PETS:PETS, BY_ID:BY_ID, STATES:STATES, STATE_ROW:STATE_ROW,
     byId:byId, isPD:isPD, makeSprite:makeSprite, cardHTML:cardHTML,
-    spriteStyle:spriteStyle, setSpriteState:setSpriteState, injectKeyframes:injectKeyframes,
+    spriteStyle:spriteStyle, fluidSpriteStyle:fluidSpriteStyle,
+    setSpriteState:setSpriteState, injectKeyframes:injectKeyframes,
     BASE:BASE
   };
 })();

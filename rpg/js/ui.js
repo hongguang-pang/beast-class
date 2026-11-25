@@ -381,6 +381,9 @@ UI.renderBattle = function(){
   $('bEnemyHpTxt').textContent=B.monHp+'/'+B.monMaxHp;
   var pet=E.activePet(), p=D.PET_BY_ID[pet.id], st=D.stageForLv(pet.lv);
   $('bMyName').textContent=p.name+' Lv'+pet.lv;
+  /* 我方属性行：与敌方对称，位置一致 */
+  var myEl=D.ELEMENTS[p.elem];
+  if ($('bMyElem') && myEl){ $('bMyElem').textContent=myEl.icon+myEl.name; $('bMyElem').style.color=myEl.color; }
   var mImg=$('bMyImg');
   /* Petdex 战斗伙伴：隐藏静态 img，叠加精灵动画（idle，可被战斗动作切换） */
   var pdFight = (p._pd && window.RPG_PETDEX) ? window.RPG_PETDEX.byId(p.id) : null;
@@ -424,16 +427,30 @@ UI.renderBattle = function(){
   if($('bNormal')) $('bNormal').innerHTML='⚔️ '+esc(nNormal);
   if($('bSpell')) $('bSpell').innerHTML='✨ '+esc(nSpell)+'<small>答题·'+D.SKILLS.spell.mp+'MP</small>';
   if($('bUlt')) $('bUlt').innerHTML='🔥 '+esc(nUlt)+'<small>答题·'+D.SKILLS.ult.mp+'MP</small>';
-  /* 队伍切换小按钮 */
+  /* 队伍切换小按钮：显示真实宠物小图标（PD 静态首帧 / 普通宠 petImg），不再一律 🐾 */
   var row=$('bTeamRow');
   row.innerHTML=E.S.team.map(function(pp,i){
     var ppet=D.PET_BY_ID[pp.id];
-    return '<button data-i="'+i+'" class="'+(i===E.S.active?'on':'')+'" '+(pp.hp<=0?'disabled':'')+'>'+ppet.emoji+'</button>';
+    var ico=UI.teamPetImg(pp, ppet);
+    return '<button data-i="'+i+'" class="'+(i===E.S.active?'on':'')+'" '+(pp.hp<=0?'disabled':'')+'>'+ico+'</button>';
   }).join('');
   Array.prototype.forEach.call(row.querySelectorAll('button'),function(b){
     b.addEventListener('click',function(){ B.act('switch',+b.getAttribute('data-i')); });
   });
 };
+/* 队伍小图标：返回 <img> 或 emoji。PD 用静态首帧，普通宠用 petImg，都失败回退 emoji */
+UI.teamPetImg = function(pp, ppet){
+  var src='';
+  var pd=(ppet && ppet._pd && window.RPG_PETDEX) ? window.RPG_PETDEX.byId(pp.id) : null;
+  if (pd){
+    src=window.RPG_PETDEX.stillFrame(pp.id);   /* 已烘焙则同步返回 dataURL */
+  } else {
+    src=D.petImg(pp.id, D.stageForLv(pp.lv).key);
+  }
+  if (src) return '<img src="'+src+'" alt="" style="width:100%;height:100%;object-fit:contain;">';
+  return (ppet && ppet.emoji) || '🐾';   /* 首帧还没烘焙好，先显示 emoji；烘焙完成会触发重绘 */
+};
+
 UI.battleLog = function(s){
   var box=$('bLog'); if(!box) return;
   var d=document.createElement('div'); d.textContent=s;

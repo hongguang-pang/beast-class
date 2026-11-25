@@ -20,6 +20,19 @@ var Battle = {
 
 function log(s){ Battle.logLines.push(s); if(Battle.onLog) Battle.onLog(s); }
 
+/* Petdex 战斗伙伴动画：切换状态行，默认 700ms 后回到 idle */
+function pdAni(state, backMs){
+  var PD=window.RPG_PETDEX; if(!PD) return;
+  var pet=E.activePet(); if(!pet || !PD.isPD(pet.id)) return;
+  var holder=document.getElementById('bMyPdAni'); if(!holder) return;
+  PD.setSpriteState(holder,pet.id,state);
+  if(state!=='idle'){
+    setTimeout(function(){
+      if(holder && holder.parentNode) PD.setSpriteState(holder,pet.id,'idle');
+    }, backMs||750);
+  }
+}
+
 Battle.start = function(mon, lv, isBoss){
   this.active=true; this.mon=mon; this.monLv=lv; this.isBoss=!!isBoss;
   var scale = 1 + (lv-1)*0.16;
@@ -115,6 +128,7 @@ Battle.resolveQuiz = function(correct){
 
 Battle.playerAttack = function(power, isSkill, kind){
   var pet=E.activePet();
+  pdAni(isSkill?'jump':'runR', 600);   /* Petdex 伙伴攻击动作 */
   var pdef=D.PET_BY_ID[pet.id];
   var elem=pdef?pdef.elem:'light';
   /* 特效：技能先魔法阵蓄力，再属性爆发；普攻为属性斩击 */
@@ -162,6 +176,7 @@ Battle.enemyTurn = function(){
   }
   pet.hp = Math.max(0, pet.hp - dmg);
   E.save();
+  pdAni('failed', 700);   /* Petdex 伙伴受击动作 */
   /* 玩家受击特效：红闪 + 震屏 + 伤害飘字 */
   if (FX){ FX.slash('bMyImg', FX.palette.hit); FX.hurt('bMyImg'); FX.damage('bMyImg', dmg, this.enraged); }
   var eff = r.mult>1 ? ' 克制！×'+r.mult : (r.mult<1 ? ' 被抵抗…' : '');
@@ -214,6 +229,7 @@ Battle.petFaint = function(){
 
 Battle.win = function(){
   this.active=false;
+  pdAni('wave', 2000);   /* Petdex 伙伴胜利挥手 */
   var exp=this.mon.exp + this.monLv*3, gold=this.mon.gold;
   if (this.isBoss){ exp=this.mon.exp; gold=this.mon.gold; E.S.stats.bosses++; E.S.bossDefeated[this.mon.key]=1; }
   else E.S.stats.kills++;

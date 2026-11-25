@@ -12,9 +12,20 @@ var UI = {
 };
 function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-/* 宠物图统一渲染：图片加载失败时回退显示 emoji，绝不空白 */
+/* 宠物图统一渲染：图片加载失败时回退显示 emoji，绝不空白
+ * Petdex 动画伙伴（_pd）：用 CSS steps 精灵动画渲染 idle 状态 */
 function petImgTag(id, stageKey, cls){
   var pet=D.PET_BY_ID[id]||{emoji:'❔'};
+  /* Petdex 动画宠物：注入 keyframes 并用精灵动画 div */
+  if (pet._pd && window.RPG_PETDEX){
+    var PD=window.RPG_PETDEX, pd=PD.byId(id);
+    if (pd){
+      PD.injectKeyframes();
+      var scale=(cls&&cls.indexOf('battle')>=0)?2:1;
+      return '<span class="petimg'+(cls?' '+cls:'')+'" title="'+esc(pet.name)+'">'+
+        '<div class="pd-sprite" style="'+PD.spriteStyle(pd,0,scale,8)+'"></div></span>';
+    }
+  }
   var fb=pet.emoji||'❔';
   return '<span class="petimg'+(cls?' '+cls:'')+'" title="'+esc(pet.name)+'">'+
     '<span class="petimg-emoji">'+fb+'</span>'+
@@ -244,10 +255,26 @@ UI.renderBattle = function(){
   var pet=E.activePet(), p=D.PET_BY_ID[pet.id], st=D.stageForLv(pet.lv);
   $('bMyName').textContent=p.name+' Lv'+pet.lv;
   var mImg=$('bMyImg');
-  mImg.onerror=function(){ this.style.display='none'; var ph=$('bMyPh'); if(ph)ph.style.display='flex'; };
-  mImg.onload=function(){ this.style.display='block'; var ph=$('bMyPh'); if(ph)ph.style.display='none'; };
-  mImg.src=D.petImg(p.id,st.key);
-  var mPh=$('bMyPh'); if(mPh) mPh.textContent=p.emoji||'❔';
+  /* Petdex 战斗伙伴：隐藏静态 img，叠加精灵动画（idle，可被战斗动作切换） */
+  var pdFight = (p._pd && window.RPG_PETDEX) ? window.RPG_PETDEX.byId(p.id) : null;
+  var oldAni=$('bMyPdAni'); if(oldAni) oldAni.remove();
+  if (pdFight){
+    mImg.style.display='none';
+    var ph0=$('bMyPh'); if(ph0) ph0.style.display='none';
+    var PD=window.RPG_PETDEX; PD.injectKeyframes();
+    var wrap=mImg.parentNode;
+    var ani=document.createElement('div');
+    ani.id='bMyPdAni'; ani.className='pd-sprite battle-pd';
+    ani.setAttribute('data-state','idle');
+    ani.setAttribute('data-scale','2.2');
+    ani.style.cssText=PD.spriteStyle(pdFight,0,2.2,8);
+    wrap.insertBefore(ani,mImg.nextSibling);
+  } else {
+    mImg.onerror=function(){ this.style.display='none'; var ph=$('bMyPh'); if(ph)ph.style.display='flex'; };
+    mImg.onload=function(){ this.style.display='block'; var ph=$('bMyPh'); if(ph)ph.style.display='none'; };
+    mImg.src=D.petImg(p.id,st.key);
+    var mPh=$('bMyPh'); if(mPh) mPh.textContent=p.emoji||'❔';
+  }
   var hp=Math.round(pet.hp/E.curMaxHp(pet)*100);
   $('bMyHpFill').style.width=hp+'%';
   $('bMyHpTxt').textContent=pet.hp+'/'+E.curMaxHp(pet);

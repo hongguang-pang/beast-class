@@ -38,6 +38,26 @@ var PETS = [
   { id:'D207', name:'月影兽', emoji:'🌙', elem:'dark',  rar:'SSR', skill:'月影斩', base:{hp:124,atk:35,def:19,spd:25}, moves:{normal:'暗月刃', spell:'月蚀·暗影绞杀', ult:'永夜·月影终结' } },
   { id:'D209', name:'钢影机甲', emoji:'🤖', elem:'dark',  rar:'SR',  skill:'暮影扑', base:{hp:108,atk:30,def:16,spd:23}, moves:{normal:'暗影扑咬', spell:'暮色·狂影袭', ult:'深渊·影狼噬魂' } }
 ];
+/* 追加 24 只 Petdex 动画伙伴（私下娱乐用，作为可出战宠物）。
+ * 元数据来自 window.RPG_PETDEX，属性做平衡：按 elem 分配，稀有度多为 R/SR。
+ * id 前缀 PD 用于 UI 走精灵动画渲染分支。 */
+if (window.RPG_PETDEX){
+  var _rarPool=['R','R','R','SR','R','R','R','SR','SR','R','R','R','SR','SSR','R','R','R','R','SR','R','R','R','SR','SSR'];
+  var _hp=[100,112,120,104,96,108,116,102,106,114,118,110,108,130,100,122,116,106,112,110,98,108,124,132];
+  var _atk=[24,22,20,30,32,26,22,28,29,21,25,24,27,36,30,23,22,26,25,24,31,26,28,34];
+  var _def=[16,18,20,14,13,17,19,15,16,19,18,17,16,20,14,20,19,16,17,17,13,16,19,21];
+  var _spd=[18,16,12,24,26,20,14,22,23,12,17,18,21,20,26,14,15,20,18,17,24,18,22,25];
+  var _cn=['哆啦A梦','奶茶水獭','噜噜水豚','皮卡丘','卡比','吉伊卡哇','龙猫','柯南','初音未来','QQ企鹅','柴犬','奶蛙','月芽狐','蓝龙琪拉','故障猫','肉包','毛团','呆呆鸟','墨团团','奶蛙仔','饼干猫','小蓝鲨','锦鸾','银月byte'];
+  window.RPG_PETDEX.PETS.forEach(function(pd,i){
+    PETS.push({
+      id:pd.id, name:_cn[i]||pd.name, emoji:'🐾', elem:pd.elem, rar:_rarPool[i],
+      skill:'伙伴技能',
+      base:{hp:_hp[i],atk:_atk[i],def:_def[i],spd:_spd[i]},
+      moves:{ normal:'伙伴·扑击', spell:'伙伴·知识波', ult:'伙伴·流星击' },
+      _pd:true
+    });
+  });
+}
 var PET_BY_ID = {}; PETS.forEach(function(p){ PET_BY_ID[p.id] = p; });
 /* 取某宠物某类招式的炫酷名称（normal/spell/ult），无则回退通用名 */
 function moveName(petId, kind){
@@ -55,6 +75,9 @@ var STAGES = [
   { lv:36, key:'ultimate',name:'终极' }
 ];
 function petImg(id, stageKey){
+  /* Petdex 动画伙伴：返回精灵图路径，由 UI 走 CSS steps 动画分支 */
+  var pd = window.RPG_PETDEX && window.RPG_PETDEX.byId(id);
+  if (pd) return window.RPG_PETDEX.BASE + pd.file;
   /* 统一使用 RPG 独立目录的轻量静态 PNG（128x128），加载快、尺寸一致 */
   return 'images/pets/' + id + '-' + stageKey + '.png';
 }

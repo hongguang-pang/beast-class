@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 <style>
 #btnInstall{display:none;margin:12px auto 4px;padding:9px 20px;border-radius:22px;cursor:pointer;
   background:linear-gradient(135deg,#a78bfa,#7c3aed);border:1px solid rgba(255,255,255,.28);
@@ -38,6 +38,7 @@
         <div id="starterGrid" class="starter-grid"></div>
         <button id="btnStartAdventure" class="big-btn gold" disabled>开始冒险</button>
         <button id="titleContinue" class="big-btn ghost" style="display:none">继续上次冒险</button>
+        <button id="btnPetPark" class="text-btn">🎪 伙伴乐园（动画宠物）</button>
         <button id="btnInstall" class="text-btn" style="display:none">📲 安装到桌面</button>
         <button id="titleNew" class="text-btn">重新开始游戏</button>
       </div>
@@ -55,6 +56,7 @@
       </div>
       <div class="hud-right">
         <button id="hudMusic" class="hud-btn" title="音乐开关">🔊</button>
+        <button id="hudPark" class="hud-btn" title="伙伴乐园">🎪</button>
         <button id="hudParty" class="hud-btn">🐾 队伍</button>
         <button id="hudMenu" class="hud-btn">❓</button>
       </div>
@@ -157,15 +159,17 @@
 <script src="data/knowledge.js?v=8"></script>
 <script src="data/kg/g3.js?v=8"></script>
 <script>window.KG_LOADED=window.KG_LOADED||{};window.KG_LOADED.g3=true;</script>
-<script src="js/data.js?v=8"></script>
+<script src="js/petdex.js?v=9"></script>
+<script src="js/data.js?v=9"></script>
 <script src="js/audio.js?v=9"></script>
 <script src="js/fx.js?v=8"></script>
 <script src="js/engine.js?v=8"></script>
 <script src="js/campaign.js?v=8"></script>
 <script src="js/world.js?v=8"></script>
 <script src="js/battle.js?v=8"></script>
-<script src="js/ui.js?v=8"></script>
-<script src="js/main.js?v=8"></script>
+<script src="js/ui.js?v=9"></script>
+<script src="js/petdexpark.js?v=9"></script>
+<script src="js/main.js?v=9"></script>
 <script>
 /* ===== PWA：Service Worker 注册 ===== */
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}

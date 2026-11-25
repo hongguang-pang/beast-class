@@ -242,3 +242,26 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .b-campaign-bar .bcb-prog{color:#8fe3a8;}
 .b-campaign-bar .bcb-global{color:#9d90b5;}
 .b-campaign-bar .bcb-weak{color:#ff9db1;background:#ff5c7a22;padding:1px 6px;border-radius:8px;}
+
+/* ===== Petdex 动画精灵（伙伴乐园 / 选队 / 战斗通用） ===== */
+.pd-sprite{display:inline-block;image-rendering:pixelated;background-repeat:no-repeat;flex:0 0 auto;}
+.petimg .pd-sprite{vertical-align:middle;border-radius:8px;}
+/* 战斗中我方伙伴动画：覆盖在原 img 位置并居中 */
+.battle-pd{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;}
+
+/* ===== 伙伴乐园 ===== */
+#petdexParkView{padding:14px 12px 40px;overflow-y:auto;height:100%;background:radial-gradient(circle at 50% 0%,#2a1d4a 0%,#12101f 70%);}
+.pd-park-tip{font-size:12px;color:#b9a9d6;text-align:center;margin:4px 0 12px;}
+.pd-tabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;position:sticky;top:0;z-index:5;
+  background:#12101fee;padding:8px 0;border-radius:10px;}
+.pd-tab{background:#241d3d;border:1px solid #40356b;color:#cbb8ee;border-radius:16px;
+  padding:6px 12px;font-size:12px;cursor:pointer;transition:.15s;}
+.pd-tab:hover{background:#3a2d63;}
+.pd-tab.on{background:linear-gradient(135deg,#a78bfa,#7c3aed);border-color:#c4b0ff;color:#fff;font-weight:700;}
+.pd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+.pd-card{background:#1c1732;border:1px solid #3a2d63;border-radius:12px;padding:8px 6px;text-align:center;cursor:pointer;transition:.15s;}
+.pd-card:hover{border-color:#a78bfa;transform:translateY(-2px);box-shadow:0 6px 18px #7c3aed44;}
+.pd-stage{height:112px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#2b2149,#1a1430);border-radius:9px;margin-bottom:6px;overflow:hidden;}
+.pd-name{font-size:13px;font-weight:700;color:#ffe08a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pd-slug{font-size:10px;color:#9d90b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}

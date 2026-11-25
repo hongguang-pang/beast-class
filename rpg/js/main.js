@@ -104,6 +104,11 @@ function wire(){
   /* 答题关闭（不允许中途退出，强制答） */
 
   /* HUD 按钮 */
+  var hudPark=$('hudPark');
+  if(hudPark) hudPark.addEventListener('click',function(){
+    if(A)A.sfx('click');
+    if(window.RPG_PETDEXPARK) window.RPG_PETDEXPARK.show();
+  });
   $('hudParty').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('partyView'); });
   $('btnPartyBack').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('worldStage'); });
   $('btnAction').addEventListener('click',function(){ W.interact(); });
@@ -124,6 +129,11 @@ function wire(){
 
   /* 标题页按钮 */
   U.renderTitle();
+  var btnPark=$('btnPetPark');
+  if(btnPark) btnPark.addEventListener('click',function(){
+    if(A)A.unlock();
+    if(window.RPG_PETDEXPARK) window.RPG_PETDEXPARK.show();
+  });
   $('titleContinue').addEventListener('click',function(){
     E.load(); U.show('worldStage'); W.resetToSave();
     if(A){ A.unlock(); A.playBGM('world'); }

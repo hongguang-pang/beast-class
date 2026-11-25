@@ -669,7 +669,7 @@ UI.shop = function(){
 UI.battleEnd = function(r){
   if (r.win){
     var msg='🎉 胜利！<br>获得 '+r.exp+' 经验 · '+r.gold+' 金币'+
-      '<br><span style="color:#6ab8ff">💧 全队 MP 已回满，准备下一场战斗</span>';
+      '<br><span style="color:#6ab8ff">💧 全队回复 25% MP，准备下一场战斗</span>';
     if (r.drops && r.drops.length){
       msg+='<br><span style="color:#8fe3a8">🎁 掉落：'+r.drops.map(function(d){
         var it=D.ITEMS[d.item]; return (it?it.emoji:'🎁')+(it?it.name:d.item)+'×'+d.n;

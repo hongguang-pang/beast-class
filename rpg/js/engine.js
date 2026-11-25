@@ -243,11 +243,30 @@ function pickQuestion(grade, usedTexts){
   for (var sb in bank){ if ((bank[sb]||[]).indexOf(q)>=0){ fq.subj = sb; break; } }
   return fq;
 }
+/* v6.1.1：题库 a 索引系统性错误（约74%的题被错写成 0），正确答案在 ans 字段。
+ * 统一校正：ans 为 A/B/C 字母 → 用字母定位；ans 为文本 → 去选项里匹配；都失败才回退 a。 */
+function correctChoiceIndex(q){
+  var opts=q.o||[];
+  var raw=String(q.ans==null?'':q.ans).trim();
+  /* 单个字母 A~J */
+  if (/^[A-Ja-j]$/.test(raw)){
+    var idx=raw.toUpperCase().charCodeAt(0)-65;
+    if (idx<opts.length) return idx;
+  }
+  /* 文本答案：去选项里找一致项（忽略空白/大小写） */
+  var norm=function(s){ return String(s==null?'':s).replace(/\s+/g,'').toLowerCase(); };
+  var na=norm(raw);
+  if (na) for (var i=0;i<opts.length;i++) if (norm(opts[i])===na) return i;
+  /* 回退：a 字段（部分老题 ans 缺失时仍可用） */
+  return q.a|0;
+}
+
 /* 把题库原始题格式化为可作答结构（选项打散/填空转选择）；供 pickQuestion 与关卡战役复用 */
 function formatBankQ(q){
   var out = { q:q.q, tp:q.tp, kid:q.kid, kn:q.kn, exp:q.exp, f:q.f, unit:q.unit, uidx:q.uidx };
   if (q.tp==='choice' && q.o && q.o.length){
-    var opts = q.o.map(function(t,i){ return {t:t, right:i===q.a}; });
+    var right = correctChoiceIndex(q);
+    var opts = q.o.map(function(t,i){ return {t:t, right:i===right}; });
     for (var i=opts.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=opts[i];opts[i]=opts[j];opts[j]=t; }
     out.o = opts.map(function(x){return x.t;}); out.a = opts.findIndex(function(x){return x.right;});
     out.tp='choice';

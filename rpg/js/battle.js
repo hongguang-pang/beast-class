@@ -266,9 +266,12 @@ Battle.win = function(){
   E.S.gold+=gold;
   var ups=[];
   E.alivePets().forEach(function(p){ E.addExp(p, exp, ups); });
-  /* v6.1：战斗胜利后全队存活宠物回复 MP（HP 不自动回，鼓励用药/技能规划）。
-   * 回满 MP，让下一场能立即放知识技能，避免"打完没 MP 只能普攻"的卡壳。 */
-  E.alivePets().forEach(function(p){ p.mp=E.curMaxMp(p); });
+  /* v6.1.1：战斗胜利后全队存活宠物回复 25% MP（HP 不自动回）。
+   * 按最大 MP 的 25% 回复，超过上限截断到 100%——既缓解卡壳又保留资源管理。 */
+  E.alivePets().forEach(function(p){
+    var mx=E.curMaxMp(p);
+    p.mp=Math.min(mx, p.mp + Math.round(mx*0.25));
+  });
   var qp = E.bumpQuest('kill', this.mon.key);
   if (this.isBoss) E.bumpQuest('boss', this.mon.key);
   /* 支线进度：击杀 / Boss / 等级 */

@@ -123,10 +123,14 @@ function npcImg(n){ return '../images/npc/' + n.img; }
 
 /* ---------- 道具 ---------- */
 var ITEMS = {
-  potion:  { name:'活力药水', emoji:'🧪', desc:'恢复一只宠物 50 HP', price:40 },
-  ether:   { name:'能量水晶', emoji:'💎', desc:'恢复一只宠物 20 MP', price:60 },
-  antidote:{ name:'清醒草',   emoji:'🌿', desc:'解除异常状态', price:30 },
-  candy:   { name:'经验糖果', emoji:'🍬', desc:'给一只宠物 +60 经验', price:80 }
+  potion:  { name:'活力药水', emoji:'🧪', desc:'恢复一只宠物 50 HP', price:40,
+    detail:'战斗中给当前出战宠物恢复 50 点生命（不超过上限）。血条见底前使用最划算，打完仗不会自动回血。' },
+  ether:   { name:'能量水晶', emoji:'💎', desc:'恢复一只宠物 20 MP', price:60,
+    detail:'给当前出战宠物恢复 20 点能量。其实普攻和答题技能命中各回 2 点 MP，升级还会回满——没药时持续攻击也能慢慢攒回来。' },
+  antidote:{ name:'清醒草',   emoji:'🌿', desc:'解除异常状态', price:30,
+    detail:'用于解除宠物的异常状态（如眩晕、中毒）。当前版本怪物较少施加异常，可以先备着以防万一。' },
+  candy:   { name:'经验糖果', emoji:'🍬', desc:'给一只宠物 +60 经验', price:80,
+    detail:'给当前出战宠物加 60 点经验，经验够了会当场升级并回满 HP/MP。打 Boss 必掉，开箱也有机会拿到。' }
 };
 
 /* ---------- 战斗掉落表 ---------- */

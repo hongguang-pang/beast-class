@@ -425,7 +425,14 @@ UI.shop = function(){
   var S=E.S;
   var items=Object.keys(D.ITEMS).map(function(k){
     var it=D.ITEMS[k];
-    return '<div class="shop-item"><span>'+it.emoji+' '+it.name+'</span><span>'+it.price+' 金币</span><button data-k="'+k+'">买</button></div>';
+    return '<div class="shop-item">'+
+      '<div class="shop-top">'+
+        '<span class="shop-name">'+it.emoji+' '+esc(it.name)+'</span>'+
+        '<span class="shop-price">'+it.price+' 金币</span>'+
+        '<button data-k="'+k+'">买</button>'+
+      '</div>'+
+      '<div class="shop-detail">'+esc(it.detail||it.desc)+'</div>'+
+    '</div>';
   }).join('');
   $('shopList').innerHTML=items;
   $('shopGold').textContent=S.gold;

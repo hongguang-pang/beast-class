@@ -168,7 +168,8 @@ function openBattleBag(){
   var list=Object.keys(D.ITEMS).map(function(k){
     var it=D.ITEMS[k];
     return '<button class="bb-item" data-k="'+k+'" '+((S.bag[k]||0)<=0?'disabled':'')+'>'+
-      it.emoji+' '+it.name+' <span>×'+(S.bag[k]||0)+'</span></button>';
+      '<span class="bb-name">'+it.emoji+' '+it.name+' <b>×'+(S.bag[k]||0)+'</b></span>'+
+      '<span class="bb-detail">'+it.detail+'</span></button>';
   }).join('');
   $('battleBagList').innerHTML=list;
   $('battleBagOverlay').classList.remove('hidden');

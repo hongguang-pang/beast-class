@@ -1,7 +1,7 @@
 /* ============================================================
- * 精灵大陆 · 知识远征  —  音频（Web Audio 程序化合成）
- * 不依赖任何外部音频文件，PWA 离线可用
- * 地图轻音乐 / 战斗紧张乐 / Boss 乐 + 各类音效
+ * 精灵大陆 · 知识远征  —  音频
+ * BGM：Web Audio 程序化合成（连续循环，离线可用）
+ * 音效：Kenney CC0 真实 ogg 优先，加载失败自动回退程序化合成
  * ============================================================ */
 'use strict';
 (function(){
@@ -9,6 +9,16 @@
   var curScene='none', nextT=0, step=0;
   var MUTE_KEY='rpg.audio.muted';
   try{ muted = localStorage.getItem(MUTE_KEY)==='1'; }catch(e){}
+
+  /* ---- Kenney 真实音效：语义名 -> 音频文件 ---- */
+  var SFX_FILES={
+    click:'click', hit:'hit', skill:'skill', correct:'correct', wrong:'wrong',
+    win:'win', levelup:'levelup', chest:'chest', encounter:'encounter',
+    stun:'stun', target:'target', run:'run', heal:'heal'
+  };
+  var sfxBuf={};          // 解码后的 AudioBuffer 缓存
+  var sfxTried={};        // 是否尝试加载过（避免重复请求）
+  sfxBuf.__base='audio/sfx/';
 
   function ensure(){
     if(ctx) return ctx;
@@ -24,6 +34,32 @@
   }
   function midi(n){ return 440*Math.pow(2,(n-69)/12); }
   function applyMute(){ if(master) master.gain.value=muted?0:0.45; }
+
+  /* ---- Kenney 真实音效加载（fetch + decode，失败静默回退） ---- */
+  function loadSfx(name){
+    var file=SFX_FILES[name];
+    if(!file || sfxTried[name]) return;
+    sfxTried[name]=true;
+    if(!ctx) return;
+    var url=sfxBuf.__base+file+'.ogg';
+    fetch(url).then(function(r){ if(!r.ok) throw 0; return r.arrayBuffer(); })
+      .then(function(ab){ return ctx.decodeAudioData(ab); })
+      .then(function(buf){ sfxBuf[name]=buf; })
+      .catch(function(){ /* 解码/网络失败 -> 后续用程序化兜底 */ });
+  }
+  function preloadSfx(){ for(var n in SFX_FILES) loadSfx(n); }
+  /* 播放真实音效；返回是否成功播放 */
+  function playSfxReal(name, vol){
+    var buf=sfxBuf[name];
+    if(!buf||!ctx) return false;
+    try{
+      var src=ctx.createBufferSource(); src.buffer=buf;
+      var g=ctx.createGain(); g.gain.value=(vol==null?0.9:vol);
+      src.connect(g); g.connect(master);
+      src.start(0);
+      return true;
+    }catch(e){ return false; }
+  }
 
   /* 单个音符（带 ADSR 包络，可选滑音） */
   function note(freq, dur, type, vol, when, glideTo){
@@ -105,6 +141,7 @@
   A.unlock=function(){
     var c=ensure();
     if(c && c.state==='suspended') c.resume();
+    if(c) preloadSfx();
     return !!c;
   };
   A.playBGM=function(scene){
@@ -129,6 +166,8 @@
     if(muted) return;
     ensure(); if(!ctx) return;
     if(ctx.state==='suspended') ctx.resume();
+    /* 真实音效优先（未加载好则本次先用程序化，随后自动可用） */
+    if(SFX_FILES[name] && sfxBuf[name] && playSfxReal(name)) return;
     var t=ctx.currentTime;
     switch(name){
       case 'click':  note(880,0.06,'sine',0.12,t); break;

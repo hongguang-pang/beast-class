@@ -1,5 +1,5 @@
 /* 精灵大陆 · 知识远征 离线缓存（scope=/rpg/，与主站/诊断站隔离） */
-const VERSION = 'rpg-v1.8.0';
+const VERSION = 'rpg-v1.9.0';
 const SHELL = [
   './','./index.html','./style.css?v=8','./manifest.webmanifest',
   './icons/icon-192.png','./icons/icon-512.png','./icons/icon-192-maskable.png','./icons/icon-512-maskable.png',
@@ -9,7 +9,8 @@ const SHELL = [
   './data/knowledge.js?v=8','./data/kg/g1.js?v=8','./data/kg/g2.js?v=8','./data/kg/g3.js?v=8',
   './data/kg/g4.js?v=8','./data/kg/g5.js?v=8','./data/kg/g6.js?v=8','./data/kg/g7.js?v=8',
   './data/kg/g8.js?v=8','./data/kg/g9.js?v=8','./data/kg/g10.js?v=8','./data/kg/g11.js?v=8','./data/kg/g12.js?v=8',
-  './js/data.js?v=8','./js/audio.js?v=8','./js/fx.js?v=8','./js/engine.js?v=8','./js/campaign.js?v=8','./js/world.js?v=8','./js/battle.js?v=8','./js/ui.js?v=8','./js/main.js?v=8',
+  './js/data.js?v=8','./js/audio.js?v=9','./js/fx.js?v=8','./js/engine.js?v=8','./js/campaign.js?v=8','./js/world.js?v=8','./js/battle.js?v=8','./js/ui.js?v=8','./js/main.js?v=8',
+  './audio/sfx/click.ogg','./audio/sfx/hit.ogg','./audio/sfx/skill.ogg','./audio/sfx/correct.ogg','./audio/sfx/wrong.ogg','./audio/sfx/win.ogg','./audio/sfx/levelup.ogg','./audio/sfx/chest.ogg','./audio/sfx/encounter.ogg','./audio/sfx/stun.ogg','./audio/sfx/target.ogg','./audio/sfx/run.ogg','./audio/sfx/heal.ogg',
   './images/npc/player-hero.png','./images/npc/npc-chief.png','./images/npc/npc-explorer.png','./images/npc/npc-trainer.png','./images/npc/npc-scholar.png','./images/npc/npc-pharmacist.png',
   './images/mon/e11-fire-spirit.png','./images/mon/e12-moss-golem.png','./images/mon/e13-water-slime.png','./images/mon/e14-shadow-bat.png','./images/mon/e15-star-sprite.png','./images/mon/e16-crystal-golem.png'
 ];

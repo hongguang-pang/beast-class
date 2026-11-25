@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 <style>
 #btnInstall{display:none;margin:12px auto 4px;padding:9px 20px;border-radius:22px;cursor:pointer;
   background:linear-gradient(135deg,#a78bfa,#7c3aed);border:1px solid rgba(255,255,255,.28);
@@ -69,6 +69,12 @@
     </div>
     <div id="hudQuest" class="hud-quest"></div>
     <div id="hudTeam" class="hud-team"></div>
+    <!-- 小地图 + 区域横幅 -->
+    <div id="miniMapBox" class="mini-map-box">
+      <canvas id="miniMap" width="132" height="99"></canvas>
+      <div class="mm-label">🗺️ 知识大陆</div>
+    </div>
+    <div id="zoneBanner" class="zone-banner"><span id="zoneBannerName"></span><small id="zoneBannerSub"></small></div>
     <!-- 摇杆与动作 -->
     <div id="joyBase" class="joy-base"><div id="joyKnob" class="joy-knob"></div></div>
     <button id="btnAction" class="action-btn">对话<br><small>交互</small></button>
@@ -211,7 +217,8 @@
 <script src="js/codex.js?v=12"></script>
 <script src="js/campaign.js?v=8"></script>
 <script src="js/story.js?v=12"></script>
-<script src="js/world.js?v=8"></script>
+<script src="js/mapart.js?v=13"></script>
+<script src="js/world.js?v=13"></script>
 <script src="js/battle.js?v=12"></script>
 <script src="js/ui.js?v=12"></script>
 <script src="js/petdexpark.js?v=9"></script>

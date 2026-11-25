@@ -34,6 +34,8 @@ function key(x,y){ return x+','+y; }
 World.init = function(canvas){
   this.canvas = canvas; this.ctx = canvas.getContext('2d');
   this.buildObstacles();
+  /* 烘焙整张地图美术底图（一次绘制，运行时零成本） */
+  if (window.RPG_MAPART) window.RPG_MAPART.build(this.obstacles);
   this.resetToSave();
   this.buildMobs();
   this.preloadImages();
@@ -88,7 +90,14 @@ World.buildObstacles = function(){
     var inVillage = Math.abs(x-20)<=8 && y>=36;
     if (inVillage) continue;
     var r = hash(x,y);
-    if (r < 0.10) this.obstacles[key(x,y)] = (hash(x+99,y)>0.5?'🌳':'🪨');
+    if (r < 0.062){
+      /* 按区域决定树石比例：草原/森林多树，沙漠/高地多石 */
+      var z=MAP.zones[0];
+      for(var zi=0;zi<MAP.zones.length;zi++){ var zz=MAP.zones[zi];
+        if(y>=zz.y0&&y<zz.y1&&x>=zz.x0&&x<zz.x1){ z=zz; break; } }
+      var treeChance = (z.id===0||z.id===1) ? 0.78 : (z.id===4 ? 0.5 : 0.28);
+      this.obstacles[key(x,y)] = (hash(x+99,y)<treeChance?'🌳':'🪨');
+    }
   }
   /* NPC/Boss/宝箱/出生点强制可走 */
   MAP.npcs.forEach(n=>delete this.obstacles[key(n.x,n.y)]);
@@ -322,28 +331,26 @@ World.markMobDefeated = function(){
 World.draw = function(){
   var c=this.ctx, t=this.tile;
   var camX0=this.camX, camY0=this.camY;
+  var now=Date.now();
   c.clearRect(0,0,this.viewW,this.viewH);
-  var startX=Math.floor(this.camX/t), startY=Math.floor(this.camY/t);
-  var endX=Math.ceil((this.camX+this.viewW)/t), endY=Math.ceil((this.camY+this.viewH)/t);
-  /* 地块 */
-  for (var y=startY;y<=endY;y++) for (var x=startX;x<=endX;x++){
-    if (x<0||y<0||x>=MAP.cols||y>=MAP.rows) continue;
-    var z=this.zoneAt(x,y);
-    var sx=Math.round(x*t-this.camX), sy=Math.round(y*t-this.camY);
-    c.fillStyle=z.color;
-    c.fillRect(sx,sy,t+1,t+1);
-    /* 网格纹理 */
-    if ((x+y)%2===0){ c.fillStyle='rgba(255,255,255,.025)'; c.fillRect(sx,sy,t,t); }
-    /* 障碍 */
-    var ob=this.obstacles[key(x,y)];
-    if (ob){
-      c.font=(t*0.86)+'px serif'; c.textAlign='center'; c.textBaseline='middle';
-      c.fillText(ob, sx+t/2, sy+t/2+1);
+  /* 烘焙好的美术底图：一次贴图，含地形/道路/水系/村庄/树石/区域名 */
+  var blitted = window.RPG_MAPART ? window.RPG_MAPART.blit(c, this.camX, this.camY, this.viewW, this.viewH) : false;
+  if (!blitted){
+    /* 回退：旧版逐格纯色绘制 */
+    var startX=Math.floor(this.camX/t), startY=Math.floor(this.camY/t);
+    var endX=Math.ceil((this.camX+this.viewW)/t), endY=Math.ceil((this.camY+this.viewH)/t);
+    for (var y=startY;y<=endY;y++) for (var x=startX;x<=endX;x++){
+      if (x<0||y<0||x>=MAP.cols||y>=MAP.rows) continue;
+      var z=this.zoneAt(x,y);
+      var sx=Math.round(x*t-this.camX), sy=Math.round(y*t-this.camY);
+      c.fillStyle=z.color; c.fillRect(sx,sy,t+1,t+1);
+      if ((x+y)%2===0){ c.fillStyle='rgba(255,255,255,.025)'; c.fillRect(sx,sy,t,t); }
+      var ob=this.obstacles[key(x,y)];
+      if (ob){ c.font=(t*0.86)+'px serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText(ob, sx+t/2, sy+t/2+1); }
     }
   }
-  /* 村庄地砖（浅色区域提示） */
-  c.fillStyle='rgba(255,222,150,.06)';
-  c.fillRect((12)*t-this.camX, 36*t-this.camY, 16*t, 12*t);
+  /* 动态水面波光（在底图之上，随时间流动） */
+  this.drawWaterShimmer(now);
   /* 宝箱 */
   var self=this;
   Object.keys(this.chests).forEach(function(i){
@@ -351,7 +358,6 @@ World.draw = function(){
     self.sprite('🎁', ch.x, ch.y, true);
   });
   /* 可见野生怪物（用生成的卡通图，带轻微上下浮动） */
-  var now=Date.now();
   this.mobs.forEach(function(m){
     var rk='mob_'+m.x+'_'+m.y;
     if (self.mobRespawn[rk] && now-self.mobRespawn[rk]<20000) return; // 击杀后20秒重生
@@ -380,9 +386,66 @@ World.draw = function(){
   this.drawPlayer(t*1.6, bob);
   /* 环境氛围粒子：萤火虫/星光（轻量，随时间浮动，不占状态） */
   this.drawAmbient(now);
-  /* 区域名提示 */
+  /* 区域名提示 + 小地图 */
   var pz=this.zoneAt(Math.round(this.px),Math.round(this.py));
   if (this.zoneFn) this.zoneFn(pz ? pz.name : '');
+  this.miniMapThrottled();
+  /* 跨区域时弹出区域横幅 */
+  if (pz && pz.id!==this._lastZoneId){
+    this._lastZoneId=pz.id;
+    var zb=document.getElementById('zoneBanner');
+    if (zb && this._zoneBannerReady){
+      var nm=document.getElementById('zoneBannerName'), sb=document.getElementById('zoneBannerSub');
+      var subs=['🌱 冒险的起点','🍄 迷雾与奇遇','🏜️ 玩具与黄沙','⛈️ 风暴试炼','✨ 知识的尽头'];
+      if(nm) nm.textContent=pz.name;
+      if(sb) sb.textContent=subs[pz.id]||'';
+      zb.classList.remove('show'); void zb.offsetWidth; zb.classList.add('show');
+    } else { this._zoneBannerReady=true; }  // 首帧不弹，避免刚进游戏就闪
+  }
+};
+/* 小地图：绘制区域色块 + 玩家/NPC/Boss/宝箱点位（节流调用） */
+World.drawMiniMap = function(){
+  var mc=document.getElementById('miniMap'); if(!mc) return;
+  var mc2=mc.getContext('2d'), W=mc.width, H=mc.height;
+  var sx=W/MAP.cols, sy=H/MAP.rows;
+  mc2.clearRect(0,0,W,H);
+  /* 区域底色 */
+  MAP.zones.forEach(function(z){
+    mc2.fillStyle=z.color;
+    mc2.fillRect(z.x0*sx,z.y0*sy,(z.x1-z.x0)*sx,(z.y1-z.y0)*sy);
+  });
+  /* 宝箱 */
+  var self=this;
+  Object.keys(this.chests).forEach(function(i){ var c=self.chests[i];
+    mc2.fillStyle='#ffd35c'; mc2.fillRect(c.x*sx-1.5,c.y*sy-1.5,3,3); });
+  /* NPC */
+  mc2.fillStyle='#8fe3ff';
+  MAP.npcs.forEach(function(n){ mc2.fillRect(n.x*sx-1,n.y*sy-1,2.5,2.5); });
+  /* Boss（未击败） */
+  MAP.bosses.forEach(function(b){ if(E.S&&E.S.bossDefeated[b.key])return;
+    mc2.fillStyle='#ff6b6b'; mc2.beginPath(); mc2.arc(b.x*sx,b.y*sy,2.4,0,6.2832); mc2.fill(); });
+  /* 玩家（带光晕） */
+  var pxx=this.px*sx, pyy=this.py*sy;
+  mc2.fillStyle='rgba(255,255,255,.35)'; mc2.beginPath(); mc2.arc(pxx,pyy,4.5,0,6.2832); mc2.fill();
+  mc2.fillStyle='#fff'; mc2.beginPath(); mc2.arc(pxx,pyy,2.4,0,6.2832); mc2.fill();
+  mc2.strokeStyle='#ffd35c'; mc2.lineWidth=1; mc2.strokeRect(0.5,0.5,W-1,H-1);
+};
+World._mmT=0;
+World.miniMapThrottled=function(){ var now=Date.now(); if(now-this._mmT>180){this._mmT=now;this.drawMiniMap();} };
+
+/* 水面动态波光：在烘焙水系之上叠加随时间流动的白色波纹 */
+World.drawWaterShimmer = function(now){
+  var c=this.ctx, t=this.tile;
+  function wave(cx,cy,phase,scale){
+    var x=cx*t-this.camX, y=cy*t-this.camY;
+    var off=Math.sin(now/900+phase)*t*0.12;
+    c.strokeStyle='rgba(220,245,255,.45)'; c.lineWidth=1.6; c.lineCap='round';
+    c.beginPath(); c.moveTo(x-t*scale+off,y); c.quadraticCurveTo(x,y-t*0.12,x+t*scale+off,y); c.stroke();
+    c.beginPath(); c.moveTo(x-t*scale*0.7-off,y+t*0.32); c.quadraticCurveTo(x,y+t*0.2,x+t*scale*0.7-off,y+t*0.32); c.stroke();
+  }
+  wave.call(this,54,26,0,1.3);      // 绿洲池塘
+  wave.call(this,52,6,1.8,1.6);     // 圣殿护城河
+  wave.call(this,22,28,3.2,0.6);    // 森林小溪
 };
 /* 地图氛围粒子：漂浮的光点，营造森林萤火虫/魔法大陆氛围 */
 World.drawAmbient = function(now){

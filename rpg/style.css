@@ -397,3 +397,26 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
   color:#4a2f00;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px #ffd35c44;}
 .tut-next:active{transform:translateY(1px);}
 .b-subject-bar .sb-now{color:#bfe3ff;background:#3aa7ff18;padding:2px 7px;border-radius:8px;}
+
+/* ============================================================
+ * v13：地图丰富化 — 小地图 + 区域横幅
+ * ============================================================ */
+.mini-map-box{position:absolute;right:10px;top:118px;z-index:5;width:132px;
+  background:#0009;border:1px solid #ffffff33;border-radius:10px;padding:3px;overflow:hidden;}
+#miniMap{display:block;width:132px;height:99px;image-rendering:auto;}
+.mm-label{text-align:center;font-size:9.5px;color:#ffe08a;padding:2px 0 1px;letter-spacing:1px;}
+.zone-banner{position:absolute;left:50%;top:32%;transform:translate(-50%,-50%);z-index:7;
+  text-align:center;pointer-events:none;opacity:0;}
+.zone-banner span{display:block;font-size:30px;font-weight:900;letter-spacing:6px;color:#fff;
+  text-shadow:0 3px 18px #000,0 0 24px #ffd35c88;white-space:nowrap;}
+.zone-banner small{display:block;font-size:12px;color:#ffe08a;letter-spacing:3px;margin-top:4px;
+  text-shadow:0 2px 8px #000;}
+.zone-banner.show{animation:zoneBannerIn 2.6s ease forwards;}
+@keyframes zoneBannerIn{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.7);}
+  14%{opacity:1;transform:translate(-50%,-50%) scale(1.06);}
+  22%{transform:translate(-50%,-50%) scale(1);}
+  74%{opacity:1;transform:translate(-50%,-50%) scale(1);}
+  100%{opacity:0;transform:translate(-50%,-60%) scale(1);}
+}
+@media(max-height:620px){ .mini-map-box{top:104px;width:112px;} #miniMap{width:112px;height:84px;} }

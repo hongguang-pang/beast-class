@@ -4,16 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#1a1030">
-<meta name="description" content="精灵大陆 · 知识远征：靠知识守护的大陆，带着宠物队伍自由探索、战斗、成长。">
+<meta name="description" content="知识大陆 · 知识远征：靠知识守护的大陆，带着宠物队伍自由探索、战斗、成长。">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="精灵大陆">
-<title>精灵大陆 · 知识远征</title>
+<meta name="apple-mobile-web-app-title" content="知识大陆">
+<title>知识大陆 · 知识远征</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 <style>
 #btnInstall{display:none;margin:12px auto 4px;padding:9px 20px;border-radius:22px;cursor:pointer;
   background:linear-gradient(135deg,#a78bfa,#7c3aed);border:1px solid rgba(255,255,255,.28);
@@ -29,17 +29,19 @@
     <div class="title-glow"></div>
     <div class="title-inner">
       <div class="title-badge">知识驱动 · 自由探索 RPG</div>
-      <h1 class="title-logo">精灵大陆</h1>
+      <h1 class="title-logo">知识大陆</h1>
       <div class="title-sub">知识远征 · Knowledge Quest</div>
-      <p class="title-desc">在一片靠知识守护的大陆上，带着你的宠物队伍自由探索、战斗、成长。<br>答对题目，才能释放真正的力量。</p>
+      <p class="title-desc">在被遗忘迷雾笼罩的知识大陆上，带着宠物队伍探索、战斗、成长。<br>宠物属性克制学科时，<b>答对题目即可暴击×2</b>！用知识唤醒被封印的知识点，击败知识魔王。</p>
       <div class="title-start">
         <label class="grade-sel">出发年级 <select id="selGrade"></select></label>
         <div class="starter-label">① 选择 3 只初始宠物（首发在最前）</div>
         <div id="starterGrid" class="starter-grid"></div>
         <button id="btnStartAdventure" class="big-btn gold" disabled>开始冒险</button>
         <button id="titleContinue" class="big-btn ghost" style="display:none">继续上次冒险</button>
+        <button id="btnStory" class="text-btn">📜 世界观与剧情</button>
         <button id="btnPetPark" class="text-btn">🎪 伙伴乐园（动画宠物）</button>
         <button id="btnCodex" class="text-btn">📖 图鉴与成就勋章</button>
+        <button id="btnTutorial" class="text-btn">❔ 新手引导</button>
         <button id="btnInstall" class="text-btn" style="display:none">📲 安装到桌面</button>
         <button id="titleNew" class="text-btn">重新开始游戏</button>
       </div>
@@ -53,13 +55,15 @@
     <div id="hud">
       <div class="hud-left">
         <div class="hud-item">💰 <span id="hudGold">0</span></div>
-        <div class="hud-item">📍 <span id="hudZone">精灵大陆</span></div>
+        <div class="hud-item">📍 <span id="hudZone">知识大陆</span></div>
       </div>
       <div class="hud-right">
         <button id="hudMusic" class="hud-btn" title="音乐开关">🔊</button>
         <button id="hudPark" class="hud-btn" title="伙伴乐园">🎪</button>
         <button id="hudCodex" class="hud-btn" title="图鉴与成就">📖</button>
+        <button id="hudSwitch" class="hud-btn" title="切换宠物">🔄 换宠</button>
         <button id="hudParty" class="hud-btn">🐾 队伍</button>
+        <button id="hudTutorial" class="hud-btn" title="新手引导">❔</button>
         <button id="hudMenu" class="hud-btn">❓</button>
       </div>
     </div>
@@ -103,7 +107,8 @@
         <button id="bBag" class="cmd">🎒 道具</button>
         <button id="bRun" class="cmd run">🏃 逃跑</button>
       </div>
-      <p class="b-tip">答对题目伤害更高 · 属性克制 ×1.6 · 点击下方队伍可换宠</p>
+      <div id="bSubjectBar" class="b-subject-bar"></div>
+      <p class="b-tip">答对题目才能放技能 · <b>属性克制学科 → 暴击×2</b> · 点击下方队伍可换宠</p>
     </div>
   </section>
 
@@ -115,6 +120,17 @@
     <div class="panel-block"><h3>📜 主线任务</h3><div id="questBox" class="quest-box"></div></div>
     <div class="panel-block"><h3>🔀 支线委托</h3><div id="sideBox" class="side-box"></div></div>
     <div class="panel-block"><h3>🗺️ 剧情关卡 · 知识点全覆盖</h3><div id="campaignBox" class="campaign-box"></div></div>
+  </section>
+
+  <!-- 切换宠物 / 编队 -->
+  <section id="switchView" class="view hidden">
+    <div class="panel-head"><h2>🔄 切换宠物</h2><button id="btnSwitchBack" class="back-btn">← 返回</button></div>
+    <div class="switch-help">点击上阵/下阵调整出战队伍（最多 3 只）· 用 ◀ ▶ 调整顺序 · 第 1 只为首发</div>
+    <div class="switch-section-title">⭐ 当前出战</div>
+    <div id="switchSlots" class="switch-slots"></div>
+    <div class="switch-section-title">🐾 我的宠物仓库</div>
+    <div id="switchGrid" class="switch-grid"></div>
+    <div class="switch-foot"><button id="btnSwitchSave" class="big-btn gold">✅ 保存编队</button></div>
   </section>
 
   <!-- 图鉴与成就勋章 -->
@@ -167,6 +183,20 @@
     </div>
   </div>
 
+  <!-- 新手引导遮罩 -->
+  <div id="tutorialOverlay" class="tutorial-overlay hidden">
+    <div id="tutorialSpot" class="tutorial-spot"></div>
+    <div id="tutorialCard" class="tutorial-card">
+      <div class="tut-step"><span id="tutStepNow">1</span> / <span id="tutStepAll">6</span></div>
+      <div id="tutTitle" class="tut-title"></div>
+      <div id="tutText" class="tut-text"></div>
+      <div class="tut-actions">
+        <button id="tutSkip" class="tut-skip">跳过引导</button>
+        <button id="tutNext" class="tut-next">下一步 →</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 </div>
 
@@ -174,17 +204,19 @@
 <script src="data/kg/g3.js?v=8"></script>
 <script>window.KG_LOADED=window.KG_LOADED||{};window.KG_LOADED.g3=true;</script>
 <script src="js/petdex.js?v=9"></script>
-<script src="js/data.js?v=10"></script>
+<script src="js/data.js?v=12"></script>
 <script src="js/audio.js?v=9"></script>
 <script src="js/fx.js?v=8"></script>
-<script src="js/engine.js?v=11"></script>
-<script src="js/codex.js?v=11"></script>
+<script src="js/engine.js?v=12"></script>
+<script src="js/codex.js?v=12"></script>
 <script src="js/campaign.js?v=8"></script>
+<script src="js/story.js?v=12"></script>
 <script src="js/world.js?v=8"></script>
-<script src="js/battle.js?v=11"></script>
-<script src="js/ui.js?v=11"></script>
+<script src="js/battle.js?v=12"></script>
+<script src="js/ui.js?v=12"></script>
 <script src="js/petdexpark.js?v=9"></script>
-<script src="js/main.js?v=11"></script>
+<script src="js/tutorial.js?v=12"></script>
+<script src="js/main.js?v=12"></script>
 <script>
 /* ===== PWA：Service Worker 注册 ===== */
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}

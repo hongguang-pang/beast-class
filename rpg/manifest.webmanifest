@@ -1,7 +1,7 @@
 {
-  "name": "精灵大陆 · 知识远征",
-  "short_name": "精灵大陆",
-  "description": "知识驱动、自由探索的宠物养成 RPG。答对题目才能释放技能。",
+  "name": "知识大陆 · 知识远征",
+  "short_name": "知识大陆",
+  "description": "知识大陆：主线剧情、NPC任务、切换宠物编队、属性克制学科暴击的知识养成 RPG。",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

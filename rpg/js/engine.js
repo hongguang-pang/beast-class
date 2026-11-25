@@ -1,5 +1,5 @@
 /* ============================================================
- * 精灵大陆 · 知识远征  —  核心引擎
+ * 知识大陆 · 知识远征  —  核心引擎
  * 存档 / 队伍状态 / 等级经验 / 伤害公式 / 题库出题桥接
  * 独立 localStorage 命名空间：rpg.*
  * ============================================================ */
@@ -23,6 +23,7 @@ function newSave(teamIds, grade){
   return {
     v:1, grade:grade||'g3',
     team:team, active:0,
+    roster:{},   /* 已拥有但未上阵的宠物状态：id -> {id,lv,exp,hp,mp} */
     bag:{ potion:3, ether:1, antidote:1, candy:0 },
     gold:120,
     player:{ x:D.MAP_CFG.spawn.x, y:D.MAP_CFG.spawn.y },
@@ -81,10 +82,13 @@ function migrate(s){
   if (!s.side.prog) s.side.prog = {};
   if (!s.chestsOpened) s.chestsOpened = {};
   if (!s.bossDefeated) s.bossDefeated = {};
+  if (!s.roster) s.roster = {};
   if (!s.codex) s.codex = { pets:{}, mons:{}, ach:{} };
   if (!s.codex.pets) s.codex.pets = {};
   if (!s.codex.mons) s.codex.mons = {};
   if (!s.codex.ach) s.codex.ach = {};
+  /* 老档初始化引导标记：已有队伍视为已引导过，避免突然弹教程 */
+  if (typeof s.tutorialDone !== 'boolean') s.tutorialDone = false;
 }
 function save(){
   if (S) lsSet(SAVE_KEY, JSON.stringify(S));
@@ -93,7 +97,10 @@ function save(){
 }
 function hasSave(){ return !!load(); }
 function init(teamIds, grade){
-  S = newSave(teamIds, grade); save();
+  S = newSave(teamIds, grade);
+  /* 初始队伍同时写入仓库 */
+  S.team.forEach(function(p){ S.roster[p.id] = p; });
+  save();
   if (window.RPG_CODEX) window.RPG_CODEX.syncTeam();
   return S;
 }
@@ -104,6 +111,69 @@ function activePet(){ return S && S.team[S.active]; }
 function alivePets(){ return S ? S.team.filter(function(p){ return p.hp>0; }) : []; }
 function firstAlive(){ for (var i=0;i<S.team.length;i++) if (S.team[i].hp>0) return i; return -1; }
 function healAll(){ S.team.forEach(function(p){ p.hp=curMaxHp(p); p.mp=curMaxMp(p); }); save(); }
+
+/* ---------- 宠物仓库 / 出战编队 ----------
+ * roster 保存所有「已拥有」宠物的养成状态；team 是其中 3 只的出战顺序。
+ * 换宠只改 team 组成，宠物等级/经验/HP 都留在 roster，切换不丢进度。 */
+function makePetState(id){
+  var p = D.PET_BY_ID[id];
+  return { id:id, lv:1, exp:0, hp:maxHp(p), mp:maxMp(p) };
+}
+/* 把当前 team 的状态同步回 roster（换宠前调用，保证不丢状态） */
+function syncRoster(){
+  if (!S) return;
+  S.team.forEach(function(p){
+    var st = p.lv ? p : makePetState(p.id);
+    S.roster[st.id] = st;
+  });
+}
+/* 已拥有的全部宠物 id（图鉴解锁的 + 队伍里的） */
+function ownedIds(){
+  if (!S) return [];
+  var ids = [], seen = {};
+  (S.team||[]).forEach(function(p){ if(!seen[p.id]){seen[p.id]=1;ids.push(p.id);} });
+  var c = S.codex && S.codex.pets || {};
+  Object.keys(c).forEach(function(id){ if(c[id] && D.PET_BY_ID[id] && !seen[id]){seen[id]=1;ids.push(id);} });
+  if (S.roster) Object.keys(S.roster).forEach(function(id){ if(D.PET_BY_ID[id] && !seen[id]){seen[id]=1;ids.push(id);} });
+  return ids;
+}
+/* 取某只已拥有宠物的养成状态（优先 roster，否则新建） */
+function rosterState(id){
+  if (!S) return null;
+  if (S.team) { var t=S.team.find(function(p){return p.id===id;}); if (t) return t; }
+  if (S.roster && S.roster[id]) return S.roster[id];
+  var st = makePetState(id);
+  S.roster[id] = st;
+  return st;
+}
+/* 设置出战队伍：ids 为宠物 id 数组（最多 3 只，至少 1 只） */
+function setTeam(ids){
+  if (!S || !ids || !ids.length) return false;
+  syncRoster();
+  var team = [];
+  ids.slice(0,3).forEach(function(id){
+    if (!D.PET_BY_ID[id]) return;
+    if (team.some(function(p){return p.id===id;})) return;   // 去重
+    var st = S.roster[id] || makePetState(id);
+    S.roster[id] = st;                                        // 确保仓库保留
+    team.push(st);
+  });
+  if (!team.length) return false;
+  S.team = team;
+  if (S.active >= team.length) S.active = 0;
+  save();
+  if (window.RPG_CODEX) window.RPG_CODEX.syncTeam();
+  return true;
+}
+/* 将一只新宠物加入仓库并解锁图鉴（召唤/奖励时用） */
+function gainPet(id){
+  if (!S || !D.PET_BY_ID[id]) return false;
+  if (!S.roster) S.roster = {};
+  if (!S.roster[id]) S.roster[id] = makePetState(id);
+  if (window.RPG_CODEX) window.RPG_CODEX.unlockPet(id, true);
+  save();
+  return true;
+}
 
 /* ---------- 伤害公式 ---------- */
 /* 护甲：怪物等级越高护甲越厚。普攻被护甲大幅削减，答题技能可破防无视护甲。
@@ -157,7 +227,10 @@ function pickQuestion(grade, usedTexts){
   }
   if (!all.length) return null;
   var q = all[Math.floor(Math.random()*all.length)];
-  return formatBankQ(q);
+  var fq = formatBankQ(q);
+  /* 标注题目所属学科，供战斗暴击判定 */
+  for (var sb in bank){ if ((bank[sb]||[]).indexOf(q)>=0){ fq.subj = sb; break; } }
+  return fq;
 }
 /* 把题库原始题格式化为可作答结构（选项打散/填空转选择）；供 pickQuestion 与关卡战役复用 */
 function formatBankQ(q){
@@ -318,6 +391,7 @@ window.RPG_ENGINE = {
   maxHp:maxHp, maxMp:maxMp, petStat:petStat, curMaxHp:curMaxHp, curMaxMp:curMaxMp,
   expNeed:expNeed, addExp:addExp,
   activePet:activePet, alivePets:alivePets, firstAlive:firstAlive, healAll:healAll,
+  syncRoster:syncRoster, ownedIds:ownedIds, rosterState:rosterState, setTeam:setTeam, gainPet:gainPet,
   damage:damage, monsterDamage:monsterDamage, monsterArmor:monsterArmor,
   ensureGradeLoaded:ensureGradeLoaded, pickQuestion:pickQuestion, formatBankQ:formatBankQ, judge:judge,
   quest:quest, curQuest:curQuest, bumpQuest:bumpQuest, completeQuest:completeQuest, turnInAvailable:turnInAvailable,

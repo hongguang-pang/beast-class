@@ -1,5 +1,5 @@
 /* ============================================================
- * 精灵大陆 · 知识远征  —  数据层
+ * 知识大陆 · 知识远征  —  数据层
  * 宠物 / 怪物 / 技能 / 道具 / 任务 / 地图配置
  * 存档独立：所有 key 以 rpg. 开头，与 battle 完全隔离
  * ============================================================ */
@@ -14,12 +14,44 @@ var ELEMENTS = {
   dark:  { name:'暗', icon:'🌙', color:'#a377ff' }
 };
 /* 克制：攻方→守方 倍率表；1.6 克制 / 0.7 被克 */
+/* 火克木 → 木克水 → 水克火；光克暗 → 暗克光 */
 var ELEM_ADV = { fire:'wood', wood:'water', water:'fire', light:'dark', dark:'light' };
 function elemMult(atk, def){
   if (ELEM_ADV[atk] === def) return 1.6;
   if (ELEM_ADV[def] === atk) return 0.7;
   return 1;
 }
+
+/* ---------- 属性 ↔ 学科 对应（答题暴击的核心） ----------
+ * 每个学科归属一种属性；宠物属性「克制」某学科属性时，答对该学科题目触发暴击。
+ * 例如 火系宠物（火克木）答对「科学/生物」(木) 题 → 暴击。
+ * 例：水系宠物（水克火）答对「语文/化学」(火) 题 → 暴击。
+ */
+var SUBJ_ELEM = {
+  cn:'fire',   his:'fire',      // 语文 / 历史 → 火
+  math:'water',geo:'water',     // 数学 / 地理 → 水
+  sci:'wood',  bio:'wood',      // 科学 / 生物 → 木
+  en:'light',  phy:'light',     // 英语 / 物理 → 光
+  eth:'dark',  chem:'dark'      // 道法 / 化学 → 暗
+};
+function subjectElement(subj){ return SUBJ_ELEM[subj] || 'light'; }
+/* 属性对应的学科列表（用于展示「擅长科目」） */
+function elemSubjects(elem){
+  var out=[];
+  for (var s in SUBJ_ELEM) if (SUBJ_ELEM[s]===elem) out.push(s);
+  return out;
+}
+/* 宠物属性是否克制某学科（答对暴击判定） */
+function isCritSubject(petElem, subj){
+  var se = subjectElement(subj);
+  return ELEM_ADV[petElem] === se;               // 克制（非被克）
+}
+/* 宠物被某学科属性克制（答对也无暴击，仅提示） */
+function isWeakSubject(petElem, subj){
+  var se = subjectElement(subj);
+  return ELEM_ADV[se] === petElem;
+}
+
 var RAR = { N:0, R:2, SR:4, SSR:6 };
 var RAR_COLOR = { N:'#9aa3b2', R:'#3b82f6', SR:'#a855f7', SSR:'#f5b301' };
 
@@ -153,7 +185,7 @@ var DROPS = {
 /* 结构同主线；多了 id 前缀 s_ 与 side:true；NPC 对话中接取/交付 */
 var SIDE_QUESTS = [
   { id:'s1', title:'支线·贪吃的学者', desc:'累计答对 10 道题，帮学者整理知识笔记', type:'quiz', need:10, reward:{gold:120, exp:80}, npc:'学者' },
-  { id:'s2', title:'支线·森林清道夫', desc:'再击败 8 只野外精灵，帮探险家清理道路', type:'kill', need:8, reward:{gold:150, exp:90}, npc:'探险家' },
+  { id:'s2', title:'支线·森林清道夫', desc:'再击败 8 只野外魔物，帮探险家清理道路', type:'kill', need:8, reward:{gold:150, exp:90}, npc:'探险家' },
   { id:'s3', title:'支线·训练师的考验', desc:'让任意宠物达到 15 级', type:'level', need:15, reward:{gold:200, exp:140}, npc:'训练师' },
   { id:'s4', title:'支线·宝箱猎人', desc:'累计开启 5 个宝箱', type:'chest', need:5, reward:{gold:180, exp:110}, npc:'探险家' },
   { id:'s5', title:'支线·蘑菇再临', desc:'再次击败蘑菇王，收集蘑菇王孢子', type:'boss', boss:'b01', need:1, reward:{gold:260, exp:180}, npc:'村长' },
@@ -171,7 +203,7 @@ var SKILLS = {
 /* ---------- 主线任务链 ---------- */
 /* 每个任务：id / title / 目标类型 type(kill|boss|talk|chest|level) / 参数 / 奖励 */
 var QUESTS = [
-  { id:'q1', title:'初入精灵大陆', desc:'击败 3 只野外精灵，证明你的实力', type:'kill', need:3, reward:{gold:80, exp:40}, npc:'村长' },
+  { id:'q1', title:'初入知识大陆', desc:'击败 3 只野外魔物，证明你的实力', type:'kill', need:3, reward:{gold:80, exp:40}, npc:'村长' },
   { id:'q_boss1', title:'蘑菇王的威胁', desc:'前往蘑菇森林，击败蘑菇王', type:'boss', boss:'b01', need:1, reward:{gold:200, exp:120}, npc:'村长' },
   { id:'q2', title:'失踪的宝箱', desc:'在野外开启 2 个宝箱', type:'chest', need:2, reward:{gold:120, exp:60}, npc:'探险家' },
   { id:'q_boss2', title:'玩具霸王龙', desc:'挑战玩具谷的霸王龙', type:'boss', boss:'b02', need:1, reward:{gold:300, exp:200}, npc:'探险家' },
@@ -221,7 +253,9 @@ var MON_BY_KEY = {}; MONSTERS.concat(BOSSES).forEach(function(m){ MON_BY_KEY[m.k
 
 /* 导出到全局 */
 window.RPG_DATA = {
-  ELEMENTS:ELEMENTS, elemMult:elemMult, RAR:RAR, RAR_COLOR:RAR_COLOR,
+  ELEMENTS:ELEMENTS, ELEM_ADV:ELEM_ADV, elemMult:elemMult, SUBJ_ELEM:SUBJ_ELEM, subjectElement:subjectElement,
+  elemSubjects:elemSubjects, isCritSubject:isCritSubject, isWeakSubject:isWeakSubject,
+  RAR:RAR, RAR_COLOR:RAR_COLOR,
   PETS:PETS, PET_BY_ID:PET_BY_ID, STAGES:STAGES, petImg:petImg, stageForLv:stageForLv, moveName:moveName,
   MONSTERS:MONSTERS, BOSSES:BOSSES, MON_BY_KEY:MON_BY_KEY, monsterImg:monsterImg, npcImg:npcImg,
   ITEMS:ITEMS, SKILLS:SKILLS, QUESTS:QUESTS, SIDE_QUESTS:SIDE_QUESTS, DROPS:DROPS, MAP_CFG:MAP_CFG

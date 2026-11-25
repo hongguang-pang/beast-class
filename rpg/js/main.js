@@ -1,5 +1,5 @@
 /* ============================================================
- * 精灵大陆 · 知识远征  —  主控 / 装配
+ * 知识大陆 · 知识远征  —  主控 / 装配
  * ============================================================ */
 'use strict';
 var D=window.RPG_DATA, E=window.RPG_ENGINE, W=window.RPG_WORLD, B=window.RPG_BATTLE, U=window.RPG_UI, A=window.RPG_AUDIO;
@@ -29,18 +29,20 @@ function startGame(teamIds, grade, isNew){
   initCampaignForGrade(E.S.grade, function(ok){
     if (ok) U.updateHUD();
   });
-  U.toast('欢迎来到精灵大陆！靠近 NPC 按「对话」接任务');
+  U.toast('欢迎来到知识大陆！靠近 NPC 按「对话」接任务');
   if(A){ A.unlock(); A.playBGM('world'); }
-  /* 首次引导 */
-  if (isNew || !E.S.seenIntro){
+  /* 首次：世界观序章 → 新手引导 */
+  if (!E.S.seenIntro || !E.S.tutorialDone){
     setTimeout(function(){
-      U.dialog('欢迎来到精灵大陆','这是一片靠知识守护的大陆。<br><br>'+
-        '🌍 用 <b>方向键</b> 或左下角 <b>摇杆</b> 自由走动<br>'+
-        '⚔️ 草地上会遇到野生精灵，<b>答对题目</b>才能放出技能<br>'+
-        '📜 靠近 <b>NPC</b> 点「对话」接主线任务<br>'+
-        '🎁 路上的宝箱和 Boss 等着你<br><br>答对的题越多，宠物升级越快！',function(){
+      var startTut=function(){
         E.S.seenIntro=true; E.save();
-      });
+        W.enabled=false;   /* 引导时暂时冻结移动 */
+        if(window.RPG_TUTORIAL) window.RPG_TUTORIAL.maybeStart(function(){ W.enabled=true; });
+        else W.enabled=true;
+      };
+      if (window.RPG_STORY){
+        U.dialog('序章 · 知识大陆', window.RPG_STORY.WORLD.prologue+'<br><br>'+window.RPG_STORY.WORLD.mission, startTut);
+      } else startTut();
     },500);
   }
 }
@@ -112,6 +114,23 @@ function wire(){
   $('hudParty').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('partyView'); });
   $('btnPartyBack').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('worldStage'); });
 
+  /* 切换宠物 / 编队 */
+  var hudSwitch=$('hudSwitch');
+  if(hudSwitch) hudSwitch.addEventListener('click',function(){
+    if(A)A.sfx('click');
+    U.switchSel=E.S.team.map(function(p){return p.id;});
+    U.show('switchView');
+  });
+  var btnSwitchBack=$('btnSwitchBack');
+  if(btnSwitchBack) btnSwitchBack.addEventListener('click',function(){ if(A)A.sfx('click'); U.show('worldStage'); });
+  var btnSwitchSave=$('btnSwitchSave');
+  if(btnSwitchSave) btnSwitchSave.addEventListener('click',function(){
+    if(A)A.sfx('click');
+    var ok=E.setTeam(U.switchSel);
+    if(ok){ U.toast('✅ 编队已保存 · 首发：'+D.PET_BY_ID[E.S.team[0].id].name); E.syncRoster(); U.show('worldStage'); U.updateHUD(); }
+    else U.toast('编队失败，请至少保留 1 只宠物');
+  });
+
   /* 图鉴与成就勋章：记录来源，返回时回到原视图 */
   var codexFrom='titleView';
   function openCodex(from){
@@ -158,12 +177,39 @@ function wire(){
     U.toast(m?'🔇 音乐已关闭':'🔊 音乐已开启');
   });
   $('hudMenu').addEventListener('click',function(){
-    U.dialog('菜单','🌍 大地图：走动探索<br>📜 队伍：查看宠物、背包、任务<br>⚔️ 战斗：答对题放技能<br><br>进度自动保存在本机，随时回来继续。');
+    U.dialog('菜单','🌍 大地图：走动探索<br>🔄 换宠：调整出战编队（按学科挑宠物）<br>📜 队伍：看宠物、背包、任务、剧情关卡<br>⚔️ 战斗：答对题放技能，属性克制暴击×2<br>📖 图鉴：收藏与成就勋章<br><br>进度自动保存在本机，随时回来继续。');
   });
   $('shopClose').addEventListener('click',function(){ $('shopOverlay').classList.add('hidden'); });
 
   /* 标题页按钮 */
   U.renderTitle();
+  /* 世界观剧情 */
+  var btnStory=$('btnStory');
+  if(btnStory) btnStory.addEventListener('click',function(){
+    if(A)A.unlock();
+    if(!window.RPG_STORY){ U.toast('剧情模块加载中'); return; }
+    var chapters=window.RPG_STORY.CHAPTERS.map(function(c,i){
+      return (i+1)+'. '+c.no+' · '+c.title+'（'+c.npc+'）';
+    }).join('<br>');
+    U.dialog('📜 知识大陆 · 主线剧情',
+      '<b>'+window.RPG_STORY.WORLD.prologue+'</b><br><br>'+
+      window.RPG_STORY.WORLD.mission+'<br><br>'+
+      '<span style="color:#ffd35c">【章节】</span><br>'+chapters+'<br><br>'+
+      '<small>'+window.RPG_STORY.WORLD.critRule+'</small>');
+  });
+  /* 新手引导（标题页提示去游戏内看，HUD 可随时重看） */
+  var btnTutorial=$('btnTutorial');
+  if(btnTutorial) btnTutorial.addEventListener('click',function(){
+    if(A)A.unlock();
+    U.toast('进入游戏后点右上角 ❔ 可随时重看新手引导');
+  });
+  var hudTutorial=$('hudTutorial');
+  if(hudTutorial) hudTutorial.addEventListener('click',function(){
+    if(A)A.sfx('click');
+    if(!window.RPG_TUTORIAL){ U.toast('引导模块加载中'); return; }
+    W.enabled=false;
+    window.RPG_TUTORIAL.start(function(){ W.enabled=true; });
+  });
   var btnPark=$('btnPetPark');
   if(btnPark) btnPark.addEventListener('click',function(){
     if(A)A.unlock();

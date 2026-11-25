@@ -1,5 +1,5 @@
 /* ============================================================
- * 精灵大陆 · 知识远征  —  UI 层
+ * 知识大陆 · 知识远征  —  UI 层
  * 视图切换 / HUD / 队伍 / 背包 / 任务 / 战斗界面 / 答题弹层 / 剧情
  * ============================================================ */
 'use strict';
@@ -37,7 +37,7 @@ function petImgTag(id, stageKey, cls){
 
 UI.show = function(view){
   this.view=view;
-  ['titleView','partyView','worldStage','battleView','codexView'].forEach(function(v){
+  ['titleView','partyView','worldStage','battleView','codexView','switchView'].forEach(function(v){
     var el=$(v); if(el) el.classList.toggle('hidden', v!==view);
   });
   if (view==='worldStage'){
@@ -49,6 +49,7 @@ UI.show = function(view){
   if (view==='titleView'){ if(window.RPG_AUDIO) window.RPG_AUDIO.playBGM('none'); }
   if (view==='partyView') UI.renderParty();
   if (view==='codexView') UI.renderCodex();
+  if (view==='switchView') UI.renderSwitch();
   if (view==='battleView') UI.renderBattle();
   UI.updateHUD();
 };
@@ -57,7 +58,7 @@ UI.updateHUD = function(){
   var S=E.S; if(!S) return;
   var g=D.PET_BY_ID[S.team[S.active].id];
   var el=$('hudGold'); if(el) el.textContent=S.gold;
-  var el2=$('hudZone'); if(el2) el2.textContent=(window.__curZone||'精灵大陆');
+  var el2=$('hudZone'); if(el2) el2.textContent=(window.__curZone||'知识大陆');
   var q=E.curQuest();
   var el3=$('hudQuest');
   if(el3) el3.textContent = q ? (q.title+' '+(S.quests.prog[q.id]||0)+'/'+q.need) : '主线已完成 ✓';
@@ -224,6 +225,94 @@ UI.renderParty = function(){
   }
 };
 
+/* ---------- 属性↔学科 提示条 ---------- */
+UI.renderSubjectBar = function(petId){
+  var bar=$('bSubjectBar'); if(!bar || !window.RPG_DATA || !D.subjectElement) return;
+  var pet=D.PET_BY_ID[petId]; if(!pet) return;
+  var el=D.ELEMENTS[pet.elem];
+  var beatsKey=D.ELEM_ADV[pet.elem];            /* 本属性克制的属性 */
+  var beats=D.ELEMENTS[beatsKey];
+  /* 被克制属性所对应的学科 = 能打出暴击的学科 */
+  var critSubs=D.elemSubjects(beatsKey).map(function(s){
+    return (window.SUBJ_META&&window.SUBJ_META[s]&&window.SUBJ_META[s].name)||s;
+  }).join('/');
+  var html='<span class="sb-elem" style="color:'+el.color+'">'+el.icon+' '+el.name+'系</span>'+
+    '<span class="sb-crit">💥 答对【'+esc(critSubs)+'】暴击×2</span>';
+  /* 当前关卡学科 + 克制它所需的宠物属性（缺哪个换哪个） */
+  var L=(window.RPG_CAMPAIGN&&window.RPG_CAMPAIGN.curLevel(E.S));
+  if (L && L.subj){
+    var sName=(window.SUBJ_META&&window.SUBJ_META[L.subj]&&window.SUBJ_META[L.subj].name)||L.subj;
+    var se=D.subjectElement(L.subj);
+    /* 谁克制当前学科属性 → 用该属性宠物答题可暴击 */
+    var counterElem=null;
+    for (var k in D.ELEM_ADV){ if (D.ELEM_ADV[k]===se){ counterElem=k; break; } }
+    var ce=counterElem?D.ELEMENTS[counterElem]:null;
+    html+='<span class="sb-now">当前 '+esc(sName)+' → 换 '+(ce?ce.icon+ce.name:'?')+'系宠物可暴击</span>';
+  }
+  bar.innerHTML=html;
+};
+
+/* ---------- 切换宠物 / 编队界面 ---------- */
+UI.switchSel = [];   // 当前编辑中的出战顺序（宠物 id）
+UI.renderSwitch = function(){
+  var S=E.S; if(!S) return;
+  if(!UI.switchSel || !UI.switchSel.length) UI.switchSel = S.team.map(function(p){return p.id;});
+  /* 出战槽（最多3） */
+  var slots=$('switchSlots');
+  if(slots){
+    slots.innerHTML=UI.switchSel.map(function(id,i){
+      var pet=D.PET_BY_ID[id]; if(!pet) return '';
+      var st=E.rosterState(id), stage=D.stageForLv(st.lv);
+      return '<div class="sw-slot'+(i===0?' lead':'')+'" data-i="'+i+'">'+
+        '<span class="sw-idx">'+(i===0?'⭐首发':(i+1))+'</span>'+
+        petImgTag(id, stage.key)+
+        '<span class="sw-sname">'+esc(pet.name)+' Lv'+st.lv+'</span>'+
+        '<span class="sw-sactions">'+
+          (i>0?'<button data-move="up" data-i="'+i+'" title="前移">◀</button>':'')+
+          (i<UI.switchSel.length-1?'<button data-move="down" data-i="'+i+'" title="后移">▶</button>':'')+
+          '<button data-remove="'+i+'" title="下阵">✕</button>'+
+        '</span></div>';
+    }).join('');
+    Array.prototype.forEach.call(slots.querySelectorAll('button'),function(b){
+      b.addEventListener('click',function(){
+        if(A$) A$('click');
+        var i=+b.getAttribute('data-i');
+        if(b.getAttribute('data-remove')!=null){ UI.switchSel.splice(i,1); }
+        else if(b.getAttribute('data-move')==='up'){ var t=UI.switchSel[i-1];UI.switchSel[i-1]=UI.switchSel[i];UI.switchSel[i]=t; }
+        else if(b.getAttribute('data-move')==='down'){ var t2=UI.switchSel[i+1];UI.switchSel[i+1]=UI.switchSel[i];UI.switchSel[i]=t2; }
+        UI.renderSwitch();
+      });
+    });
+  }
+  /* 全部已拥有宠物 */
+  var grid=$('switchGrid');
+  if(grid){
+    var owned=E.ownedIds();
+    grid.innerHTML=owned.map(function(id){
+      var pet=D.PET_BY_ID[id], st=E.rosterState(id), stage=D.stageForLv(st.lv);
+      var on=UI.switchSel.indexOf(id)>=0;
+      var el=D.ELEMENTS[pet.elem];
+      return '<button class="sw-pet'+(on?' on':'')+'" data-id="'+id+'" style="--rar:'+D.RAR_COLOR[pet.rar]+'">'+
+        petImgTag(id, stage.key)+
+        '<span class="sw-pname">'+esc(pet.name)+'</span>'+
+        '<span class="sw-pmeta" style="color:'+el.color+'">'+el.icon+el.name+' · Lv'+st.lv+'</span>'+
+        '<span class="sw-flag">'+(on?'✓ 出战':'+ 上阵')+'</span></button>';
+    }).join('');
+    Array.prototype.forEach.call(grid.querySelectorAll('.sw-pet'),function(b){
+      b.addEventListener('click',function(){
+        if(A$) A$('click');
+        var id=b.getAttribute('data-id'), idx=UI.switchSel.indexOf(id);
+        if(idx>=0){ if(UI.switchSel.length>1) UI.switchSel.splice(idx,1); else UI.toast('至少保留 1 只宠物'); }
+        else if(UI.switchSel.length<3) UI.switchSel.push(id);
+        else UI.toast('最多 3 只出战，先点 ✕ 下阵一只');
+        UI.renderSwitch();
+      });
+    });
+  }
+};
+/* 音频快捷调用（避免与全局 A 变量冲突） */
+function A$(){ try{ if(window.RPG_AUDIO) window.RPG_AUDIO.sfx.apply(window.RPG_AUDIO,arguments); }catch(e){} }
+
 /* ---------- 战斗界面 ---------- */
 UI.renderBattle = function(){
   if(!B.active) return;
@@ -280,6 +369,8 @@ UI.renderBattle = function(){
   $('bMyHpFill').style.width=hp+'%';
   $('bMyHpTxt').textContent=pet.hp+'/'+E.curMaxHp(pet);
   $('bMyMp').textContent='MP '+pet.mp+'/'+E.curMaxMp(pet);
+  /* 技能属性 / 擅长学科 / 克制提示 */
+  UI.renderSubjectBar(p.id);
   /* 个性化炫酷招式名（随当前出战宠物变化） */
   var nNormal=D.moveName(pet.id,'normal'), nSpell=D.moveName(pet.id,'spell'), nUlt=D.moveName(pet.id,'ult');
   if($('bNormal')) $('bNormal').innerHTML='⚔️ '+esc(nNormal);
@@ -321,7 +412,8 @@ UI.openQuiz = function(kind, skill){
   B.usedTexts[q.q]=1;
   /* 保存当前题供结算时记录覆盖/薄弱（kid 缺失则从题库按题干反查） */
   if (!kid && q.kid) kid=q.kid;
-  B.currentQuiz={ q:q, kid:kid, mode:mode, level:L };
+  var subj = (L && L.subj) || q.subj || null;
+  B.currentQuiz={ q:q, kid:kid, mode:mode, level:L, subj:subj };
   var box=$('quizQ'); box.textContent=q.q;
   var subj=$('quizSubj');
   if(subj){
@@ -365,6 +457,18 @@ UI.dialog = function(title, text, onClose){
 };
 
 /* ---------- NPC 交互：主线 + 支线 ---------- */
+function storyTitle(npc){
+  if (window.RPG_STORY && window.RPG_STORY.NPCS[npc.name]){
+    return npc.name+' · '+window.RPG_STORY.NPCS[npc.name].title;
+  }
+  return npc.name;
+}
+function storyHeader(npc){
+  if (!window.RPG_STORY) return '';
+  var q=E.curQuest();
+  var ctx={ quest:q, allDone:!q };
+  return window.RPG_STORY.npcLines(npc, ctx);
+}
 UI.talkNPC = function(npc){
   if (npc.role==='shop'){
     UI.dialog(npc.name+' · 药剂师','欢迎光临！用金币买些补给吧。<br>活力药水 40 · 能量水晶 60 · 经验糖果 80',function(){
@@ -372,6 +476,12 @@ UI.talkNPC = function(npc){
     });
     return;
   }
+  /* 开场：先展示 NPC 身世与任务背景，确认后再进入任务分支 */
+  UI.dialog(storyTitle(npc), storyHeader(npc), function(){ UI.talkNPCQuest(npc); });
+};
+
+/* NPC 任务分支（原 talkNPC 主体） */
+UI.talkNPCQuest = function(npc){
   /* 优先：可交付的支线 */
   var readySides=E.readySideForNPC(npc.name);
   if (readySides.length){
@@ -390,7 +500,14 @@ UI.talkNPC = function(npc){
       var r=E.completeQuest();
       UI.toast('任务完成！+'+r.q.reward.gold+' 金币 · +'+r.q.reward.exp+' 经验');
       UI.updateHUD();
-      if(r.next) setTimeout(function(){UI.dialog(npc.name,'下一个任务：「'+esc(r.next.title)+'」<br>'+esc(r.next.desc));},250);
+      /* 章节通关剧情 */
+      var ch=(window.RPG_STORY&&window.RPG_STORY.chapterOfQuest(r.q.id));
+      var after=function(){
+        if(r.next) setTimeout(function(){UI.dialog(npc.name,'下一个任务：「'+esc(r.next.title)+'」<br>'+esc(r.next.desc));},250);
+        else if(ch) setTimeout(function(){UI.dialog('知识大陆 · 守护者',window.RPG_STORY.WORLD.mission);},250);
+      };
+      if(ch && ch.clear) setTimeout(function(){ UI.dialog(ch.no+' · '+ch.title+'（完成）',ch.clear,after); },250);
+      else after();
     });
     return;
   }

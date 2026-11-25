@@ -1,5 +1,5 @@
 /* ============================================================
- * 精灵大陆 · 知识远征  —  样式
+ * 知识大陆 · 知识远征  —  样式
  * ============================================================ */
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;height:100%;background:#0c0818;color:#fff;
@@ -328,3 +328,72 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .ach-name{font-size:13px;font-weight:800;color:#ffe08a;}
 .ach-desc{font-size:11px;color:#9d90b5;margin-top:2px;}
 .ach-gold{font-size:11px;color:#ffd34d;white-space:nowrap;}
+
+/* ============================================================
+ * v12：世界观剧情 / 切换宠物编队 / 属性学科条 / 新手引导
+ * ============================================================ */
+
+/* ---------- 属性↔学科提示条 ---------- */
+.b-subject-bar{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;
+  margin:8px 0 2px;padding:6px 8px;border-radius:10px;background:#ffffff0d;border:1px solid #ffffff18;}
+.b-subject-bar span{font-size:10.5px;}
+.b-subject-bar .sb-elem{font-weight:800;font-size:12px;}
+.b-subject-bar .sb-subj{color:#cfc6e8;}
+.b-subject-bar .sb-crit{color:#ffd35c;background:#ffd35c18;padding:2px 7px;border-radius:8px;font-weight:700;}
+
+/* ---------- NPC 剧情背景 ---------- */
+.story-bg{display:block;color:#c9bce8;font-size:12px;line-height:1.6;margin:6px 0;}
+.story-quest{display:block;color:#ffe08a;font-size:12px;line-height:1.6;margin:6px 0;
+  padding:6px 8px;background:#ffd35c12;border-left:3px solid #ffd35c;border-radius:4px;}
+.story-scene{display:block;color:#bfe3ff;font-size:12px;line-height:1.6;margin:6px 0;}
+.story-say{display:block;color:#e8dcff;font-style:italic;font-size:12.5px;line-height:1.6;margin-top:8px;}
+
+/* ---------- 切换宠物 / 编队 ---------- */
+.switch-help{color:#b9a7d8;font-size:11px;line-height:1.6;text-align:center;padding:8px 14px 4px;}
+.switch-section-title{color:#ffd777;font-size:12px;font-weight:700;padding:8px 14px 6px;}
+.switch-slots{display:flex;gap:8px;padding:0 12px;overflow-x:auto;}
+.sw-slot{position:relative;flex:1;min-width:96px;max-width:150px;background:#1c1732;border:2px solid #3a2d63;
+  border-radius:12px;padding:8px 6px;text-align:center;}
+.sw-slot.lead{border-color:#ffd35c;background:#2b2340;box-shadow:0 0 12px #ffd35c33;}
+.sw-idx{position:absolute;top:-8px;left:6px;font-size:10px;font-weight:800;color:#fff;
+  background:#7c3aed;padding:1px 7px;border-radius:8px;}
+.sw-slot.lead .sw-idx{background:#e89a1f;color:#4a2f00;}
+.sw-slot .petimg{width:56px;height:56px;display:inline-block;}
+.sw-slot .petimg>img,.sw-slot .pd-sprite{max-width:56px;max-height:56px;}
+.sw-slot .petimg-emoji{font-size:32px;}
+.sw-sname{display:block;font-size:11px;color:#ffe08a;font-weight:700;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sw-sactions{display:flex;gap:4px;justify-content:center;margin-top:6px;}
+.sw-sactions button{width:26px;height:24px;border-radius:6px;background:#33265c;color:#fff;font-size:12px;border:1px solid #ffffff22;}
+.sw-sactions button:active{transform:translateY(1px);}
+.switch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 12px;}
+.sw-pet{position:relative;background:#1c1732;border:2px solid var(--rar,#3a2d63);border-radius:12px;
+  padding:8px 4px 10px;text-align:center;color:#e8dcff;cursor:pointer;}
+.sw-pet.on{border-color:#ffd35c;background:#2b2340;}
+.sw-pet .petimg{width:60px;height:60px;display:inline-block;}
+.sw-pet .petimg>img,.sw-pet .pd-sprite{max-width:60px;max-height:60px;}
+.sw-pet .petimg-emoji{font-size:34px;}
+.sw-pname{display:block;font-size:11.5px;font-weight:700;color:#ffe08a;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sw-pmeta{display:block;font-size:10px;margin-top:1px;}
+.sw-flag{display:block;font-size:10px;margin-top:4px;color:#9d90b5;}
+.sw-pet.on .sw-flag{color:#7ee08f;font-weight:800;}
+.switch-foot{padding:14px 12px 30px;}
+
+/* ---------- 新手引导 ---------- */
+.tutorial-overlay{position:fixed;inset:0;z-index:200;background:rgba(6,4,16,.82);}
+.tutorial-spot{position:fixed;z-index:201;border:2px solid #ffd35c;border-radius:14px;
+  box-shadow:0 0 0 9999px rgba(6,4,16,.72),0 0 18px #ffd35c88;pointer-events:none;transition:all .25s;}
+.tutorial-card{position:fixed;z-index:202;width:min(340px,calc(100% - 24px));background:linear-gradient(160deg,#2e2352,#1a1430);
+  border:1px solid #6b4fb0;border-radius:16px;padding:16px 16px 14px;box-shadow:0 14px 40px #000a;transition:left .25s,top .25s;}
+.tut-step{font-size:11px;color:#b9a7d8;margin-bottom:6px;}
+.tut-step #tutStepNow{color:#ffd35c;font-weight:800;}
+.tut-title{font-size:16px;font-weight:800;color:#ffe08a;margin-bottom:8px;}
+.tut-text{font-size:13px;line-height:1.75;color:#e0d7f5;}
+.tut-text b{color:#ffd35c;}
+.tut-actions{display:flex;justify-content:space-between;align-items:center;margin-top:14px;}
+.tut-skip{background:none;border:none;color:#9d90b5;font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;}
+.tut-next{padding:9px 18px;border-radius:10px;background:linear-gradient(135deg,#ffd35c,#e89a1f);
+  color:#4a2f00;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px #ffd35c44;}
+.tut-next:active{transform:translateY(1px);}
+.b-subject-bar .sb-now{color:#bfe3ff;background:#3aa7ff18;padding:2px 7px;border-radius:8px;}

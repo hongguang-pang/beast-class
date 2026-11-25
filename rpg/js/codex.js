@@ -1,5 +1,5 @@
 /* ============================================================
- * 精灵大陆 · 知识远征  —  图鉴与成就勋章模块
+ * 知识大陆 · 知识远征  —  图鉴与成就勋章模块
  * 独立命名空间 window.RPG_CODEX
  * 宠物图鉴 / 怪兽图鉴 / 成就勋章 · 存档在 rpg.save.v1 的 codex 字段
  * 依赖：RPG_DATA（宠物/怪兽数据）、RPG_ENGINE（存档与金币）
@@ -158,9 +158,10 @@
     if(s.gold<price) return { ok:false, msg:'金币不足（需要 '+price+'）' };
     s.gold-=price;
     c.pets[id]=1;
-    if(E) E.save();
+    /* 召唤的宠物进入仓库，可在「切换宠物」界面编入出战队伍 */
+    if(E && E.gainPet) E.gainPet(id); else if(E) E.save();
     if(window.RPG_AUDIO) window.RPG_AUDIO.sfx('levelup');
-    if(window.RPG_UI){ window.RPG_UI.updateHUD(); window.RPG_UI.toast('✨ 召唤成功：'+p.name); }
+    if(window.RPG_UI){ window.RPG_UI.updateHUD(); window.RPG_UI.toast('✨ 召唤成功：'+p.name+'（可在「切换宠物」编队）'); }
     return { ok:true, msg:'召唤成功' };
   }
 

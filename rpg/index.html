@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 <style>
 #btnInstall{display:none;margin:12px auto 4px;padding:9px 20px;border-radius:22px;cursor:pointer;
   background:linear-gradient(135deg,#a78bfa,#7c3aed);border:1px solid rgba(255,255,255,.28);
@@ -39,6 +39,7 @@
         <button id="btnStartAdventure" class="big-btn gold" disabled>开始冒险</button>
         <button id="titleContinue" class="big-btn ghost" style="display:none">继续上次冒险</button>
         <button id="btnPetPark" class="text-btn">🎪 伙伴乐园（动画宠物）</button>
+        <button id="btnCodex" class="text-btn">📖 图鉴与成就勋章</button>
         <button id="btnInstall" class="text-btn" style="display:none">📲 安装到桌面</button>
         <button id="titleNew" class="text-btn">重新开始游戏</button>
       </div>
@@ -57,6 +58,7 @@
       <div class="hud-right">
         <button id="hudMusic" class="hud-btn" title="音乐开关">🔊</button>
         <button id="hudPark" class="hud-btn" title="伙伴乐园">🎪</button>
+        <button id="hudCodex" class="hud-btn" title="图鉴与成就">📖</button>
         <button id="hudParty" class="hud-btn">🐾 队伍</button>
         <button id="hudMenu" class="hud-btn">❓</button>
       </div>
@@ -115,6 +117,18 @@
     <div class="panel-block"><h3>🗺️ 剧情关卡 · 知识点全覆盖</h3><div id="campaignBox" class="campaign-box"></div></div>
   </section>
 
+  <!-- 图鉴与成就勋章 -->
+  <section id="codexView" class="view hidden">
+    <div class="panel-head"><h2>📖 收藏图鉴</h2><button id="btnCodexBack" class="back-btn">← 返回</button></div>
+    <div id="codexProgress" class="codex-progress"></div>
+    <div class="codex-tabs">
+      <button class="codex-tab on" data-tab="pet">🐾 宠物</button>
+      <button class="codex-tab" data-tab="mon">👾 怪兽</button>
+      <button class="codex-tab" data-tab="ach">🏅 成就</button>
+    </div>
+    <div id="codexBody" class="codex-body"></div>
+  </section>
+
   <!-- 答题弹层 -->
   <div id="quizOverlay" class="overlay hidden">
     <div class="quiz-card">
@@ -163,13 +177,14 @@
 <script src="js/data.js?v=10"></script>
 <script src="js/audio.js?v=9"></script>
 <script src="js/fx.js?v=8"></script>
-<script src="js/engine.js?v=8"></script>
+<script src="js/engine.js?v=11"></script>
+<script src="js/codex.js?v=11"></script>
 <script src="js/campaign.js?v=8"></script>
 <script src="js/world.js?v=8"></script>
-<script src="js/battle.js?v=8"></script>
-<script src="js/ui.js?v=10"></script>
+<script src="js/battle.js?v=11"></script>
+<script src="js/ui.js?v=11"></script>
 <script src="js/petdexpark.js?v=9"></script>
-<script src="js/main.js?v=10"></script>
+<script src="js/main.js?v=11"></script>
 <script>
 /* ===== PWA：Service Worker 注册 ===== */
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}

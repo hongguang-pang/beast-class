@@ -31,6 +31,7 @@ function newSave(teamIds, grade){
     stats:{ kills:0, quizzes:0, quizOk:0, bosses:0, chests:0, steps:0 },
     chestsOpened:{},
     bossDefeated:{},
+    codex:{ pets:{}, mons:{}, ach:{} },
     seenIntro:false
   };
 }
@@ -68,6 +69,8 @@ var S = null;
 function load(){
   try { S = JSON.parse(lsGet(SAVE_KEY) || 'null'); } catch(e){ S=null; }
   if (S) migrate(S);
+  /* 旧档图鉴迁移：从已有战绩/队伍反推，避免升级后图鉴空白 */
+  if (S && window.RPG_CODEX) window.RPG_CODEX.migrateFromStats();
   return S;
 }
 /* 旧存档迁移：给老版本存档补齐新增字段，保证升级不丢档 */
@@ -78,10 +81,22 @@ function migrate(s){
   if (!s.side.prog) s.side.prog = {};
   if (!s.chestsOpened) s.chestsOpened = {};
   if (!s.bossDefeated) s.bossDefeated = {};
+  if (!s.codex) s.codex = { pets:{}, mons:{}, ach:{} };
+  if (!s.codex.pets) s.codex.pets = {};
+  if (!s.codex.mons) s.codex.mons = {};
+  if (!s.codex.ach) s.codex.ach = {};
 }
-function save(){ if (S) lsSet(SAVE_KEY, JSON.stringify(S)); }
+function save(){
+  if (S) lsSet(SAVE_KEY, JSON.stringify(S));
+  /* 每次存档后自动检查成就（codex.js 内部防递归，成就奖励直接落盘） */
+  if (S && window.RPG_CODEX) window.RPG_CODEX.autoCheck();
+}
 function hasSave(){ return !!load(); }
-function init(teamIds, grade){ S = newSave(teamIds, grade); save(); return S; }
+function init(teamIds, grade){
+  S = newSave(teamIds, grade); save();
+  if (window.RPG_CODEX) window.RPG_CODEX.syncTeam();
+  return S;
+}
 function reset(){ S=null; try{ localStorage.removeItem(SAVE_KEY);}catch(e){} delete mem[SAVE_KEY]; }
 
 /* ---------- 队伍操作 ---------- */

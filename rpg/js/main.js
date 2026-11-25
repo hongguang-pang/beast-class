@@ -111,6 +111,41 @@ function wire(){
   });
   $('hudParty').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('partyView'); });
   $('btnPartyBack').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('worldStage'); });
+
+  /* 图鉴与成就勋章：记录来源，返回时回到原视图 */
+  var codexFrom='titleView';
+  function openCodex(from){
+    if(A)A.unlock();
+    codexFrom=from||'titleView';
+    U.show('codexView');
+  }
+  var hudCodex=$('hudCodex');
+  if(hudCodex) hudCodex.addEventListener('click',function(){ if(A)A.sfx('click'); openCodex('worldStage'); });
+  var btnCodex=$('btnCodex');
+  if(btnCodex) btnCodex.addEventListener('click',function(){ openCodex('titleView'); });
+  var btnCodexBack=$('btnCodexBack');
+  if(btnCodexBack) btnCodexBack.addEventListener('click',function(){
+    if(A)A.sfx('click');
+    U.show(codexFrom);
+    if(codexFrom==='worldStage' && window.RPG_WORLD) W.resetToSave();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.codex-tab'),function(b){
+    b.addEventListener('click',function(){
+      if(A)A.sfx('click');
+      U.codexTab=b.getAttribute('data-tab');
+      U.renderCodex();
+    });
+  });
+  var codexBody=$('codexBody');
+  if(codexBody) codexBody.addEventListener('click',function(ev){
+    var b=ev.target.closest ? ev.target.closest('[data-summon]') : null;
+    if(!b) return;
+    if(A)A.sfx('click');
+    var r=window.RPG_CODEX.summon(b.getAttribute('data-summon'));
+    U.toast(r.msg);
+    U.renderCodex();
+    U.updateHUD();
+  });
   $('btnAction').addEventListener('click',function(){ W.interact(); });
   /* 音乐开关 */
   var hm=$('hudMusic');

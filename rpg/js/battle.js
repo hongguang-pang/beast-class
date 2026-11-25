@@ -96,6 +96,7 @@ Battle.resolveQuiz = function(correct){
   }
   if (correct){
     E.S.stats.quizzes++; E.S.stats.quizOk++;
+    E.save(); /* 立即检查答题类成就 */
     E.bumpSide('quiz');
     var moveN = D.moveName(pet.id, kind);
     log('✅ 答对了！'+moveN+' 发动！');
@@ -233,6 +234,8 @@ Battle.win = function(){
   var exp=this.mon.exp + this.monLv*3, gold=this.mon.gold;
   if (this.isBoss){ exp=this.mon.exp; gold=this.mon.gold; E.S.stats.bosses++; E.S.bossDefeated[this.mon.key]=1; }
   else E.S.stats.kills++;
+  /* 怪兽图鉴：记录每种怪兽/Boss 的击败次数 */
+  if (window.RPG_CODEX) window.RPG_CODEX.recordMon(this.mon.key);
   E.S.gold+=gold;
   var ups=[];
   E.alivePets().forEach(function(p){ E.addExp(p, exp, ups); });

@@ -286,3 +286,45 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .bb-name{display:block;color:#a3283f;font-weight:800;font-size:13px;}
 .bb-name b{float:right;}
 .bb-detail{display:block;color:#5c4a26;font-weight:400;font-size:11.5px;line-height:1.5;margin-top:4px;}
+
+/* ===== 图鉴与成就勋章 ===== */
+#codexView{display:flex;flex-direction:column;background:radial-gradient(circle at 50% 0%,#2a1d4a 0%,#12101f 70%);}
+#codexView.hidden{display:none !important;}
+#codexView .panel-head{padding:0 6px;}
+.codex-progress{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:8px 12px;font-size:12px;color:#cbb8ee;}
+.codex-progress span{background:#241d3d;border:1px solid #40356b;border-radius:14px;padding:4px 10px;}
+.codex-progress b{color:#ffe08a;}
+.codex-tabs{display:flex;gap:8px;justify-content:center;padding:0 12px 10px;}
+.codex-tab{flex:1;max-width:120px;padding:8px 0;border-radius:18px;background:#241d3d;border:1px solid #40356b;
+  color:#cbb8ee;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;}
+.codex-tab.on{background:linear-gradient(135deg,#a78bfa,#7c3aed);border-color:#c4b0ff;color:#fff;}
+.codex-body{flex:1;overflow-y:auto;padding:0 12px 28px;}
+.codex-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.codex-card{background:#1c1732;border:1px solid #3a2d63;border-radius:10px;padding:6px;text-align:center;min-width:0;}
+.codex-card.locked{border-style:dashed;opacity:.78;}
+.codex-card.boss{box-shadow:0 0 12px #f5b30155;}
+.codex-art{height:92px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:5px;
+  background:linear-gradient(180deg,#2b2149,#1a1430);border-radius:8px;}
+.codex-art .petimg{width:84px;height:84px;}
+.codex-art .petimg>img,.codex-art .pd-sprite{max-width:84px;max-height:84px;}
+.codex-art .petimg-emoji{font-size:44px;}
+.codex-monimg{max-width:100%;max-height:100%;object-fit:contain;}
+.codex-monfb{font-size:42px;}
+.codex-unknown{font-size:38px;color:#6b5a90;}
+.codex-name{font-size:12px;font-weight:700;color:#ffe08a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.codex-meta{font-size:10px;color:#9d90b5;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.codex-summon{margin-top:5px;width:100%;padding:5px 0;border-radius:6px;background:#7c3aed;color:#fff;
+  font-size:10px;font-weight:700;cursor:pointer;}
+.codex-summon:active{transform:translateY(1px);}
+.ach-group{margin-bottom:16px;}
+.ach-group h3{font-size:13px;color:#c4b0ff;margin:0 0 8px;padding-left:4px;}
+.ach-grid{display:grid;gap:6px;}
+.ach-card{display:flex;align-items:center;gap:10px;background:#1c1732;border:1px solid #3a2d63;
+  border-radius:10px;padding:8px 10px;}
+.ach-card.done{border-color:#ffd34d;background:linear-gradient(90deg,#2b2340,#1c1732);}
+.ach-card.lock{opacity:.6;}
+.ach-icon{font-size:26px;width:36px;text-align:center;flex:0 0 36px;}
+.ach-info{flex:1;min-width:0;}
+.ach-name{font-size:13px;font-weight:800;color:#ffe08a;}
+.ach-desc{font-size:11px;color:#9d90b5;margin-top:2px;}
+.ach-gold{font-size:11px;color:#ffd34d;white-space:nowrap;}

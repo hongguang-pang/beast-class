@@ -37,7 +37,7 @@ function petImgTag(id, stageKey, cls){
 
 UI.show = function(view){
   this.view=view;
-  ['titleView','partyView','worldStage','battleView'].forEach(function(v){
+  ['titleView','partyView','worldStage','battleView','codexView'].forEach(function(v){
     var el=$(v); if(el) el.classList.toggle('hidden', v!==view);
   });
   if (view==='worldStage'){
@@ -48,6 +48,7 @@ UI.show = function(view){
   } else { W.enabled=false; }
   if (view==='titleView'){ if(window.RPG_AUDIO) window.RPG_AUDIO.playBGM('none'); }
   if (view==='partyView') UI.renderParty();
+  if (view==='codexView') UI.renderCodex();
   if (view==='battleView') UI.renderBattle();
   UI.updateHUD();
 };
@@ -464,6 +465,96 @@ UI.battleEnd = function(r){
       E.S.player.x=D.MAP_CFG.spawn.x; E.S.player.y=D.MAP_CFG.spawn.y;
       W.resetToSave(); UI.show('worldStage');
     });
+  }
+};
+
+/* ---------- 图鉴与成就勋章 ---------- */
+UI.codexTab = 'pet';
+
+UI.renderCodex = function(){
+  var C=window.RPG_CODEX; if(!C || !E.S) return;
+  var s=E.S;
+  var totalMon=D.MONSTERS.length+D.BOSSES.length;
+  var pc=C.petCount(), mc=C.monCount(), ac=C.achCount();
+  var prog=$('codexProgress');
+  if(prog) prog.innerHTML=
+    '<span>🐾 宠物 <b>'+pc+'/'+D.PETS.length+'</b></span>'+
+    '<span>👾 怪兽 <b>'+mc+'/'+totalMon+'</b></span>'+
+    '<span>🏅 成就 <b>'+ac+'/'+C.ACH.length+'</b></span>';
+
+  Array.prototype.forEach.call(document.querySelectorAll('.codex-tab'),function(b){
+    b.classList.toggle('on', b.getAttribute('data-tab')===UI.codexTab);
+  });
+  var body=$('codexBody'); if(!body) return;
+
+  if (UI.codexTab==='pet'){
+    var stage=D.stageForLv(1).key;
+    var html='<div class="codex-grid">';
+    D.PETS.forEach(function(p){
+      var unlocked=C.isPetUnlocked(p.id);
+      var color=D.RAR_COLOR[p.rar]||'#9aa3b2';
+      if(unlocked){
+        html+='<div class="codex-card" style="border-color:'+color+'">'+
+          '<div class="codex-art">'+petImgTag(p.id, stage, 'codex')+'</div>'+
+          '<div class="codex-name">'+esc(p.name)+'</div>'+
+          '<div class="codex-meta" style="color:'+color+'">'+(D.ELEMENTS[p.elem]?D.ELEMENTS[p.elem].icon:'')+' '+p.rar+'</div>'+
+        '</div>';
+      } else {
+        var price=(C.SUMMON_PRICE[p.rar]||80);
+        html+='<div class="codex-card locked">'+
+          '<div class="codex-art codex-unknown">❓</div>'+
+          '<div class="codex-name">？？？</div>'+
+          '<div class="codex-meta">未发现 · '+(D.ELEMENTS[p.elem]?D.ELEMENTS[p.elem].name:'?')+'系</div>'+
+          '<button class="codex-summon" data-summon="'+p.id+'">✨ 召唤 '+price+'💰</button>'+
+        '</div>';
+      }
+    });
+    body.innerHTML=html+'</div>';
+  }
+
+  else if (UI.codexTab==='mon'){
+    var mh='<div class="codex-grid">';
+    D.MONSTERS.concat(D.BOSSES).forEach(function(m){
+      var kills=C.monKills(m.key);
+      var isBoss=m.key.charAt(0)==='b';
+      var color=D.RAR_COLOR[isBoss?'SSR':'R'];
+      if(kills){
+        mh+='<div class="codex-card'+(isBoss?' boss':'')+'" style="border-color:'+color+'">'+
+          '<div class="codex-art"><img class="codex-monimg" src="'+D.monsterImg(m)+'" alt="'+esc(m.name)+'" '+
+          'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
+          '<span class="codex-monfb" style="display:none">'+(isBoss?'👑':'👾')+'</span></div>'+
+          '<div class="codex-name">'+esc(m.name)+'</div>'+
+          '<div class="codex-meta">'+(D.ELEMENTS[m.elem]?D.ELEMENTS[m.elem].icon:'')+' 击败 ×'+kills+'</div>'+
+        '</div>';
+      } else {
+        mh+='<div class="codex-card locked">'+
+          '<div class="codex-art codex-unknown">'+(isBoss?'🔒':'❓')+'</div>'+
+          '<div class="codex-name">？？？</div>'+
+          '<div class="codex-meta">'+(isBoss?'未挑战的 Boss':'未遭遇')+'</div>'+
+        '</div>';
+      }
+    });
+    body.innerHTML=mh+'</div>';
+  }
+
+  else {
+    var ah='';
+    Object.keys(C.CAT).forEach(function(ck){
+      var cat=C.CAT[ck];
+      var list=C.ACH.filter(function(a){ return a.cat===ck; });
+      ah+='<div class="ach-group"><h3>'+cat.icon+' '+cat.name+'</h3><div class="ach-grid">';
+      list.forEach(function(a){
+        var done=C.isAchieved(a.id);
+        ah+='<div class="ach-card'+(done?' done':' lock')+'">'+
+          '<div class="ach-icon">'+(done?a.icon:'🔒')+'</div>'+
+          '<div class="ach-info"><div class="ach-name">'+esc(a.name)+'</div>'+
+          '<div class="ach-desc">'+esc(a.desc)+'</div></div>'+
+          '<div class="ach-gold">'+(done?'✓ ':'')+a.gold+'💰</div>'+
+        '</div>';
+      });
+      ah+='</div></div>';
+    });
+    body.innerHTML=ah;
   }
 };
 

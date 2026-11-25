@@ -104,11 +104,37 @@
     el.setAttribute('data-state',state);
   }
 
+  /* v6.1：把精灵图 idle 首帧烘焙成静态 PNG dataURL。
+   * 战斗/卡片等"不想要动画"的场景直接用它当 <img>，彻底消除 steps 循环闪动。
+   * 同步返回缓存；首次调用触发异步烘焙，完成后派发 pdstillready 事件供界面重绘。 */
+  var stillCache={}, stillPending={};
+  function stillFrame(pdId){
+    if (stillCache[pdId]) return stillCache[pdId];
+    var p=byId(pdId); if(!p) return null;
+    if (!stillPending[pdId]){
+      stillPending[pdId]=true;
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var cv=document.createElement('canvas');
+          cv.width=p.fw; cv.height=p.fh;
+          var cx=cv.getContext('2d');
+          cx.imageSmoothingEnabled=false;
+          cx.drawImage(img,0,0,p.fw,p.fh,0,0,p.fw,p.fh);
+          stillCache[pdId]=cv.toDataURL('image/png');
+          if (window.dispatchEvent) window.dispatchEvent(new CustomEvent('pdstillready',{detail:{id:pdId}}));
+        }catch(e){}
+      };
+      img.src=BASE+p.file;
+    }
+    return null;
+  }
+
   window.RPG_PETDEX={
     PETS:PETS, BY_ID:BY_ID, STATES:STATES, STATE_ROW:STATE_ROW,
     byId:byId, isPD:isPD, makeSprite:makeSprite, cardHTML:cardHTML,
     spriteStyle:spriteStyle, fluidSpriteStyle:fluidSpriteStyle,
-    setSpriteState:setSpriteState, injectKeyframes:injectKeyframes,
+    setSpriteState:setSpriteState, stillFrame:stillFrame, injectKeyframes:injectKeyframes,
     BASE:BASE
   };
 })();

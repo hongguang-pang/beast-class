@@ -98,6 +98,11 @@ function wire(){
     /* 回到地图时由 UI.show('worldStage') 恢复地图音乐 */
   };
 
+  /* v6.1：静态首帧烘焙完成后，若正在战斗则刷新我方宠物图（消除首次进入时空白） */
+  window.addEventListener('pdstillready',function(e){
+    if (B && B.active && U.view==='battleView' && U.renderBattle) U.renderBattle();
+  });
+
   /* 战斗按钮 */
   $('bNormal').addEventListener('click',function(){ B.act('normal'); });
   $('bSpell').addEventListener('click',function(){ B.act('spell'); });

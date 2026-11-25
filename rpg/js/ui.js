@@ -386,19 +386,27 @@ UI.renderBattle = function(){
   var pdFight = (p._pd && window.RPG_PETDEX) ? window.RPG_PETDEX.byId(p.id) : null;
   var oldAni=$('bMyPdAni'); if(oldAni) oldAni.remove();
   if (pdFight){
-    mImg.style.display='none';
+    /* v6.1：战斗伙伴改为静态图（取 idle 首帧），不做 steps 循环动画 → 不再"闪"；
+     * 直接替换 img 元素本身，落在 .bs-side.mine 的正常文档流槽位里 → 位置正确。
+     * 用 canvas 把精灵图首帧烘焙成 PNG dataURL，尺寸/样式与静态宠物图完全一致。 */
+    var PD=window.RPG_PETDEX;
     var ph0=$('bMyPh'); if(ph0) ph0.style.display='none';
-    var PD=window.RPG_PETDEX; PD.injectKeyframes();
-    /* 与静态图共用 96px bs-img 槽位：fluid 精灵按容器 contain，尺寸观感一致 */
-    var ani=document.createElement('div');
-    ani.id='bMyPdAni'; ani.className='pd-sprite pd-fluid battle-pd';
-    ani.setAttribute('data-pd',p.id);
-    ani.setAttribute('data-state','idle');
-    ani.style.cssText=PD.fluidSpriteStyle(pdFight,0,8);
-    /* 战斗槽位：绝对居中于 bs-img 同尺寸方框 */
-    ani.style.left='50%'; ani.style.top='50%'; ani.style.width='96px'; ani.style.height='96px';
-    ani.style.transform='translate(-50%,-50%)';
-    mImg.parentNode.insertBefore(ani,mImg.nextSibling);
+    var still=PD.stillFrame(pdFight.id);
+    if (still){
+      mImg.src=still; mImg.style.display='block'; mImg.style.objectFit='contain';
+      mImg.style.imageRendering='auto';
+    } else {
+      /* 烘焙失败兜底：仍用静态精灵，但走正常流、无动画 */
+      mImg.style.display='none';
+      var oldA=$('bMyPdAni'); if(oldA) oldA.remove();
+      var ani=document.createElement('div');
+      ani.id='bMyPdAni'; ani.className='pd-sprite pd-still battle-pd-still';
+      ani.setAttribute('data-pd',p.id);
+      ani.style.cssText='width:100%;height:100%;background-image:url('+PD.BASE+pdFight.file+');'+
+        'background-size:'+pdFight.cols*100+'% '+pdFight.rows*100+'%;'+
+        'background-position:0 0;background-repeat:no-repeat;';
+      mImg.parentNode.insertBefore(ani,mImg.nextSibling);
+    }
   } else {
     mImg.onerror=function(){ this.style.display='none'; var ph=$('bMyPh'); if(ph)ph.style.display='flex'; };
     mImg.onload=function(){ this.style.display='block'; var ph=$('bMyPh'); if(ph)ph.style.display='none'; };
@@ -435,15 +443,15 @@ UI.battleLog = function(s){
 
 /* ---------- 答题弹层 ---------- */
 UI.openQuiz = function(kind, skill){
-  var q=null, kid=null, mode=null, L=null;
-  /* 优先按当前剧情关卡的知识点出题（覆盖 + 薄弱巩固） */
+  var q=null, kid=null, mode=null, L=null, qSubj=null;
+  /* v6.1：全年级跨学科混合出题（薄弱优先 + 已掌握降频），不再只出当前单元 */
   if (window.RPG_CAMPAIGN){
     L=window.RPG_CAMPAIGN.curLevel(E.S);
     var pick=window.RPG_CAMPAIGN.pickBattleQuestion(E.S, B.usedTexts);
-    if (pick){ q=E.formatBankQ(pick.raw); kid=pick.kid; mode=pick.mode; }
+    if (pick){ q=E.formatBankQ(pick.raw); kid=pick.kid; mode=pick.mode; qSubj=pick.subj; }
   }
   /* 关卡无可用题时回退到年级随机题库 */
-  if (!q) q=E.pickQuestion(E.S.grade, B.usedTexts);
+  if (!q){ q=E.pickQuestion(E.S.grade, B.usedTexts); if(q) qSubj=q.subj; }
   if (!q){ /* 题库不可用，直接当作答对 */
     UI.toast('题库加载中，技能直接发动');
     setTimeout(function(){B.resolveQuiz(true);},300);
@@ -452,13 +460,14 @@ UI.openQuiz = function(kind, skill){
   B.usedTexts[q.q]=1;
   /* 保存当前题供结算时记录覆盖/薄弱（kid 缺失则从题库按题干反查） */
   if (!kid && q.kid) kid=q.kid;
-  var subj = (L && L.subj) || q.subj || null;
-  B.currentQuiz={ q:q, kid:kid, mode:mode, level:L, subj:subj };
+  /* 用题目真实学科判定暴击（混合出题后不能再用当前关卡学科），并保留 L 供覆盖结算 */
+  var quizSubj = qSubj || q.subj || (L && L.subj) || null;
+  B.currentQuiz={ q:q, kid:kid, mode:mode, level:L, subj:quizSubj };
   var box=$('quizQ'); box.textContent=q.q;
-  var subj=$('quizSubj');
-  if(subj){
-    var tag = mode==='weak' ? '🎯 薄弱巩固 · ' : (L? (window.RPG_CAMPAIGN.subjIcon(L.subj)+' '):'');
-    subj.textContent=tag+(q.kn||'知识挑战');
+  var subjEl=$('quizSubj');
+  if(subjEl){
+    var tag = mode==='weak' ? '🎯 薄弱巩固 · ' : (quizSubj? (window.RPG_CAMPAIGN.subjIcon(quizSubj)+' '):'');
+    subjEl.textContent=tag+(q.kn||'知识挑战');
   }
   var opts=$('quizOpts');
   if(q.tp==='choice'){
@@ -659,7 +668,8 @@ UI.shop = function(){
 /* ---------- 战斗结算 ---------- */
 UI.battleEnd = function(r){
   if (r.win){
-    var msg='🎉 胜利！<br>获得 '+r.exp+' 经验 · '+r.gold+' 金币';
+    var msg='🎉 胜利！<br>获得 '+r.exp+' 经验 · '+r.gold+' 金币'+
+      '<br><span style="color:#6ab8ff">💧 全队 MP 已回满，准备下一场战斗</span>';
     if (r.drops && r.drops.length){
       msg+='<br><span style="color:#8fe3a8">🎁 掉落：'+r.drops.map(function(d){
         var it=D.ITEMS[d.item]; return (it?it.emoji:'🎁')+(it?it.name:d.item)+'×'+d.n;

@@ -167,9 +167,9 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .shop-list,.b-bag-list{display:grid;gap:8px;margin:12px 0;}
 .shop-item,.bb-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;
   background:#fff;border:1px solid #d9c698;font-size:13px;color:#3a2c10;}
-.shop-item button,.bb-item{padding:5px 14px;border-radius:8px;background:#e8a52f;color:#fff;font-weight:800;}
-.bb-item{width:100%;}
-.bb-item span{color:#a3283f;font-weight:800;}
+.shop-item button{padding:5px 14px;border-radius:8px;background:#e8a52f;color:#fff;font-weight:800;}
+.bb-item{width:100%;background:#fffdf6 !important;border:1.5px solid #c9a860;padding:11px 13px;}
+.bb-item span{color:#4a2f0c;font-weight:800;}
 
 /* ---------- Toast ---------- */
 .toast{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);z-index:50;
@@ -257,8 +257,9 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 /* ===== Petdex 动画精灵（伙伴乐园 / 选队 / 战斗通用） ===== */
 .pd-sprite{display:inline-block;image-rendering:pixelated;background-repeat:no-repeat;flex:0 0 auto;}
 .petimg .pd-sprite{vertical-align:middle;border-radius:8px;}
-/* 战斗中我方伙伴动画：覆盖在原 img 位置并居中 */
-.battle-pd{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;}
+/* v6.1 战斗中我方伙伴：静态首帧，走正常文档流落在 img 槽位（不再绝对定位飘到场景中央、不再循环闪） */
+.battle-pd-still{display:block;width:96px;height:96px;margin:6px auto;border-radius:8px;background-repeat:no-repeat;image-rendering:pixelated;}
+@media(max-height:640px){.battle-pd-still{width:78px;height:78px;}}
 
 /* ===== 伙伴乐园 ===== */
 #petdexParkView{padding:14px 12px 40px;overflow-y:auto;height:100%;background:radial-gradient(circle at 50% 0%,#2a1d4a 0%,#12101f 70%);}
@@ -294,9 +295,9 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .shop-item button{flex:0 0 auto;}
 .shop-detail{font-size:12px;line-height:1.55;color:#6b5630;margin-top:6px;padding-top:6px;border-top:1px dashed #dfcd9c;}
 .bb-item{display:block;text-align:left;}
-.bb-name{display:block;color:#a3283f;font-weight:800;font-size:13px;}
-.bb-name b{float:right;}
-.bb-detail{display:block;color:#5c4a26;font-weight:400;font-size:11.5px;line-height:1.5;margin-top:4px;}
+.bb-name{display:block;color:#7a1d0c;font-weight:900;font-size:15px;letter-spacing:.2px;}
+.bb-name b{float:right;color:#8a5a00;font-size:14px;}
+.bb-detail{display:block;color:#33260f;font-weight:600;font-size:13px;line-height:1.65;margin-top:6px;}
 
 /* ===== 图鉴与成就勋章 ===== */
 #codexView{display:flex;flex-direction:column;background:radial-gradient(circle at 50% 0%,#2a1d4a 0%,#12101f 70%);}

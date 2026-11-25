@@ -166,44 +166,63 @@ function coverage(S){
            levelsTotal:c.levels.length };
 }
 
-/* ---------- 为战斗抽题：优先当前关卡未覆盖/薄弱的知识点 ---------- */
-/* 返回 {q, kid} 或 null；q 结构与 pickQuestion 输出一致 */
+/* ---------- 为战斗抽题：全年级跨学科混合 + 按掌握度加权 ---------- */
+/* v6.1：不再只出当前关卡/单元（否则前期全是"观察物体"很无聊）。
+ * 从整本年级题库跨学科抽题，按掌握度加权：薄弱 > 未覆盖 > 已覆盖(降频)；
+ * 当前关卡知识点仅轻度加权保持主线关联。返回 {raw, kid, subj, mode} 或 null。 */
 function pickBattleQuestion(S, usedTexts){
   if (!S || !S.campaign) return null;
-  var L = curLevel(S); if (!L) return null;
   var grade = S.grade;
   var bank = window.KG_BANK && window.KG_BANK[grade];
   if (!bank) return null;
   var c = S.campaign;
-  /* 收集当前关卡 kid -> 题目池 */
-  var kidSet = {};
-  L.kps.forEach(function(k){ kidSet[k]=1; });
+  var L = curLevel(S);
+  /* 当前关卡知识点集合：仅做轻度加权，不再限定只出本关 */
+  var curKps = {};
+  if (L) (L.kps||[]).forEach(function(k){ curKps[k]=1; });
+
+  /* 全年级跨学科收集 kid -> {subj, qs:[...]} */
   var byKid = {};
   Object.keys(bank).forEach(function(subj){
-    if (L.subj && subj!==L.subj) return;   /* 只取本关学科 */
     (bank[subj]||[]).forEach(function(q){
-      if (kidSet[q.kid]){
-        if (!byKid[q.kid]) byKid[q.kid]=[];
-        byKid[q.kid].push(q);
-      }
+      if (!q || !q.kid || !q.q) return;
+      if (!byKid[q.kid]) byKid[q.kid] = { subj:subj, qs:[] };
+      byKid[q.kid].qs.push(q);
     });
   });
   var kids = Object.keys(byKid);
   if (!kids.length) return null;
-  /* 优先级：薄弱(连错≥2) > 未覆盖 > 已覆盖(复习) */
-  var weak = kids.filter(function(k){ return (c.weak[k]||0)>=2; });
-  var fresh = kids.filter(function(k){ return !c.covered[k] && (c.weak[k]||0)<2; });
-  var done = kids.filter(function(k){ return c.covered[k] && (c.weak[k]||0)<2; });
-  var pool = weak.length ? weak : (fresh.length ? fresh : done);
-  /* 用题目文本去重 */
-  var cand=[];
-  pool.forEach(function(k){
-    byKid[k].forEach(function(q){ if (!usedTexts || !usedTexts[q.q]) cand.push({q:q,kid:k}); });
-  });
-  if (!cand.length){ pool.forEach(function(k){ byKid[k].forEach(function(q){ cand.push({q:q,kid:k}); }); }); }
-  if (!cand.length) return null;
-  var pick = cand[Math.floor(Math.random()*cand.length)];
-  return { raw:pick.q, kid:pick.kid, mode: weak.length?'weak':(fresh.length?'fresh':'review') };
+
+  /* 掌握度权重：薄弱(连错≥2) 9 > 未覆盖 5 > 已覆盖 1.2(大幅降频仍偶尔复习) */
+  function kidWeight(k){
+    var w = (c.weak[k]||0)>=2 ? 9 : (!c.covered[k] ? 5 : 1.2);
+    if (curKps[k]) w *= 1.6;   /* 当前关卡轻度加权，保持与主线关联 */
+    return w;
+  }
+  function build(useDedupe){
+    var cand=[], total=0;
+    kids.forEach(function(k){
+      var info=byKid[k], w=kidWeight(k);
+      info.qs.forEach(function(q){
+        if (useDedupe && usedTexts && usedTexts[q.q]) return;
+        cand.push({ q:q, kid:k, subj:info.subj, w:w });
+        total += w;
+      });
+    });
+    return { cand:cand, total:total };
+  }
+  var built = build(true);
+  if (!built.cand.length) built = build(false);   /* 本场题都用过则忽略去重 */
+  if (!built.cand.length) return null;
+
+  /* 加权随机 */
+  var r = Math.random()*built.total, pick = built.cand[built.cand.length-1];
+  for (var i=0;i<built.cand.length;i++){
+    r -= built.cand[i].w;
+    if (r<=0){ pick = built.cand[i]; break; }
+  }
+  var mode = (c.weak[pick.kid]||0)>=2 ? 'weak' : (!c.covered[pick.kid] ? 'fresh' : 'review');
+  return { raw:pick.q, kid:pick.kid, subj:pick.subj, mode:mode };
 }
 
 window.RPG_CAMPAIGN = {

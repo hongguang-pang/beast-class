@@ -110,8 +110,9 @@ Battle.resolveQuiz = function(correct){
     /* 属性克制学科 → 暴击 */
     var petElem = D.PET_BY_ID[pet.id].elem;
     var subj = null;
-    if (this.currentQuiz && this.currentQuiz.level) subj = this.currentQuiz.level.subj;
-    if (!subj && this.currentQuiz && this.currentQuiz.subj) subj = this.currentQuiz.subj;
+    /* v6.1：优先用题目真实学科（混合出题后关卡学科不再是题目学科） */
+    if (this.currentQuiz && this.currentQuiz.subj) subj = this.currentQuiz.subj;
+    if (!subj && this.currentQuiz && this.currentQuiz.level) subj = this.currentQuiz.level.subj;
     this.critNext = subj ? D.isCritSubject(petElem, subj) : false;
     if (this.critNext){
       var se = D.subjectElement(subj), pe = D.ELEMENTS[petElem];
@@ -265,6 +266,9 @@ Battle.win = function(){
   E.S.gold+=gold;
   var ups=[];
   E.alivePets().forEach(function(p){ E.addExp(p, exp, ups); });
+  /* v6.1：战斗胜利后全队存活宠物回复 MP（HP 不自动回，鼓励用药/技能规划）。
+   * 回满 MP，让下一场能立即放知识技能，避免"打完没 MP 只能普攻"的卡壳。 */
+  E.alivePets().forEach(function(p){ p.mp=E.curMaxMp(p); });
   var qp = E.bumpQuest('kill', this.mon.key);
   if (this.isBoss) E.bumpQuest('boss', this.mon.key);
   /* 支线进度：击杀 / Boss / 等级 */

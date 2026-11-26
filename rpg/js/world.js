@@ -74,8 +74,11 @@ World.buildMobs = function(){
 };
 World.resize = function(){
   var stage = document.getElementById('worldStage');
-  var w = stage ? stage.clientWidth : window.innerWidth;
-  var h = stage ? stage.clientHeight : window.innerHeight;
+  var w = stage ? stage.clientWidth : 0;
+  var h = stage ? stage.clientHeight : 0;
+  /* v6.2.1：布局未稳时 clientWidth/Height 可能为 0，回退到窗口尺寸，
+   * 避免 canvas 被设成 0×0 导致主画面永久空白（小地图是独立 canvas 不受影响）。 */
+  if (!w || !h){ w = window.innerWidth||375; h = window.innerHeight||667; }
   this.viewW = w; this.viewH = h;
   var dpr = Math.min(2, window.devicePixelRatio||1);
   this.canvas.width = w*dpr; this.canvas.height = h*dpr;
@@ -331,6 +334,14 @@ World.markMobDefeated = function(){
 
 /* ---------- 渲染 ---------- */
 World.draw = function(){
+  /* v6.2.1 自愈：画布像素尺寸异常（0 或与视口*dpr 不符）时重算，
+   * 修复移动端初始化竞态导致的主画面全黑。 */
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  if (!this.canvas.width || !this.canvas.height ||
+      Math.abs(this.canvas.width-this.viewW*dpr)>2 ||
+      Math.abs(this.canvas.height-this.viewH*dpr)>2){
+    this.resize();
+  }
   var c=this.ctx, t=this.tile;
   var camX0=this.camX, camY0=this.camY;
   var now=Date.now();

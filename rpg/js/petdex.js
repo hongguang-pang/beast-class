@@ -44,6 +44,18 @@
       'background-position:0% '+py+'%;'+
       'animation:pdf_'+p.id+'_'+row+' '+dur+'s steps(7) infinite;';
   }
+  /* v6.2.1：静态精灵样式——固定第一帧、无 animation。
+   * 用于 HUD 队伍栏/图鉴/编队等"小图标"场景，消除持续闪动（steps infinite）。
+   * 与 fluidSpriteStyle 只差一行 animation，视觉尺寸/缩放完全一致。 */
+  function stillSpriteStyle(p, row, noSize){
+    var py = p.rows>1 ? (((row||0)/(p.rows-1))*100).toFixed(3) : 0;
+    return (noSize?'':'width:100%;height:100%;')+
+      'background-image:url('+BASE+p.file+');'+
+      'background-size:'+p.cols*100+'% '+p.rows*100+'%;'+
+      'background-repeat:no-repeat;'+
+      'background-position:0% '+py+'%;'+
+      'animation:none;';
+  }
   /* 注入所有 @keyframes（一次性）：像素版 + 百分比自适应版 */
   function injectKeyframes(){
     if(document.getElementById('pd-kf')) return;
@@ -133,7 +145,7 @@
   window.RPG_PETDEX={
     PETS:PETS, BY_ID:BY_ID, STATES:STATES, STATE_ROW:STATE_ROW,
     byId:byId, isPD:isPD, makeSprite:makeSprite, cardHTML:cardHTML,
-    spriteStyle:spriteStyle, fluidSpriteStyle:fluidSpriteStyle,
+    spriteStyle:spriteStyle, fluidSpriteStyle:fluidSpriteStyle, stillSpriteStyle:stillSpriteStyle,
     setSpriteState:setSpriteState, stillFrame:stillFrame, injectKeyframes:injectKeyframes,
     BASE:BASE
   };

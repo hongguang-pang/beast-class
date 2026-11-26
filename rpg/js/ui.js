@@ -21,9 +21,9 @@ function petImgTag(id, stageKey, cls){
   if (pet._pd && window.RPG_PETDEX){
     var PD=window.RPG_PETDEX, pd=PD.byId(id);
     if (pd){
-      PD.injectKeyframes();
+      /* v6.2.1：小图标固定第一帧，不播放 steps 动画，避免持续闪动 */
       return wrap+'<span class="petimg-emoji">'+ (pet.emoji||'🐾') +'</span>'+
-        '<div class="pd-sprite pd-fluid" data-pd="'+id+'" data-state="idle" style="'+PD.fluidSpriteStyle(pd,0,8)+'"></div></span>';
+        '<div class="pd-sprite pd-still" data-pd="'+id+'" data-state="idle" style="'+PD.stillSpriteStyle(pd,0)+'"></div></span>';
     }
   }
   var fb=pet.emoji||'❔';
@@ -41,6 +41,9 @@ UI.show = function(view){
   });
   if (view==='worldStage'){
     W.enabled=true;
+    /* v6.2.1：移动端布局就绪时机不定，多重触发 resize 确保画布尺寸正确 */
+    W.resize(); W.start();
+    requestAnimationFrame(function(){ W.resize(); });
     setTimeout(function(){W.resize(); W.start();},30);
     /* 回到地图播放地图音乐（战斗音乐由遇敌回调单独切换） */
     if (window.RPG_AUDIO && !window.RPG_AUDIO.isMuted()) window.RPG_AUDIO.playBGM('world');

@@ -195,8 +195,8 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .petimg-emoji{font-style:normal;line-height:1;display:inline;position:absolute;inset:0;
   display:flex;align-items:center;justify-content:center;font-size:inherit;}
 /* Petdex 百分比自适应精灵：填满正方形容器，按 background-size contain */
-.petimg .pd-sprite.pd-fluid{position:absolute;inset:0;width:100%;height:100%;
-  border-radius:0;image-rendering:auto;background-color:transparent;}
+.petimg .pd-sprite.pd-fluid,.petimg .pd-sprite.pd-still{position:absolute;inset:0;width:100%;height:100%;
+  border-radius:0;image-rendering:auto;background-color:transparent;animation:none !important;}
 /* 统一圆角底板：轻微渐变 + 描边，让静态图/精灵图观感一致 */
 .starter .petimg,.pc-top .petimg,.codex-art .petimg,.sw-slot .petimg,.sw-pet .petimg{
   background:radial-gradient(circle at 50% 30%,#ffffff1f,#00000022 72%);

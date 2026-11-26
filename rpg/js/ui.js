@@ -160,6 +160,7 @@ UI.renderParty = function(){
       var ready=prog>=q.need;
       questBox.innerHTML='<div class="q-title">📜 '+esc(q.title)+'</div>'+
         '<div class="q-desc">'+esc(q.desc)+'</div>'+
+        (q.hint?'<div class="q-guide">💡 '+esc(q.hint)+'</div>':'')+
         '<div class="q-prog">进度 '+Math.min(prog,q.need)+' / '+q.need+'</div>'+
         '<div class="q-reward">奖励：'+q.reward.gold+' 金币 · '+q.reward.exp+' 经验</div>'+
         (ready?'<button class="q-turnin" id="btnTurnIn">✅ 回 '+esc(q.npc)+' 处交付</button>':
@@ -513,9 +514,10 @@ UI.openQuiz = function(kind, skill){
 function closeQuiz(){ $('quizOverlay').classList.add('hidden'); }
 
 /* ---------- 剧情对话 ---------- */
-UI.dialog = function(title, text, onClose, actions){
+UI.dialog = function(title, text, onClose, actions, okLabel){
   $('dlgTitle').textContent=title;
   $('dlgText').innerHTML=text;
+  var okBtn=$('dlgOk'); if(okBtn) okBtn.textContent=okLabel||'知道了';
   /* 自定义动作按钮（如 NPC 闲聊/赠礼），每次打开先清空 */
   var acts=$('dlgActions'); if(acts){ acts.innerHTML=''; }
   if (acts && actions && actions.length){
@@ -529,7 +531,10 @@ UI.dialog = function(title, text, onClose, actions){
   }
   $('dlgOverlay').classList.remove('hidden');
   var btn=$('dlgOk');
-  var handler=function(){ $('dlgOverlay').classList.add('hidden'); btn.removeEventListener('click',handler); if(onClose)onClose(); };
+  /* 上一次若通过自定义动作按钮关闭，旧监听器可能残留，先清掉避免重复触发 */
+  if (UI._dlgOkHandler) btn.removeEventListener('click', UI._dlgOkHandler);
+  var handler=function(){ $('dlgOverlay').classList.add('hidden'); btn.removeEventListener('click',handler); UI._dlgOkHandler=null; if(onClose)onClose(); };
+  UI._dlgOkHandler=handler;
   btn.addEventListener('click',handler);
 };
 
@@ -620,7 +625,8 @@ UI.talkNPCQuest = function(npc){
       /* 章节通关剧情 */
       var ch=(window.RPG_STORY&&window.RPG_STORY.chapterOfQuest(r.q.id));
       var after=function(){
-        if(r.next) setTimeout(function(){UI.dialog(npc.name,'下一个任务：「'+esc(r.next.title)+'」<br>'+esc(r.next.desc));},250);
+        if(r.next) setTimeout(function(){UI.dialog(npc.name,'下一个任务：「'+esc(r.next.title)+'」<br>'+esc(r.next.desc)+
+          (r.next.hint?'<br><span class="story-guide">💡 '+esc(r.next.hint)+'</span>':''));},250);
         else if(ch) setTimeout(function(){UI.dialog('知识大陆 · 守护者',window.RPG_STORY.WORLD.mission);},250);
       };
       if(ch && ch.clear) setTimeout(function(){ UI.dialog(ch.no+' · '+ch.title+'（完成）',ch.clear,after); },250);
@@ -649,7 +655,9 @@ UI.talkNPCQuest = function(npc){
   }
   /* 主线进度或默认 */
   if (q && q.npc===npc.name){
-    UI.dialog(npc.name,'「'+esc(q.title)+'」<br>'+esc(q.desc)+'<br><small>进度 '+(E.S.quests.prog[q.id]||0)+'/'+q.need+'</small>');
+    UI.dialog(npc.name,'「'+esc(q.title)+'」<br>'+esc(q.desc)+
+      (q.hint?'<br><span class="story-guide">💡 '+esc(q.hint)+'</span>':'')+
+      '<br><small>进度 '+(E.S.quests.prog[q.id]||0)+'/'+q.need+'</small>');
   } else if (q){
     UI.dialog(npc.name,'主线去找 '+esc(q.npc)+' 吧。我这边暂时没有委托了。');
   } else {

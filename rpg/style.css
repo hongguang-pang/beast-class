@@ -360,6 +360,15 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
   padding:6px 8px;background:#ffd35c12;border-left:3px solid #ffd35c;border-radius:4px;}
 .story-scene{display:block;color:#bfe3ff;font-size:12px;line-height:1.6;margin:6px 0;}
 .story-say{display:block;color:#e8dcff;font-style:italic;font-size:12.5px;line-height:1.6;margin-top:8px;}
+/* NPC 对话弹窗是浅米色底：覆盖为深色文字（上面几个浅色类原本给深色剧情页用） */
+.dlg-card .story-bg{color:#5b482a;font-size:13px;}
+.dlg-card .story-quest{color:#6b4610;background:#fff4d6;border-left-color:#e8a52f;font-size:13px;font-weight:600;}
+.dlg-card .story-guide{display:block;color:#4a3a18;font-size:12.5px;line-height:1.6;margin-top:6px;padding:6px 8px;background:#f0e2c0;border-radius:6px;}
+.dlg-card .story-scene{color:#2f5570;font-size:13px;}
+.dlg-card .story-say{color:#6b3a8a;font-size:13.5px;font-style:normal;}
+.dlg-card .dlg-text small{color:#5c4a2c;font-size:12px;}
+/* 任务面板（深色 HUD）里的引导文字 */
+.q-guide{font-size:11.5px;color:#ffe0a0;line-height:1.5;margin:6px 0;}
 
 /* ---------- 切换宠物 / 编队 ---------- */
 .switch-help{color:#b9a7d8;font-size:11px;line-height:1.6;text-align:center;padding:8px 14px 4px;}

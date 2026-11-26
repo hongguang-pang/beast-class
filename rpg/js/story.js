@@ -113,6 +113,7 @@
     if (ctx.quest){
       var ch = chapterOfQuest(ctx.quest.id);
       lines.push('<span class="story-quest">📜 当前使命：'+esc(ctx.quest.title)+'<br>'+esc(ctx.quest.desc)+'</span>');
+      if (ctx.quest.hint) lines.push('<span class="story-guide">💡 怎么完成：'+esc(ctx.quest.hint)+'</span>');
       if (ch) lines.push('<span class="story-scene">'+ch.scene+'</span>');
     } else if (ctx.allDone){
       lines.push('<span class="story-scene">'+WORLD.mission+'</span>');

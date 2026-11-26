@@ -51,18 +51,46 @@ function startGame(teamIds, grade, isNew){
 
 /* 装配回调 */
 function wire(){
+  /* 越级挑战守卫：怪物等级比最强存活宠物高 5 级以上时先劝退，避免被秒 */
+  function guardOverlevel(mon, lv, startFn){
+    W.stop();
+    var team=(E.S && E.S.team)||[];
+    var best=0;
+    team.forEach(function(p){ if(p.hp>0 && p.lv>best) best=p.lv; });
+    if(!best) team.forEach(function(p){ if(p.lv>best) best=p.lv; });
+    if(best && lv>best+4){
+      var suggest=Math.min(lv, best+6);
+      var where=lv>=17?'风暴高地或知识圣殿':'新手草原';
+      UI.dialog('⚠️ 强敌预警 · '+mon.name+' Lv'+lv,
+        '<b>'+mon.name+'</b> 是 <b>Lv'+lv+'</b>，而你最强的宠物才 <b>Lv'+best+'</b>。<br>'+
+        '等级差太多，硬拼很容易全队倒下。<br><br>'+
+        '💡 建议：先回<b>'+where+'</b>练级，把宠物升到 <b>Lv'+suggest+'</b> 左右再来；<br>'+
+        '战斗时带属性<b>克制</b>它的宠物上场，答对对应学科题还能打出暴击。',
+        function(){ UI.show('worldStage'); },
+        [{ label:'⚔️ 仍然挑战', alt:true, fn:function(){
+          var ov=document.getElementById('dlgOverlay'); if(ov) ov.classList.add('hidden');
+          startFn();
+        }}],
+        '🏃 先去练级');
+      return;
+    }
+    startFn();
+  }
   /* 世界事件 → 战斗/对话/宝箱 */
   W.onEncounter = function(mon, lv, isBoss){
-    W.stop();
-    B.start(mon, lv, isBoss);
-    U.show('battleView');
-    if(A){ A.sfx('encounter'); A.playBGM(isBoss?'boss':'battle'); }
+    guardOverlevel(mon, lv, function(){
+      B.start(mon, lv, isBoss);
+      U.show('battleView');
+      if(A){ A.sfx('encounter'); A.playBGM(isBoss?'boss':'battle'); }
+    });
   };
   W.onBoss = function(mon){
-    W.stop();
-    B.start(mon, 1 + D.BOSSES.findIndex(function(b){return b.key===mon.key;})*8, true);
-    U.show('battleView');
-    if(A){ A.sfx('encounter'); A.playBGM('boss'); }
+    var lv=1 + D.BOSSES.findIndex(function(b){return b.key===mon.key;})*8;
+    guardOverlevel(mon, lv, function(){
+      B.start(mon, lv, true);
+      U.show('battleView');
+      if(A){ A.sfx('encounter'); A.playBGM('boss'); }
+    });
   };
   W.onTalk = function(npc){ U.talkNPC(npc); };
   W.onChest = function(){

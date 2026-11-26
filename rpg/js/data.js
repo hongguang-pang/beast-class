@@ -214,16 +214,16 @@ var SKILLS = {
 /* ---------- 主线任务链 ---------- */
 /* 每个任务：id / title / 目标类型 type(kill|boss|talk|chest|level) / 参数 / 奖励 */
 var QUESTS = [
-  { id:'q1', title:'初入知识大陆', desc:'击败 3 只野外魔物，证明你的实力', type:'kill', need:3, reward:{gold:80, exp:40}, npc:'村长' },
-  { id:'q_boss1', title:'蘑菇王的威胁', desc:'前往蘑菇森林，击败蘑菇王', type:'boss', boss:'b01', need:1, reward:{gold:200, exp:120}, npc:'村长' },
-  { id:'q2', title:'失踪的宝箱', desc:'在野外开启 2 个宝箱', type:'chest', need:2, reward:{gold:120, exp:60}, npc:'探险家' },
-  { id:'q_boss2', title:'玩具霸王龙', desc:'挑战玩具谷的霸王龙', type:'boss', boss:'b02', need:1, reward:{gold:300, exp:200}, npc:'探险家' },
-  { id:'q3', title:'成长的烦恼', desc:'让任意一只宠物达到 12 级', type:'level', need:12, reward:{gold:150, exp:100}, npc:'训练师' },
-  { id:'q_boss3', title:'风暴领主', desc:'击败风暴高地的领主', type:'boss', boss:'b03', need:1, reward:{gold:400, exp:280}, npc:'训练师' },
-  { id:'q4', title:'知识宝藏', desc:'累计答对 30 道题', type:'quiz', need:30, reward:{gold:250, exp:180}, npc:'学者' },
-  { id:'q_boss4', title:'熔岩巨兽', desc:'深入熔岩洞窟击败巨兽', type:'boss', boss:'b04', need:1, reward:{gold:500, exp:360}, npc:'学者' },
-  { id:'q_boss5', title:'冰霜女王', desc:'挑战冰封之地的女王', type:'boss', boss:'b05', need:1, reward:{gold:650, exp:450}, npc:'村长' },
-  { id:'q_boss6', title:'终章 · 知识魔王', desc:'击败知识魔王，守护知识大陆', type:'boss', boss:'b06', need:1, reward:{gold:1000, exp:800}, npc:'村长' }
+  { id:'q1', title:'初入知识大陆', desc:'击败 3 只野外魔物，证明你的实力', hint:'在地图下方的「新手草原」走动就能遇到野生魔物。战斗时点「知识技能」答题，答对伤害更高；打赢 3 只后回村长处交付。', type:'kill', need:3, reward:{gold:80, exp:40}, npc:'村长' },
+  { id:'q_boss1', title:'蘑菇王的威胁', desc:'前往蘑菇森林，击败蘑菇王', hint:'往地图中部的「蘑菇森林」走，找到蘑菇王（约 Lv1）。它是 🌿木属性，带 🔥火属性宠物上场（火克木）更容易赢，建议先练到 Lv5。', type:'boss', boss:'b01', need:1, reward:{gold:200, exp:120}, npc:'村长' },
+  { id:'q2', title:'失踪的宝箱', desc:'在野外开启 2 个宝箱', hint:'在野外地图寻找发光的 📦 宝箱，走到跟前会自动开启。开满 2 个后回探险家处交付。', type:'chest', need:2, reward:{gold:120, exp:60}, npc:'探险家' },
+  { id:'q_boss2', title:'玩具霸王龙', desc:'挑战玩具谷的霸王龙', hint:'前往地图右侧「玩具谷/沙漠」找玩具霸王龙（约 Lv9）。它是 🔥火属性，带 💧水属性宠物克制它，水系宠物答对数学/地理题可打出暴击。建议 Lv10 以上再去。', type:'boss', boss:'b02', need:1, reward:{gold:300, exp:200}, npc:'探险家' },
+  { id:'q3', title:'成长的烦恼', desc:'让任意一只宠物达到 12 级', hint:'多打野怪积累经验，或到商店买 🍬 经验糖果喂给宠物。把任意一只练到 Lv12，再找训练师交付。', type:'level', need:12, reward:{gold:150, exp:100}, npc:'训练师' },
+  { id:'q_boss3', title:'风暴领主', desc:'击败风暴高地的领主', hint:'前往地图上方的「风暴高地」找风暴领主（约 Lv17）。它是 ✨光属性，带 🌑暗属性宠物（暗克光）克制。建议 Lv18 以上，先备好活力药水。', type:'boss', boss:'b03', need:1, reward:{gold:400, exp:280}, npc:'训练师' },
+  { id:'q4', title:'知识宝藏', desc:'累计答对 30 道题', hint:'战斗中点「知识技能」或「必杀技」答题，答对就计入进度。累计答对 30 道后回学者处交付。', type:'quiz', need:30, reward:{gold:250, exp:180}, npc:'学者' },
+  { id:'q_boss4', title:'熔岩巨兽', desc:'深入熔岩洞窟击败巨兽', hint:'深入「风暴高地」找熔岩巨兽（约 Lv25）。它是 🔥火属性，带 💧水属性宠物克制。建议 Lv26 以上再来。', type:'boss', boss:'b04', need:1, reward:{gold:500, exp:360}, npc:'学者' },
+  { id:'q_boss5', title:'冰霜女王', desc:'挑战冰封之地的女王', hint:'到地图最上方的「知识圣殿」附近找冰霜女王（约 Lv33）。她是 💧水属性，带 🌿木属性宠物（木克水）克制。建议 Lv34 以上。', type:'boss', boss:'b05', need:1, reward:{gold:650, exp:450}, npc:'村长' },
+  { id:'q_boss6', title:'终章 · 知识魔王', desc:'击败知识魔王，守护知识大陆', hint:'最终 Boss 在「知识圣殿」深处（约 Lv41）。知识魔王是 🌑暗属性，带 ✨光属性宠物（光克暗），先点满天赋、备足药水再战。建议 Lv42 以上。', type:'boss', boss:'b06', need:1, reward:{gold:1000, exp:800}, npc:'村长' }
 ];
 
 /* ---------- 地图配置 ---------- */

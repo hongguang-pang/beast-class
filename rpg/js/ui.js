@@ -57,11 +57,20 @@ UI.show = function(view){
   UI.updateHUD();
 };
 
+/* 探索进度：小地图标签显示 已发现区域数 / 总数 */
+UI.updateExplore = function(){
+  var el=$('mmExplore'); if(!el || !E || !E.exploreCount || !D) return;
+  var total=D.MAP_CFG.zones.length, n=E.exploreCount();
+  el.textContent='探索 '+n+'/'+total;
+  el.classList.toggle('all-done', n>=total);
+};
+
 UI.updateHUD = function(){
   var S=E.S; if(!S) return;
   var g=D.PET_BY_ID[S.team[S.active].id];
   var el=$('hudGold'); if(el) el.textContent=S.gold;
   var el2=$('hudZone'); if(el2) el2.textContent=(window.__curZone||'知识大陆');
+  UI.updateExplore();
   var q=E.curQuest();
   var el3=$('hudQuest');
   if(el3) el3.textContent = q ? (q.title+' '+(S.quests.prog[q.id]||0)+'/'+q.need) : '主线已完成 ✓';

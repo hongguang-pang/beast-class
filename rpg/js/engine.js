@@ -32,6 +32,7 @@ function newSave(teamIds, grade){
     stats:{ kills:0, quizzes:0, quizOk:0, bosses:0, chests:0, steps:0 },
     chestsOpened:{},
     bossDefeated:{},
+    explored:{ 0:1 },   /* 探索地图：已发现区域 id -> 1（起点草原默认已探索） */
     codex:{ pets:{}, mons:{}, ach:{} },
     npcFriend:{},   /* NPC 好感度：name -> 数值 */
     talents:{ cloud:0, spent:0, nodes:{} },  /* 天赋树：星尘/已投入/已解锁节点 */
@@ -88,6 +89,11 @@ function migrate(s){
   if (!s.side.prog) s.side.prog = {};
   if (!s.chestsOpened) s.chestsOpened = {};
   if (!s.bossDefeated) s.bossDefeated = {};
+  if (!s.explored) s.explored = { 0:1 };   /* 老档：默认把当前所在区域视为已探索 */
+  if (typeof s.player==='object' && s.player && typeof s.player.x==='number'){
+    var _z=D.MAP_CFG.zones.find(function(z){ return s.player.y>=z.y0&&s.player.y<z.y1&&s.player.x>=z.x0&&s.player.x<z.x1; });
+    if (_z) s.explored[_z.id]=1;
+  }
   if (!s.roster) s.roster = {};
   if (!s.codex) s.codex = { pets:{}, mons:{}, ach:{} };
   if (!s.codex.pets) s.codex.pets = {};
@@ -122,6 +128,29 @@ function activePet(){ return S && S.team[S.active]; }
 function alivePets(){ return S ? S.team.filter(function(p){ return p.hp>0; }) : []; }
 function firstAlive(){ for (var i=0;i<S.team.length;i++) if (S.team[i].hp>0) return i; return -1; }
 function healAll(){ S.team.forEach(function(p){ p.hp=curMaxHp(p); p.mp=curMaxMp(p); }); save(); }
+
+/* ---------- 探索系统（借鉴 Veloren 等开放世界的“发现未知”） ----------
+ * 每个区域首次踏入时点亮并给探索奖励（金币 + 知识星尘），已探索则不再重复给。
+ * 返回 { first, zone, gold, dust }；first=false 时其余字段为 0/null。 */
+function discoverZone(id){
+  if (!S || id==null) return { first:false, gold:0, dust:0 };
+  if (!S.explored) S.explored = {};
+  if (S.explored[id]) return { first:false, gold:0, dust:0 };
+  S.explored[id] = 1;
+  var z = D.MAP_CFG.zones[id];
+  var gold = 30 + id*25;                    // 越危险的区域奖励越多
+  var dust = 0;
+  if (window.RPG_TALENTS && window.RPG_TALENTS.earnFromCoverage){
+    dust = window.RPG_TALENTS.earnFromCoverage(2);  // 探索也算一种“掌握”，给星尘
+  }
+  S.gold += gold;
+  save();
+  return { first:true, zone:z, gold:gold, dust:dust };
+}
+function exploreCount(){
+  if (!S || !S.explored) return 0;
+  return D.MAP_CFG.zones.filter(function(z){ return S.explored[z.id]; }).length;
+}
 
 /* ---------- 宠物仓库 / 出战编队 ----------
  * roster 保存所有「已拥有」宠物的养成状态；team 是其中 3 只的出战顺序。
@@ -463,6 +492,7 @@ window.RPG_ENGINE = {
   expNeed:expNeed, addExp:addExp,
   activePet:activePet, alivePets:alivePets, firstAlive:firstAlive, healAll:healAll,
   syncRoster:syncRoster, ownedIds:ownedIds, rosterState:rosterState, setTeam:setTeam, gainPet:gainPet,
+  discoverZone:discoverZone, exploreCount:exploreCount,
   damage:damage, monsterDamage:monsterDamage, monsterArmor:monsterArmor, forecast:forecast,
   ensureGradeLoaded:ensureGradeLoaded, pickQuestion:pickQuestion, formatBankQ:formatBankQ, judge:judge,
   quest:quest, curQuest:curQuest, bumpQuest:bumpQuest, completeQuest:completeQuest, turnInAvailable:turnInAvailable,

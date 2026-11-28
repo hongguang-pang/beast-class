@@ -425,6 +425,12 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
   background:#0009;border:1px solid #ffffff33;border-radius:10px;padding:3px;overflow:hidden;}
 #miniMap{display:block;width:132px;height:99px;image-rendering:auto;}
 .mm-label{text-align:center;font-size:9.5px;color:#ffe08a;padding:2px 0 1px;letter-spacing:1px;}
+.mm-explore{display:inline-block;margin-left:3px;padding:0 4px;border-radius:6px;font-size:8.5px;
+  color:#8fe3a8;background:#4fbf6a22;border:1px solid #4fbf6a55;letter-spacing:0;}
+.mm-explore.all-done{color:#ffd35c;background:#ffd35c22;border-color:#ffd35c66;}
+/* 首次发现新区域：金色专属横幅 */
+.zone-banner.discovered span{color:#ffd35c;text-shadow:0 3px 18px #000,0 0 30px #ffd35c;}
+.zone-banner.discovered small{color:#fff2c8;font-size:11px;}
 .zone-banner{position:absolute;left:50%;top:32%;transform:translate(-50%,-50%);z-index:7;
   text-align:center;pointer-events:none;opacity:0;}
 .zone-banner span{display:block;font-size:30px;font-weight:900;letter-spacing:6px;color:#fff;

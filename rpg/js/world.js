@@ -409,16 +409,23 @@ World.draw = function(){
   var pz=this.zoneAt(Math.round(this.px),Math.round(this.py));
   if (this.zoneFn) this.zoneFn(pz ? pz.name : '');
   this.miniMapThrottled();
-  /* 跨区域时弹出区域横幅 */
+  /* 跨区域时：首次发现给奖励 + 专属横幅，之后只弹普通区域横幅 */
   if (pz && pz.id!==this._lastZoneId){
     this._lastZoneId=pz.id;
     var zb=document.getElementById('zoneBanner');
     if (zb && this._zoneBannerReady){
       var nm=document.getElementById('zoneBannerName'), sb=document.getElementById('zoneBannerSub');
       var subs=['🌱 冒险的起点','🍄 迷雾与奇遇','🏜️ 玩具与黄沙','⛈️ 风暴试炼','✨ 知识的尽头'];
-      if(nm) nm.textContent=pz.name;
-      if(sb) sb.textContent=subs[pz.id]||'';
+      var disc = (E && E.discoverZone) ? E.discoverZone(pz.id) : {first:false};
+      if(nm) nm.textContent=(disc.first?'🗺️ 发现新区域 · ':'')+pz.name;
+      if(sb) sb.textContent=disc.first
+        ? ('首次探索 +'+disc.gold+' 金币'+(disc.dust?' · +'+disc.dust+' 知识星尘':'')+' · '+(subs[pz.id]||''))
+        : (subs[pz.id]||'');
+      zb.classList.toggle('discovered',!!disc.first);
       zb.classList.remove('show'); void zb.offsetWidth; zb.classList.add('show');
+      /* 探索进度 HUD */
+      if (window.RPG_UI && window.RPG_UI.updateExplore) window.RPG_UI.updateExplore();
+      if (disc.first && this.onDiscover) this.onDiscover(pz, disc);
     } else { this._zoneBannerReady=true; }  // 首帧不弹，避免刚进游戏就闪
   }
 };
@@ -428,20 +435,31 @@ World.drawMiniMap = function(){
   var mc2=mc.getContext('2d'), W=mc.width, H=mc.height;
   var sx=W/MAP.cols, sy=H/MAP.rows;
   mc2.clearRect(0,0,W,H);
-  /* 区域底色 */
+  /* 玩家当前所在区域（永远可见） */
+  var curZone=this.zoneAt(Math.round(this.px),Math.round(this.py));
+  var known=function(id){ return !E.S || !E.S.explored ? true : !!E.S.explored[id] || (curZone&&curZone.id===id); };
+  /* 区域底色：未探索区域盖迷雾（暗色 + 斜纹 + 问号） */
   MAP.zones.forEach(function(z){
+    var x=z.x0*sx, y=z.y0*sy, w=(z.x1-z.x0)*sx, h=(z.y1-z.y0)*sy;
     mc2.fillStyle=z.color;
-    mc2.fillRect(z.x0*sx,z.y0*sy,(z.x1-z.x0)*sx,(z.y1-z.y0)*sy);
+    mc2.fillRect(x,y,w,h);
+    if (!known(z.id)){
+      mc2.fillStyle='rgba(8,10,20,.86)';
+      mc2.fillRect(x,y,w,h);
+      mc2.fillStyle='rgba(180,190,220,.5)';
+      mc2.font='bold 11px sans-serif'; mc2.textAlign='center'; mc2.textBaseline='middle';
+      mc2.fillText('?',x+w/2,y+h/2);
+    }
   });
-  /* 宝箱 */
+  /* 点位：只在已探索区域显示 */
   var self=this;
   Object.keys(this.chests).forEach(function(i){ var c=self.chests[i];
+    if(!known(self.zoneAt(c.x,c.y).id))return;
     mc2.fillStyle='#ffd35c'; mc2.fillRect(c.x*sx-1.5,c.y*sy-1.5,3,3); });
-  /* NPC */
   mc2.fillStyle='#8fe3ff';
-  MAP.npcs.forEach(function(n){ mc2.fillRect(n.x*sx-1,n.y*sy-1,2.5,2.5); });
-  /* Boss（未击败） */
+  MAP.npcs.forEach(function(n){ if(!known(self.zoneAt(n.x,n.y).id))return; mc2.fillRect(n.x*sx-1,n.y*sy-1,2.5,2.5); });
   MAP.bosses.forEach(function(b){ if(E.S&&E.S.bossDefeated[b.key])return;
+    if(!known(self.zoneAt(b.x,b.y).id))return;
     mc2.fillStyle='#ff6b6b'; mc2.beginPath(); mc2.arc(b.x*sx,b.y*sy,2.4,0,6.2832); mc2.fill(); });
   /* 玩家（带光晕） */
   var pxx=this.px*sx, pyy=this.py*sy;

@@ -490,3 +490,43 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .tn.available{border-color:#ffd35c88;box-shadow:0 0 10px #ffd35c33;}
 .tn .tn-lock{position:absolute;top:4px;right:6px;font-size:11px;}
 .talent-tip{text-align:center;font-size:11px;line-height:1.7;color:#9d90b5;padding:4px 20px 30px;}
+
+/* ============================================================
+ * v15：战况预判面板 + 属性克制环（借鉴 Wesnoth / Unciv 伤害预览）
+ * ============================================================ */
+.b-forecast{margin:2px 0 10px;padding:8px 10px;border-radius:12px;
+  background:linear-gradient(135deg,#1b1533ee,#241a3aee);border:1px solid #ffd35c33;
+  box-shadow:inset 0 1px 0 #ffffff10;}
+.fc-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.fc-title{font-size:12px;font-weight:800;color:#ffd35c;letter-spacing:.5px;}
+.fc-rel{font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px;white-space:nowrap;}
+.fc-rel-adv{color:#7ee08f;background:#4fbf6a22;border:1px solid #4fbf6a55;}
+.fc-rel-dis{color:#ff9b9b;background:#e0341f22;border:1px solid #ff7a7a55;}
+.fc-rel-even{color:#cbb8ff;background:#a377ff22;border:1px solid #a377ff55;}
+.fc-body{display:block;}
+.fc-moves{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;}
+.fc-move{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;
+  padding:5px 2px;border-radius:8px;background:#0006;border:1px solid #ffffff14;}
+.fc-move b{font-size:10px;color:#cfc6e8;white-space:nowrap;}
+.fc-move span{font-size:15px;font-weight:900;color:#fff4d6;line-height:1.2;}
+.fc-move i{display:block;font-size:9px;font-style:normal;font-weight:700;color:#ffd35c;white-space:nowrap;}
+.fc-armor{display:block;font-size:10px;color:#9fb3c8;margin-top:4px;}
+.fc-back{display:block;font-size:10.5px;color:#e8dcff;text-align:center;
+  padding:5px 8px;border-radius:8px;background:#4a1e2a55;border:1px solid #ff7a7a33;margin-top:6px;}
+.fc-back b{font-size:14px;color:#ff9b9b;}
+.fc-danger{color:#ff9b9b;font-weight:700;}
+.fc-advice{min-height:0;margin-top:6px;}
+.fc-suggest{display:block;font-size:10.5px;font-weight:700;color:#7ee08f;
+  background:#4fbf6a18;border:1px solid #4fbf6a44;border-radius:8px;padding:3px 8px;}
+.fc-ring-wrap{margin-top:7px;padding-top:6px;border-top:1px dashed #ffffff1f;text-align:center;}
+.fc-ring{display:flex;align-items:center;justify-content:center;gap:2px;flex-wrap:wrap;}
+.fc-node{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  position:relative;font-size:15px;background:#0007;border:2px solid var(--ec);box-shadow:0 0 6px color-mix(in srgb,var(--ec) 55%,transparent);}
+.fc-node em{position:absolute;bottom:-5px;right:-5px;font-size:8px;font-style:normal;font-weight:800;
+  color:#1b1533;background:var(--ec);border-radius:6px;padding:0 3px;line-height:1.5;}
+.fc-node.is-me{box-shadow:0 0 0 2px #ffd35c,0 0 10px #ffd35c88;}
+.fc-node.is-mon{box-shadow:0 0 0 2px #ff7a7a,0 0 10px #ff7a7a88;}
+.fc-node.beats-mon::after{content:'✓';position:absolute;top:-6px;left:-4px;font-size:10px;font-weight:900;color:#7ee08f;}
+.fc-node.beaten{opacity:.6;}
+.fc-arrow{font-size:13px;color:#7a6f9a;}
+.fc-ring-tip{display:block;font-size:9.5px;color:#9d90b5;margin-top:5px;line-height:1.5;}

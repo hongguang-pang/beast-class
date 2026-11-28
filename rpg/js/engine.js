@@ -214,6 +214,47 @@ function monsterDamage(mon, targetPet, monLv){
   return { value: Math.max(1, Math.round(base*mult)), mult:mult };
 }
 
+/* ---------- 攻击预判（借鉴 Wesnoth / Unciv 的伤害预览） ----------
+ * 与 damage/monsterDamage 用同一套公式，但把随机波动固定成中位系数 1.0，
+ * 得到稳定的“预计伤害”数字。只读、不消耗随机数、不改存档。
+ * 返回 { me:普攻/技能/必杀对怪物的预估, back:怪物反击预估值, ... }
+ */
+function forecast(atkPet, defMon, monLv, crit){
+  var lv = monLv || 1;
+  var a = petStat(atkPet,'atk');
+  var d = defMon.base.def;
+  var pe = D.PET_BY_ID[atkPet.id] ? D.PET_BY_ID[atkPet.id].elem : 'light';
+  var mult = D.elemMult(pe, defMon.elem);       // 属性克制倍率 1.6 / 1 / 0.7
+  var armor = monsterArmor(defMon, lv);         // 普攻会被护甲削减，技能破防
+  function hit(power, isSkill, crit){
+    var raw = a*power - d*0.5 - (isSkill?0:armor);
+    var val = Math.max(isSkill?1:1, Math.round(raw*1.0));   // 中位：随机系数取 1.0
+    val = Math.max(1, Math.round(val*mult));
+    /* 天赋暴击加成（与 playerAttack 一致） */
+    var boost = 1;
+    if (crit && isSkill){
+      var cb = (window.RPG_TALENTS && window.RPG_TALENTS.critBonus) ? window.RPG_TALENTS.critBonus() : 0;
+      boost = 2 + cb;
+    }
+    return Math.max(1, Math.round(val*boost));
+  }
+  var ma = defMon.base.atk * (1 + (lv-1)*0.13);
+  var md = petStat(atkPet,'def');
+  var mm = D.elemMult(defMon.elem, pe);
+  var back = Math.max(1, Math.round(Math.max(1, Math.round(ma - md*0.4))*mm));
+  return {
+    normal: hit(1.0, false),
+    spell:  hit(D.SKILLS.spell.power, true),
+    ult:    hit(D.SKILLS.ult.power, true),
+    spellCrit: hit(D.SKILLS.spell.power, true, true),
+    ultCrit:   hit(D.SKILLS.ult.power,  true, true),
+    back: back,
+    mult: mult, backMult: mm,
+    armor: armor,
+    relation: mult>1?'adv':(mult<1?'dis':'even')   // 克制 / 被克 / 平势
+  };
+}
+
 /* ---------- 题库出题桥接 ----------
  * 复用 battle 的知识分片数据（data/knowledge.js + data/kg/gN.js）。
  * 按当前年级随机抽一道有题库的知识点，软化为选择题副本。
@@ -422,7 +463,7 @@ window.RPG_ENGINE = {
   expNeed:expNeed, addExp:addExp,
   activePet:activePet, alivePets:alivePets, firstAlive:firstAlive, healAll:healAll,
   syncRoster:syncRoster, ownedIds:ownedIds, rosterState:rosterState, setTeam:setTeam, gainPet:gainPet,
-  damage:damage, monsterDamage:monsterDamage, monsterArmor:monsterArmor,
+  damage:damage, monsterDamage:monsterDamage, monsterArmor:monsterArmor, forecast:forecast,
   ensureGradeLoaded:ensureGradeLoaded, pickQuestion:pickQuestion, formatBankQ:formatBankQ, judge:judge,
   quest:quest, curQuest:curQuest, bumpQuest:bumpQuest, completeQuest:completeQuest, turnInAvailable:turnInAvailable,
   sideQuest:sideQuest, acceptSide:acceptSide, bumpSide:bumpSide, sideTurnInAvailable:sideTurnInAvailable,

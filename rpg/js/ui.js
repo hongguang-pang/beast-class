@@ -256,6 +256,72 @@ UI.renderSubjectBar = function(petId){
   bar.innerHTML=html;
 };
 
+/* ---------- 战况预判 + 属性克制环（借鉴 Wesnoth / Unciv 的攻击预览） ----------
+ * 出招前就看到：普攻/技能/必杀的预计伤害、怪物反击伤害、克制关系，
+ * 以及“换哪只宠物能克制这只怪”的建议——把抽象的属性克制变成看得见的策略。
+ */
+UI.renderForecast = function(){
+  var box=$('bForecast'); if(!box) return;
+  if (!window.RPG_ENGINE || !E.forecast || !B || !B.active || !B.mon || !E.S){ box.style.display='none'; return; }
+  box.style.display='block';
+  var pet=E.activePet(); if(!pet || pet.hp<=0){ box.style.display='none'; return; }
+  var f=E.forecast(pet, B.mon, B.monLv, false);
+  var pdef=D.PET_BY_ID[pet.id], pe=D.ELEMENTS[pdef.elem]||D.ELEMENTS.light;
+  var me=D.ELEMENTS[B.mon.elem]||D.ELEMENTS.light;
+
+  /* 克制关系徽章 */
+  var relTxt = f.relation==='adv' ? ('✅ 我克制它 ×'+f.mult.toFixed(1))
+             : f.relation==='dis' ? ('⚠️ 被它克制 ×'+f.mult.toFixed(1))
+             : '⚖️ 势均力敌';
+  var relCls = 'fc-rel-'+f.relation;
+
+  /* 三招伤害预估：普攻可能被护甲吃掉，技能/必杀破防 */
+  var armorTip = f.armor>0 ? '<span class="fc-armor">🛡️ 护甲 '+f.armor+'（普攻削弱·技能破防）</span>' : '';
+  var moves =
+    '<div class="fc-move"><b>⚔️ 普攻</b><span>'+f.normal+'</span></div>'+
+    '<div class="fc-move"><b>✨ 技能</b><span>'+f.spell+(f.spellCrit>f.spell?' <i>暴击'+f.spellCrit+'</i>':'')+'</span></div>'+
+    '<div class="fc-move"><b>🔥 必杀</b><span>'+f.ult+(f.ultCrit>f.ult?' <i>暴击'+f.ultCrit+'</i>':'')+'</span></div>';
+
+  /* 怪物反击预估 */
+  var backTxt = '怪物反击约 <b>'+f.back+'</b>'+(f.backMult>1?' <span class="fc-danger">（克制我 ×'+f.backMult.toFixed(1)+'）</span>':'');
+
+  /* 换宠建议：算队伍里每只存活宠物对怪物的技能伤害，挑最高的且能克制的 */
+  var best=null, bestDmg=-1, counterTip='';
+  E.S.team.forEach(function(pp){
+    if (pp.hp<=0) return;
+    var fd=E.forecast(pp, B.mon, B.monLv, false);
+    if (fd.spell>bestDmg){ bestDmg=fd.spell; best={pp:pp, f:fd}; }
+  });
+  if (best && best.pp.id!==pet.id && bestDmg>f.spell){
+    var bp=D.PET_BY_ID[best.pp.id], be=D.ELEMENTS[bp.elem];
+    counterTip='<span class="fc-suggest">💡 换 '+be.icon+bp.name+'（'+(best.f.relation==='adv'?'克制':'更强')+'）→ 技能可打约 '+bestDmg+'</span>';
+  }
+
+  /* 属性克制环：fire→wood→water→fire，light↔dark 互克，高亮对局双方 */
+  var order=['fire','wood','water','light','dark'];
+  var ring='<div class="fc-ring">'+order.map(function(k){
+    var e=D.ELEMENTS[k];
+    var isMe=(k===pdef.elem), isMon=(k===B.mon.elem);
+    /* 克制目标：我克制谁 / 谁克制我 */
+    var iBeat=D.ELEM_ADV[k]===B.mon.elem;     // 该属性克制怪物
+    var beatMe=D.ELEM_ADV[B.mon.elem]===k;    // 怪物克制该属性
+    var cls='fc-node'+(isMe?' is-me':'')+(isMon?' is-mon':'')+(iBeat?' beats-mon':'')+(beatMe?' beaten':'');
+    var tag=isMe?'我':(isMon?'怪':'');
+    return '<span class="'+cls+'" style="--ec:'+e.color+'" title="'+e.name+'系"'+(tag?'>'+e.icon+'<em>'+tag+'</em>':'>'+e.icon)+'</span>';
+  }).join('<span class="fc-arrow">›</span>')+'</div>';
+  var ringTip='<span class="fc-ring-tip">🔥火 › 🌿木 › 💧水 › 🔥火 · ✨光 ↔ 🌙暗（箭头指向被克制方）</span>';
+
+  box.innerHTML=
+    '<div class="fc-head"><span class="fc-title">🔮 战况预判</span>'+
+      '<span class="fc-rel '+relCls+'">'+relTxt+'</span></div>'+
+    '<div class="fc-body">'+
+      '<div class="fc-moves">'+moves+armorTip+'</div>'+
+      '<div class="fc-back">'+backTxt+'</div>'+
+    '</div>'+
+    '<div class="fc-advice">'+counterTip+'</div>'+
+    '<div class="fc-ring-wrap">'+ring+ringTip+'</div>';
+};
+
 /* ---------- 切换宠物 / 编队界面 ---------- */
 UI.switchSel = [];   // 当前编辑中的出战顺序（宠物 id）
 UI.renderSwitch = function(){
@@ -426,6 +492,8 @@ UI.renderBattle = function(){
   $('bMyMp').textContent='MP '+pet.mp+'/'+E.curMaxMp(pet);
   /* 技能属性 / 擅长学科 / 克制提示 */
   UI.renderSubjectBar(p.id);
+  /* 战况预判（Wesnoth 式伤害预览）+ 属性克制环 */
+  UI.renderForecast();
   /* 个性化炫酷招式名（随当前出战宠物变化） */
   var nNormal=D.moveName(pet.id,'normal'), nSpell=D.moveName(pet.id,'spell'), nUlt=D.moveName(pet.id,'ult');
   if($('bNormal')) $('bNormal').innerHTML='⚔️ '+esc(nNormal);

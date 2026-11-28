@@ -160,16 +160,15 @@ function getSharecode(){
   }catch(e){ return ''; }
 }
 var _sc=getSharecode();
-/* v6.4.4：图片 URL 带内容版本号，强制绕过浏览器/SW 里可能残留的旧图缓存
- * （历史上部分怪物图换过素材，旧缓存会导致"名字对不上形象"，如水滴史莱姆显示成狼）。
- * 版本号放在 sharecode 之前，用 & 连接，两种节点都兼容。 */
-var IMG_V='?v=644';
-function imgQS(){
-  if(!_sc) return IMG_V;
-  return IMG_V+'&sharecode='+_sc.slice('?sharecode='.length);
-}
-function monsterImg(m){ return '../images/mon/' + m.file + imgQS(); }
-function npcImg(n){ return '../images/npc/' + n.img + imgQS(); }
+/* v6.4.7：地图/战斗/玩家统一用 rpg 目录内的轻量 WebP 缩略图（96px，平均 4~6KB），
+ * 不再依赖跨目录 ../images 的 sharecode 大图，彻底解决"加载慢/加载不出来"。
+ * 缩略图走 SW 的 /images/ 缓存优先路径，首次加载后离线可用；图鉴大图仍走 monsterImgFull。 */
+function thumbName(file){ return String(file).replace(/\.png$/i,'.webp'); }
+function monsterImg(m){ return 'images/mon/' + thumbName(m.file || m); }
+function npcImg(n){ return 'images/npc/' + thumbName(n.img || n); }
+/* 图鉴详情用原尺寸大图（在公共 images 目录，带 sharecode 容错） */
+function monsterImgFull(m){ return '../images/mon/' + m.file + _sc; }
+function npcImgFull(n){ return '../images/npc/' + n.img + _sc; }
 /* Boss 也用 monsterImg（文件在 images/mon/） */
 
 /* ---------- 道具 ---------- */
@@ -279,5 +278,6 @@ window.RPG_DATA = {
   RAR:RAR, RAR_COLOR:RAR_COLOR,
   PETS:PETS, PET_BY_ID:PET_BY_ID, STAGES:STAGES, petImg:petImg, stageForLv:stageForLv, moveName:moveName,
   MONSTERS:MONSTERS, BOSSES:BOSSES, MON_BY_KEY:MON_BY_KEY, monsterImg:monsterImg, npcImg:npcImg,
+  monsterImgFull:monsterImgFull, npcImgFull:npcImgFull,
   ITEMS:ITEMS, SKILLS:SKILLS, QUESTS:QUESTS, SIDE_QUESTS:SIDE_QUESTS, DROPS:DROPS, MAP_CFG:MAP_CFG
 };

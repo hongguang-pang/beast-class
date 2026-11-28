@@ -173,6 +173,15 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .q-fill input{flex:1;padding:12px;border-radius:12px;border:2px solid #d9c698;background:#fff;font-size:16px;min-width:0;}
 .q-fill button{padding:0 18px;border-radius:12px;background:#e8a52f;color:#fff;font-weight:800;white-space:nowrap;}
 .quiz-foot{text-align:center;color:#9a8256;font-size:10.5px;margin-top:12px;}
+/* v6.4.7：答错后的正确答案反馈条 */
+.quiz-feedback{margin-top:12px;padding:10px 12px;border-radius:12px;font-size:14px;font-weight:800;line-height:1.5;text-align:center;}
+.quiz-feedback.hidden{display:none;}
+.quiz-feedback.wrong{background:#fff0f0;border:2px solid #e57373;color:#b3261e;}
+.quiz-feedback.wrong b{color:#0a7d3f;}
+.quiz-feedback.correct{background:#eefaf1;border:2px solid #7cc98a;color:#0a7d3f;}
+.quiz-feedback .qf-btn{display:block;width:100%;margin-top:9px;padding:9px;border:0;border-radius:10px;background:#a3283f;color:#fff;font-size:14px;font-weight:800;cursor:pointer;}
+.quiz-opts button.picked-wrong{background:#ffe0e0!important;border-color:#e57373!important;color:#b3261e!important;}
+.quiz-opts button.show-right{background:#e6f7ea!important;border-color:#4caf50!important;color:#0a7d3f!important;}
 .dlg-title{text-align:center;font-size:19px;font-weight:900;color:#6b4a12;margin-bottom:10px;}
 .dlg-title small{font-size:13px;color:#a3283f;}
 .dlg-text{font-size:14px;line-height:1.8;color:#4a3a18;margin-bottom:8px;}

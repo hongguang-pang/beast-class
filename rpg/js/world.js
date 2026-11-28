@@ -47,8 +47,21 @@ World.init = function(canvas){
 /* 预加载 NPC/怪物图片 */
 World.preloadImages = function(){
   var self=this;
-  function load(src){ if(self.imgCache[src])return; var im=new Image(); im.src=src; self.imgCache[src]=im; }
-  var hero=D.npcImg({img:'player-hero.png'});   /* 带 sharecode 容错 */
+  /* v6.4.7：轻量缩略图预加载 + 失败自动重试（最多 3 次），确保 NPC/怪物图能真正加载出来。
+   * 地图每帧重绘，图片一旦 load 成功下一帧即显示真实图片，不再依赖 emoji 兜底。 */
+  function load(src, retries){
+    if(self.imgCache[src] && self.imgCache[src]._ok) return;
+    var im=new Image(); im._tries=(retries||0)+1;
+    im.onload=function(){ im._ok=true; };
+    im.onerror=function(){
+      if(im._tries<3){ var again=new Image(); again._tries=im._tries; again.src=src;
+        again.onload=function(){again._ok=true;}; again.onerror=im.onerror; self.imgCache[src]=again;
+        setTimeout(function(){ again.src=src+'&retry='+im._tries; },400*im._tries);
+      }
+    };
+    self.imgCache[src]=im; im.src=src;
+  }
+  var hero=D.npcImg({img:'player-hero.png'});
   load(hero);
   this._heroSrc=hero;
   MAP.npcs.forEach(function(n){ load(D.npcImg(n)); });
@@ -572,13 +585,12 @@ World.imageSprite = function(src, gx, gy, size, bob, shadowColor, label, emoji){
   var cx=sx+t/2, cy=sy+t/2;
   if (img && img.complete && img.naturalWidth>0){
     c.drawImage(img, cx-sz/2, cy-sz/2, sz, sz);
-  } else if (emoji){
-    /* v6.4.4：图片加载失败时画彩色人形兜底，不再只剩名字标签浮在空中 */
+  } else {
+    /* v6.4.7：不用 emoji，改为柔和的加载占位（真实缩略图会随重试成功在下一帧自动替换） */
     c.save();
-    c.fillStyle='rgba(255,255,255,.22)';
-    c.beginPath(); c.arc(cx,cy-sz*0.04,sz*0.42,0,Math.PI*2); c.fill();
-    c.font=(sz*0.78)+'px serif'; c.textAlign='center'; c.textBaseline='middle';
-    c.fillText(emoji,cx,cy-sz*0.04);
+    var grd=c.createRadialGradient(cx,cy-sz*0.04,1,cx,cy-sz*0.04,sz*0.44);
+    grd.addColorStop(0,'rgba(255,255,255,.28)'); grd.addColorStop(1,'rgba(160,140,210,.06)');
+    c.fillStyle=grd; c.beginPath(); c.arc(cx,cy-sz*0.04,sz*0.42,0,Math.PI*2); c.fill();
     c.restore();
   }
   /* 名字标签 */
@@ -608,8 +620,12 @@ World.drawPlayer = function(size, bob){
     c.drawImage(img, cx-size/2, cy-size/2, size, size);
     c.restore();
   } else {
-    c.font=(t)+'px serif'; c.textAlign='center'; c.textBaseline='middle';
-    c.fillText(this.playerSprite||'🧑', cx, cy);
+    /* v6.4.7：不用 emoji，柔和占位（真实玩家图加载后自动替换） */
+    c.save();
+    var g=c.createRadialGradient(cx,cy,1,cx,cy,size*0.5);
+    g.addColorStop(0,'rgba(255,220,140,.55)'); g.addColorStop(1,'rgba(255,220,140,.05)');
+    c.fillStyle=g; c.beginPath(); c.arc(cx,cy,size*0.46,0,Math.PI*2); c.fill();
+    c.restore();
   }
 };
 

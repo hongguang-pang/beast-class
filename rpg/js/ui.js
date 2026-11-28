@@ -656,20 +656,44 @@ UI.openQuiz = function(kind, skill){
     subjEl.textContent=tag+(q.kn||'知识挑战');
   }
   var opts=$('quizOpts');
+  var fb=$('quizFeedback'); if(fb){ fb.className='quiz-feedback hidden'; fb.innerHTML=''; }
+  var answered=false;   /* 防止重复提交 */
+  /* v6.4.7：答错后显示正确答案，并高亮错误项与正确项，用户点"继续"才结算 */
+  function answer(input, clickedBtn){
+    if(answered) return; answered=true;
+    var ok=E.judge(q, input);
+    if(ok){
+      closeQuiz(); B.resolveQuiz(true);
+      return;
+    }
+    /* 计算正确答案文本 */
+    var rightText='';
+    if(q.tp==='choice'){ rightText=q.o&&q.a!=null ? q.o[q.a] : ''; }
+    else { rightText=q.ans!=null ? String(q.ans) : ((q.ac&&q.ac[0])||''); }
+    /* 高亮选项 */
+    if(clickedBtn) clickedBtn.classList.add('picked-wrong');
+    Array.prototype.forEach.call(opts.querySelectorAll('button[data-i]'),function(bb){
+      if(+bb.getAttribute('data-i')===q.a) bb.classList.add('show-right');
+    });
+    if(fb){
+      fb.className='quiz-feedback wrong';
+      fb.innerHTML='❌ 答错了 · 正确答案：<b>'+esc(rightText)+'</b>'+
+        '<button class="qf-btn" id="quizContinue">继续</button>';
+      var cont=$('quizContinue');
+      if(cont) cont.addEventListener('click',function(){ closeQuiz(); B.resolveQuiz(false); });
+    } else { setTimeout(function(){ closeQuiz(); B.resolveQuiz(false); },1200); }
+  }
   if(q.tp==='choice'){
     opts.innerHTML=q.o.map(function(o,i){
       return '<button data-i="'+i+'">'+esc(o)+'</button>';
     }).join('');
     Array.prototype.forEach.call(opts.querySelectorAll('button'),function(b){
-      b.addEventListener('click',function(){
-        var ok=E.judge(q, +b.getAttribute('data-i'));
-        closeQuiz(); B.resolveQuiz(ok);
-      });
+      b.addEventListener('click',function(){ answer(+b.getAttribute('data-i'), b); });
     });
   } else {
     opts.innerHTML='<div class="q-fill"><input id="quizInput" placeholder="输入答案" autocomplete="off"><button id="quizSubmit">提交</button></div>';
     var inp=$('quizInput'), btn=$('quizSubmit');
-    var submit=function(){ var ok=E.judge(q, inp.value); closeQuiz(); B.resolveQuiz(ok); };
+    var submit=function(){ answer(inp.value, null); };
     btn.addEventListener('click',submit);
     inp.addEventListener('keydown',function(e){ if(e.key==='Enter') submit(); });
     setTimeout(function(){inp.focus();},80);
@@ -932,7 +956,7 @@ UI.renderCodex = function(){
       var color=D.RAR_COLOR[isBoss?'SSR':'R'];
       if(kills){
         mh+='<div class="codex-card'+(isBoss?' boss':'')+'" style="border-color:'+color+'">'+
-          '<div class="codex-art"><img class="codex-monimg" src="'+D.monsterImg(m)+'" alt="'+esc(m.name)+'" '+
+          '<div class="codex-art"><img class="codex-monimg" src="'+D.monsterImgFull(m)+'" alt="'+esc(m.name)+'" '+
           'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
           '<span class="codex-monfb" style="display:none">'+(isBoss?'👑':'👾')+'</span></div>'+
           '<div class="codex-name">'+esc(m.name)+'</div>'+

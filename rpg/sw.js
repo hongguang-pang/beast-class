@@ -1,7 +1,7 @@
 /* 知识大陆 · 知识远征 离线缓存（scope=/rpg/，与主站/诊断站隔离） */
-const VERSION = 'rpg-v6.4.5';
+const VERSION = 'rpg-v6.4.6';
 const SHELL = [
-  './','./index.html','./style.css?v=23','./manifest.webmanifest',
+  './','./index.html','./style.css?v=25','./manifest.webmanifest',
   './icons/icon-192.png','./icons/icon-512.png','./icons/icon-192-maskable.png','./icons/icon-512-maskable.png',
   './images/pets/P001-baby.png','./images/pets/P011-baby.png','./images/pets/P027-baby.png','./images/pets/P035-baby.png',
   './images/pets/P042-baby.png','./images/pets/P051-baby.png','./images/pets/D201-baby.png','./images/pets/D203-baby.png',
@@ -9,7 +9,7 @@ const SHELL = [
   './data/knowledge.js?v=8','./data/kg/g1.js?v=8','./data/kg/g2.js?v=8','./data/kg/g3.js?v=8',
   './data/kg/g4.js?v=8','./data/kg/g5.js?v=8','./data/kg/g6.js?v=8','./data/kg/g7.js?v=8',
   './data/kg/g8.js?v=8','./data/kg/g9.js?v=8','./data/kg/g10.js?v=8','./data/kg/g11.js?v=8','./data/kg/g12.js?v=8',
-  './js/data.js?v=19','./js/mapart.js?v=13','./js/audio.js?v=9','./js/fx.js?v=8','./js/engine.js?v=18','./js/codex.js?v=12','./js/campaign.js?v=15','./js/story.js?v=13','./js/npcfriend.js?v=14','./js/talents.js?v=14','./js/world.js?v=17','./js/battle.js?v=19','./js/ui.js?v=24','./js/tutorial.js?v=12','./js/main.js?v=17',
+  './js/data.js?v=19','./js/mapart.js?v=14','./js/audio.js?v=9','./js/fx.js?v=8','./js/engine.js?v=18','./js/codex.js?v=12','./js/campaign.js?v=15','./js/story.js?v=13','./js/npcfriend.js?v=14','./js/talents.js?v=14','./js/world.js?v=18','./js/battle.js?v=19','./js/ui.js?v=24','./js/tutorial.js?v=12','./js/main.js?v=17',
   './audio/sfx/click.ogg','./audio/sfx/hit.ogg','./audio/sfx/skill.ogg','./audio/sfx/correct.ogg','./audio/sfx/wrong.ogg','./audio/sfx/win.ogg','./audio/sfx/levelup.ogg','./audio/sfx/chest.ogg','./audio/sfx/encounter.ogg','./audio/sfx/stun.ogg','./audio/sfx/target.ogg','./audio/sfx/run.ogg','./audio/sfx/heal.ogg',
   './js/petdex.js?v=12','./js/petdexpark.js?v=10',
   './images/petdex/thumb/pd00.webp','./images/petdex/thumb/pd01.webp','./images/petdex/thumb/pd02.webp','./images/petdex/thumb/pd03.webp','./images/petdex/thumb/pd04.webp','./images/petdex/thumb/pd05.webp','./images/petdex/thumb/pd06.webp','./images/petdex/thumb/pd07.webp','./images/petdex/thumb/pd08.webp','./images/petdex/thumb/pd09.webp','./images/petdex/thumb/pd10.webp','./images/petdex/thumb/pd11.webp','./images/petdex/thumb/pd12.webp','./images/petdex/thumb/pd13.webp','./images/petdex/thumb/pd14.webp','./images/petdex/thumb/pd15.webp','./images/petdex/thumb/pd16.webp','./images/petdex/thumb/pd17.webp','./images/petdex/thumb/pd18.webp','./images/petdex/thumb/pd19.webp','./images/petdex/thumb/pd20.webp','./images/petdex/thumb/pd21.webp','./images/petdex/thumb/pd22.webp','./images/petdex/thumb/pd23.webp',

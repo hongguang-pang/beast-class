@@ -78,6 +78,31 @@ function runeTile(c,x,y,T){
   c.beginPath(); c.moveTo(x+T/2,y+6); c.lineTo(x+T/2,y+T-6); c.moveTo(x+6,y+T/2); c.lineTo(x+T-6,y+T/2); c.stroke();
 }
 function snowCap(c,x,y,r){ ellipse(c,x,y,r,r*0.5,'#ffffffcc'); }
+/* v6.4.6 新增精细装饰 */
+/* 灌木丛：低矮多叶团，带高光 */
+function bush(c,x,y,col){
+  ellipse(c,x,y+2,7,2.6,'rgba(0,0,0,.16)');
+  ellipse(c,x-3,y-1,4.5,4,col);
+  ellipse(c,x+3,y-1,4.5,4,col);
+  ellipse(c,x,y-3,5,4.5,col);
+  ellipse(c,x-2,y-4,1.6,1,'#ffffff30');
+}
+/* 落叶/花瓣散点 */
+function fallenLeaf(c,x,y,col){
+  c.save(); c.translate(x,y); c.rotate(hash(x,y,33)*6.2832);
+  ellipse(c,0,0,2.4,1.1,col); c.restore();
+}
+/* 碎石小径点缀 */
+function pebbles(c,x,y,col){
+  ellipse(c,x,y,1.6,1.1,col);
+  ellipse(c,x+3,y+2,1.1,0.8,col);
+  ellipse(c,x-2,y+3,0.9,0.7,col);
+}
+/* 萤石/发光小点（圣殿与夜晚感） */
+function glowDot(c,x,y,col){
+  c.save(); c.globalAlpha=0.5; ellipse(c,x,y,3.5,3.5,col); c.restore();
+  ellipse(c,x,y,1.4,1.4,'#ffffffcc');
+}
 
 /* 程序化树：替代单调 emoji 🌳 */
 function drawTree(c,cx,cy,T,kind,pal){
@@ -254,25 +279,38 @@ A.build = function(obstacles){
     var nz=hash(gx,gy,2);
     c.fillStyle=nz>0.5?'#ffffff08':'#0000000d';
     c.fillRect(x,y,T,T);
-    // 区域边缘柔化描边
-    if(gx===z.x0||gy===z.y0||gx===z.x1-1||gy===z.y1-1){ c.fillStyle='#ffffff08'; c.fillRect(x,y,T,T); }
+    // 区域边缘柔化描边 + 过渡带（相邻区域间形成渐变边界，而非硬切）
+    var edgeX0=gx===z.x0, edgeX1=gx===z.x1-1, edgeY0=gy===z.y0, edgeY1=gy===z.y1-1;
+    if(edgeX0||edgeX1||edgeY0||edgeY1){ c.fillStyle='#ffffff0a'; c.fillRect(x,y,T,T); }
+    if(edgeY0){ c.fillStyle='rgba(0,0,0,.06)'; c.fillRect(x,y,T,3); }
+    if(edgeY1){ c.fillStyle='rgba(255,255,255,.05)'; c.fillRect(x,y+T-3,T,3); }
+    // 大格调明暗斑块：让地面不是纯色棋盘，而是有柔和深浅块
+    var patch=hash(gx,gy,21);
+    if(patch>0.72){ ellipse(c,x+T*0.5,y+T*0.5,T*0.42,T*0.34,'rgba(255,255,255,.035)'); }
+    else if(patch<0.22){ ellipse(c,x+T*0.6,y+T*0.4,T*0.4,T*0.3,'rgba(0,0,0,.045)'); }
     // 地形纹理（按区域）
     var h3=hash(gx,gy,3);
     if(z.id===0||z.id===1){
-      if(h3>0.45) grassTuft(c,x+6+hash(gx,gy,4)*T*0.4,y+T-6,p.grass,0.8+hash(gx,gy,5)*0.5);
-      if(h3>0.93) flower(c,x+8+hash(gx,gy,6)*T*0.5,y+T*0.55,p.flower);
-      if(z.id===1&&h3>0.86) mushroom(c,x+T*0.35+hash(gx,gy,11)*T*0.3,y+T*0.7,'#d9606a');
+      if(h3>0.38) grassTuft(c,x+6+hash(gx,gy,4)*T*0.4,y+T-6,p.grass,0.8+hash(gx,gy,5)*0.6);
+      if(h3>0.55) grassTuft(c,x+T*0.55+hash(gx,gy,24)*T*0.3,y+T-4,p.grass,0.6+hash(gx,gy,25)*0.4);
+      if(h3>0.86) flower(c,x+8+hash(gx,gy,6)*T*0.5,y+T*0.55,p.flower);
+      if(h3>0.94) bush(c,x+T*0.3+hash(gx,gy,26)*T*0.4,y+T*0.7,p.tree[0]);
+      if(h3<0.1) fallenLeaf(c,x+T*0.4,y+T*0.4,p.flower[Math.floor(hash(gx,gy,27)*p.flower.length)]);
+      if(z.id===1&&h3>0.8) mushroom(c,x+T*0.35+hash(gx,gy,11)*T*0.3,y+T*0.7,h3>0.9?'#d9606a':'#e8a24a');
     } else if(z.id===2){
-      if(h3>0.6) { c.strokeStyle='#00000010'; c.lineWidth=1.2; c.beginPath(); c.moveTo(x+4,y+T*0.6); c.quadraticCurveTo(x+T/2,y+T*0.4,x+T-4,y+T*0.65); c.stroke(); }
-      if(h3>0.91) cactus(c,x+T*0.5,y+T*0.85,'#6f9450');
-      if(h3<0.04) drawRock(c,x+T/2,y+T/2,T,2);
+      if(h3>0.55) { c.strokeStyle='#00000010'; c.lineWidth=1.2; c.beginPath(); c.moveTo(x+4,y+T*0.6); c.quadraticCurveTo(x+T/2,y+T*0.4,x+T-4,y+T*0.65); c.stroke(); }
+      if(h3>0.85) cactus(c,x+T*0.5,y+T*0.85,'#6f9450');
+      if(h3>0.7) pebbles(c,x+T*0.25,y+T*0.7,'#00000018');
+      if(h3<0.06) drawRock(c,x+T/2,y+T/2,T,2);
     } else if(z.id===3){
-      if(h3>0.7) { c.strokeStyle='#ffffff18'; c.lineWidth=1; c.beginPath(); c.moveTo(x+3,y+T*0.4); c.lineTo(x+T*0.55,y+T*0.7); c.lineTo(x+T-3,y+T*0.5); c.stroke(); }
-      if(h3>0.94) crystal(c,x+T*0.5,y+T*0.7,'#7fb8ff');
-      if(h3<0.05) snowCap(c,x+T*0.5,y+T*0.3,T*0.2);
+      if(h3>0.62) { c.strokeStyle='#ffffff18'; c.lineWidth=1; c.beginPath(); c.moveTo(x+3,y+T*0.4); c.lineTo(x+T*0.55,y+T*0.7); c.lineTo(x+T-3,y+T*0.5); c.stroke(); }
+      if(h3>0.9) crystal(c,x+T*0.5,y+T*0.7,'#7fb8ff');
+      if(h3>0.7) glowDot(c,x+T*0.3,y+T*0.6,'#8fd0ff');
+      if(h3<0.07) snowCap(c,x+T*0.5,y+T*0.3,T*0.2);
     } else if(z.id===4){
       runeTile(c,x,y,T);
-      if(h3>0.9) crystal(c,x+T*0.5,y+T*0.72,'#c79bff');
+      if(h3>0.86) crystal(c,x+T*0.5,y+T*0.72,'#c79bff');
+      if(h3>0.66) glowDot(c,x+T*0.28,y+T*0.4,'#d9a8ff');
     }
   }
 

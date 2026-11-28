@@ -84,7 +84,22 @@ World.resize = function(){
   this.canvas.width = w*dpr; this.canvas.height = h*dpr;
   this.canvas.style.width = w+'px'; this.canvas.style.height = h+'px';
   this.ctx.setTransform(dpr,0,0,dpr,0,0);
+  /* v6.4.6：测量 HUD 实际高度（按钮可能因小屏换行成两行），写入 CSS 变量，
+   * 让任务条与队伍栏始终位于按钮下方，不再遮挡"换宠/天赋/队伍"等按钮。 */
+  this.relayoutHUD();
   this.updateCam();
+};
+World.relayoutHUD = function(){
+  var hud=document.getElementById('hud');
+  if(!hud) return;
+  var hh=hud.offsetHeight||44;
+  document.documentElement.style.setProperty('--hud-h', Math.round(hh)+'px');
+  /* 首帧字体/布局可能未稳，延迟复测一次确保按钮换行后的高度被捕获 */
+  if(!this._hudRelaid){
+    this._hudRelaid=true;
+    var self=this;
+    setTimeout(function(){ var h2=hud.offsetHeight||44; document.documentElement.style.setProperty('--hud-h',Math.round(h2)+'px'); },300);
+  }
 };
 World.buildObstacles = function(){
   this.obstacles = {};
@@ -388,11 +403,31 @@ World.draw = function(){
       c.fillText(window.RPG_NPCFRIEND.level(n.name)>=3?'💗':'💛', hx, hy); c.restore();
     }
   });
-  /* Boss（用怪物图） */
+  /* Boss（用怪物图）+ 醒目名字标签 + 闪烁王冠指引，方便找到任务目标 */
+  var curQ=(E && E.curQuest && E.curQuest()) || null;
   MAP.bosses.forEach(function(b){
     if (E.S && E.S.bossDefeated[b.key]) return;
     var mon=D.MON_BY_KEY[b.key];
     self.imageSprite(mon?D.monsterImg(mon):'', b.x, b.y, t*1.8, 0, '#ff7a7a');
+    if(!mon) return;
+    var bx=b.x*t-self.camX+t/2, by=b.y*t-self.camY;
+    /* 头顶闪烁的 👑 + 名字牌（当前任务 Boss 用更亮的红色呼吸光） */
+    var isTarget=curQ && curQ.boss===b.key;
+    var pulse=0.7+0.3*Math.sin(now/380+b.x);
+    c.save();
+    if(isTarget){
+      c.globalAlpha=pulse; c.fillStyle='rgba(255,80,80,.28)';
+      c.beginPath(); c.arc(bx,by+t*0.25,t*0.95,0,6.2832); c.fill();
+    }
+    c.globalAlpha=1; c.font=(t*0.62)+'px serif'; c.textAlign='center'; c.textBaseline='middle';
+    c.fillText('👑',bx,by-t*0.62);
+    /* 名字牌 */
+    var nm=mon.name, cfont='bold 11px sans-serif'; c.font=cfont;
+    var tw=c.measureText(nm).width+12;
+    c.fillStyle='rgba(120,20,30,.85)';
+    c.beginPath(); if(c.roundRect){c.roundRect(bx-tw/2,by-t*0.5-15,tw,15,7);c.fill();}else c.fillRect(bx-tw/2,by-t*0.5-15,tw,15);
+    c.fillStyle='#fff'; c.fillText(nm,bx,by-t*0.5-7);
+    c.restore();
   });
   /* 脚步尘粒 */
   this.footDust.forEach(function(d){
@@ -458,9 +493,23 @@ World.drawMiniMap = function(){
     mc2.fillStyle='#ffd35c'; mc2.fillRect(c.x*sx-1.5,c.y*sy-1.5,3,3); });
   mc2.fillStyle='#8fe3ff';
   MAP.npcs.forEach(function(n){ if(!known(self.zoneAt(n.x,n.y).id))return; mc2.fillRect(n.x*sx-1,n.y*sy-1,2.5,2.5); });
-  MAP.bosses.forEach(function(b){ if(E.S&&E.S.bossDefeated[b.key])return;
-    if(!known(self.zoneAt(b.x,b.y).id))return;
-    mc2.fillStyle='#ff6b6b'; mc2.beginPath(); mc2.arc(b.x*sx,b.y*sy,2.4,0,6.2832); mc2.fill(); });
+  var curQ=(E&&E.curQuest&&E.curQuest())||null;
+  MAP.bosses.forEach(function(b){
+    if(E.S&&E.S.bossDefeated[b.key])return;
+    var isTarget=curQ&&curQ.boss===b.key;
+    /* v6.4.6：当前任务目标的 Boss 始终显示闪烁标记（即便区域未探索），方便定位蘑菇王 */
+    if(!isTarget && !known(self.zoneAt(b.x,b.y).id))return;
+    var bx2=b.x*sx, by2=b.y*sy;
+    if(isTarget){
+      var pl=0.55+0.45*Math.sin(Date.now()/300);
+      mc2.fillStyle='rgba(255,80,80,'+pl+')';
+      mc2.beginPath(); mc2.arc(bx2,by2,5.5,0,6.2832); mc2.fill();
+      mc2.fillStyle='#fff'; mc2.font='bold 8px sans-serif'; mc2.textAlign='center'; mc2.textBaseline='middle';
+      mc2.fillText('!',bx2,by2+0.5);
+    } else {
+      mc2.fillStyle='#ff6b6b'; mc2.beginPath(); mc2.arc(bx2,by2,2.4,0,6.2832); mc2.fill();
+    }
+  });
   /* 玩家（带光晕） */
   var pxx=this.px*sx, pyy=this.py*sy;
   mc2.fillStyle='rgba(255,255,255,.35)'; mc2.beginPath(); mc2.arc(pxx,pyy,4.5,0,6.2832); mc2.fill();

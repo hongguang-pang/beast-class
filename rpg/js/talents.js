@@ -70,11 +70,38 @@ function unlock(id){
   return {ok:true,msg:'解锁天赋：'+n.name};
 }
 
-/* 累加某类效果的 total 值（同类节点可叠加） */
+/* v6.4.8：分支精通 —— 点亮某系终极节点后，可反复投入递增星尘提升该系精通等级，
+ * 每级给该系主效果再 +4%，让攒下的星尘永远有的放。存档在 talents.merit={fire:2,...}。 */
+var BRANCH_EFF={ fire:'atk', water:'hp', wood:'exp', light:'dust', dark:'crit' };
+var FINAL_ID={ fire:'f4', water:'w4', wood:'g4', light:'l4', dark:'d4' };
+function merits(){
+  var t=T(); if(!t.merit) t.merit={}; return t.merit;
+}
+function meritLevel(b){ return merits()[b]||0; }
+function meritCost(b){ return 60*(meritLevel(b)+1); }
+function canMerit(b){
+  var fin=FINAL_ID[b];
+  if(!fin || !isUnlocked(fin)) return false;
+  return cloud()>=meritCost(b);
+}
+function upgradeMerit(b){
+  if(!canMerit(b)) return {ok:false,msg:'需先点亮该系终极天赋，且星尘足够'};
+  var cost=meritCost(b), t=T();
+  t.cloud-=cost; t.spent=(t.spent||0)+cost; t.merit[b]=meritLevel(b)+1;
+  E.save();
+  if(window.RPG_AUDIO) window.RPG_AUDIO.sfx('levelup');
+  return {ok:true,msg:BRANCHES.filter(function(x){return x.elem===b;})[0].name+' 精通 Lv.'+t.merit[b]};
+}
+
+/* 累加某类效果的 total 值（同类节点可叠加 + 精通加成） */
 function bonus(eff){
   var t=T(), sum=0;
   Object.keys(t.nodes||{}).forEach(function(id){
     if(t.nodes[id] && NODE_BY_ID[id] && NODE_BY_ID[id].eff===eff) sum+=NODE_BY_ID[id].val;
+  });
+  /* 精通：每级 +4%，只加到各分支主效果上 */
+  BRANCHES.forEach(function(br){
+    if(BRANCH_EFF[br.elem]===eff && meritLevel(br.elem)>0) sum+=0.04*meritLevel(br.elem);
   });
   return sum;
 }
@@ -121,6 +148,7 @@ window.RPG_TALENTS={
   cloud:cloud, spent:spent, isUnlocked:isUnlocked, canUnlock:canUnlock, unlock:unlock,
   bonus:bonus, earnFromCoverage:earnFromCoverage, seedFromSave:seedFromSave,
   statMult:statMult, expMult:expMult, goldMult:goldMult, critBonus:critBonus,
-  branchProgress:branchProgress, unlockedCount:unlockedCount
+  branchProgress:branchProgress, unlockedCount:unlockedCount,
+  meritLevel:meritLevel, meritCost:meritCost, canMerit:canMerit, upgradeMerit:upgradeMerit, FINAL_ID:FINAL_ID
 };
 })();

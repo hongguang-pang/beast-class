@@ -486,11 +486,17 @@ UI.renderTalents = function(){
         '<span class="tn-desc">'+esc(n.desc)+'</span>'+
         '<span class="tn-cost">'+(un?'已点亮':('✨'+n.cost))+'</span></div>';
     }).join('');
+    var ml=T.meritLevel(br.elem), finDone=T.isUnlocked(T.FINAL_ID[br.elem]);
+    var meritBtn=finDone
+      ? '<button class="tb-merit'+(T.canMerit(br.elem)?' can':'')+'" data-branch="'+br.elem+'">'+
+        '<span class="tm-ico">♾️</span><span class="tm-txt">'+br.name.replace('天赋','')+'精通 Lv.'+ml+' · 主属性再 +'+(ml*4)+'%</span>'+
+        '<span class="tm-cost">✨'+T.meritCost(br.elem)+'</span></button>'
+      : '<div class="tb-merit locked">🔒 点亮终极天赋后解锁精通（无限升级）</div>';
     return '<div class="tb" style="--bc:'+br.color+'">'+
       '<div class="tb-head"><span class="tb-icon">'+br.icon+'</span>'+
       '<span class="tb-name">'+br.name+'</span>'+
       '<span class="tb-prog">'+pr.done+'/'+pr.total+'</span></div>'+
-      '<div class="tb-nodes">'+cards+'</div></div>';
+      '<div class="tb-nodes">'+cards+'</div>'+meritBtn+'</div>';
   }).join('');
   Array.prototype.forEach.call(tree.querySelectorAll('.tn'),function(el){
     el.addEventListener('click',function(){
@@ -498,6 +504,14 @@ UI.renderTalents = function(){
       var r=T.unlock(id);
       if(r.ok){ UI.toast('🌟 '+r.msg); UI.renderTalents(); UI.updateHUD(); }
       else { UI.toast(T.isUnlocked(id)?'这个天赋已点亮':(T.cloud()<T.NODE_BY_ID[id].cost?'星尘不足（还差 '+(T.NODE_BY_ID[id].cost-T.cloud())+'）':'需要先点亮前置天赋')); }
+    });
+  });
+  Array.prototype.forEach.call(tree.querySelectorAll('.tb-merit[data-branch]'),function(el){
+    el.addEventListener('click',function(){
+      var b=el.getAttribute('data-branch');
+      var r=T.upgradeMerit(b);
+      if(r.ok){ UI.toast('♾️ '+r.msg); UI.renderTalents(); UI.updateHUD(); }
+      else { UI.toast('星尘不足（还差 '+(T.meritCost(b)-T.cloud())+'）'); }
     });
   });
 };

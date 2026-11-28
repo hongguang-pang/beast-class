@@ -140,7 +140,31 @@ var MONSTERS = [
   { key:'e13', name:'水滴史莱姆', file:'e13-water-slime.png',  elem:'water', base:{hp:100,atk:20,def:12,spd:12}, exp:30, gold:19, zone:1 },
   { key:'e14', name:'暗影蝠',     file:'e14-shadow-bat.png',   elem:'dark',  base:{hp:88, atk:24,def:9, spd:18}, exp:36, gold:23, zone:3 },
   { key:'e15', name:'星光精灵',   file:'e15-star-sprite.png',  elem:'light', base:{hp:96, atk:22,def:11,spd:15}, exp:34, gold:22, zone:2 },
-  { key:'e16', name:'晶岩兽',     file:'e16-crystal-golem.png',elem:'light', base:{hp:126,atk:23,def:19,spd:7},  exp:42, gold:27, zone:3 }
+  { key:'e16', name:'晶岩兽',     file:'e16-crystal-golem.png',elem:'light', base:{hp:126,atk:23,def:19,spd:7},  exp:42, gold:27, zone:3 },
+  { key:'e17', name:'哆啦A梦', file:'e17-pd00.png', elem:'fire', base:{hp:82,atk:16,def:10,spd:11}, exp:22, gold:15, zone:0 },
+  { key:'e18', name:'奶茶水獭', file:'e18-pd01.png', elem:'water', base:{hp:86,atk:17,def:10,spd:11}, exp:22, gold:15, zone:0 },
+  { key:'e19', name:'噜噜水豚', file:'e19-pd02.png', elem:'wood', base:{hp:90,atk:18,def:11,spd:11}, exp:22, gold:15, zone:0 },
+  { key:'e20', name:'皮卡丘', file:'e20-pd03.png', elem:'light', base:{hp:94,atk:19,def:11,spd:11}, exp:22, gold:15, zone:0 },
+  { key:'e21', name:'卡比', file:'e21-pd04.png', elem:'dark', base:{hp:104,atk:22,def:14,spd:14}, exp:34, gold:23, zone:1 },
+  { key:'e22', name:'吉伊卡哇', file:'e22-pd05.png', elem:'fire', base:{hp:108,atk:23,def:14,spd:14}, exp:34, gold:23, zone:1 },
+  { key:'e23', name:'龙猫', file:'e23-pd06.png', elem:'water', base:{hp:112,atk:24,def:15,spd:14}, exp:34, gold:23, zone:1 },
+  { key:'e24', name:'柯南', file:'e24-pd07.png', elem:'wood', base:{hp:116,atk:25,def:15,spd:14}, exp:34, gold:23, zone:1 },
+  { key:'e25', name:'初音未来', file:'e25-pd08.png', elem:'light', base:{hp:104,atk:22,def:14,spd:14}, exp:34, gold:23, zone:1 },
+  { key:'e26', name:'QQ企鹅', file:'e26-pd09.png', elem:'dark', base:{hp:108,atk:23,def:14,spd:14}, exp:34, gold:23, zone:1 },
+  { key:'e27', name:'柴犬', file:'e27-pd10.png', elem:'fire', base:{hp:136,atk:29,def:19,spd:12}, exp:46, gold:31, zone:2 },
+  { key:'e28', name:'奶蛙', file:'e28-pd11.png', elem:'water', base:{hp:140,atk:30,def:19,spd:12}, exp:46, gold:31, zone:2 },
+  { key:'e29', name:'月芽狐', file:'e29-pd12.png', elem:'wood', base:{hp:128,atk:27,def:18,spd:12}, exp:46, gold:31, zone:2 },
+  { key:'e30', name:'蓝龙琪拉', file:'e30-pd13.png', elem:'light', base:{hp:132,atk:28,def:18,spd:12}, exp:46, gold:31, zone:2 },
+  { key:'e31', name:'故障猫', file:'e31-pd14.png', elem:'dark', base:{hp:136,atk:29,def:19,spd:12}, exp:46, gold:31, zone:2 },
+  { key:'e32', name:'肉包', file:'e32-pd15.png', elem:'fire', base:{hp:140,atk:30,def:19,spd:12}, exp:46, gold:31, zone:2 },
+  { key:'e33', name:'毛团', file:'e33-pd16.png', elem:'water', base:{hp:152,atk:33,def:22,spd:16}, exp:60, gold:42, zone:3 },
+  { key:'e34', name:'呆呆鸟', file:'e34-pd17.png', elem:'wood', base:{hp:156,atk:34,def:22,spd:16}, exp:60, gold:42, zone:3 },
+  { key:'e35', name:'墨团团', file:'e35-pd18.png', elem:'light', base:{hp:160,atk:35,def:23,spd:16}, exp:60, gold:42, zone:3 },
+  { key:'e36', name:'奶蛙仔', file:'e36-pd19.png', elem:'dark', base:{hp:164,atk:36,def:23,spd:16}, exp:60, gold:42, zone:3 },
+  { key:'e37', name:'饼干猫', file:'e37-pd20.png', elem:'fire', base:{hp:152,atk:33,def:22,spd:16}, exp:60, gold:42, zone:3 },
+  { key:'e38', name:'小蓝鲨', file:'e38-pd21.png', elem:'water', base:{hp:156,atk:34,def:22,spd:16}, exp:60, gold:42, zone:3 },
+  { key:'e39', name:'锦鸾', file:'e39-pd22.png', elem:'wood', base:{hp:160,atk:35,def:23,spd:16}, exp:60, gold:42, zone:3 },
+  { key:'e40', name:'银月byte', file:'e40-pd23.png', elem:'light', base:{hp:164,atk:36,def:23,spd:16}, exp:60, gold:42, zone:3 },
 ];
 /* Boss */
 var BOSSES = [
@@ -240,10 +264,10 @@ var QUESTS = [
 var MAP_CFG = {
   cols:64, rows:48, tile:30,
   zones:[
-    { id:0, name:'新手草原', color:'#3c6b3f', y0:30, y1:48, x0:0,  x1:38, monsters:['e01','e02','e11'] },
-    { id:1, name:'蘑菇森林', color:'#2f5d3a', y0:20, y1:30, x0:8,  x1:40, monsters:['e03','e04','e12','e13'] },
-    { id:2, name:'玩具谷/沙漠', color:'#8a7a3f', y0:16, y1:28, x0:40, x1:64, monsters:['e05','e06','e07','e15'] },
-    { id:3, name:'风暴高地', color:'#4a5570', y0:6,  y1:20, x0:20, x1:52, monsters:['e08','e09','e10','e14','e16'] },
+    { id:0, name:'新手草原', color:'#3c6b3f', y0:30, y1:48, x0:0,  x1:38, monsters:['e01','e02','e11','e17','e18','e19','e20'] },
+    { id:1, name:'蘑菇森林', color:'#2f5d3a', y0:20, y1:30, x0:8,  x1:40, monsters:['e03','e04','e12','e13','e21','e22','e23','e24','e25','e26'] },
+    { id:2, name:'玩具谷/沙漠', color:'#8a7a3f', y0:16, y1:28, x0:40, x1:64, monsters:['e05','e06','e07','e15','e27','e28','e29','e30','e31','e32'] },
+    { id:3, name:'风暴高地', color:'#4a5570', y0:6,  y1:20, x0:20, x1:52, monsters:['e08','e09','e10','e14','e16','e33','e34','e35','e36','e37','e38','e39','e40'] },
     { id:4, name:'知识圣殿', color:'#5b4a72', y0:0,  y1:10, x0:40, x1:64, monsters:[] }
   ],
   /* NPC 位置（格坐标）：村长/探险家/训练师/学者 + 商店 */

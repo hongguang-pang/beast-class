@@ -79,6 +79,7 @@ Battle.act = function(action, arg){
     if (E.S.team[idx].hp<=0){ log('这只宠物已经无法战斗'); this.busy=false; return; }
     if (idx===E.S.active){ this.busy=false; return; }
     E.S.active=idx; E.save();
+    this.busy=true;   /* 换宠动画期间锁住，防止连点 */
     log('🔄 换上 '+D.PET_BY_ID[E.S.team[idx].id].name);
     this.enemyTurn();
   }
@@ -189,10 +190,17 @@ Battle.playerAttack = function(power, isSkill, kind){
 Battle.enemyTurn = function(){
   if (!this.active || this.monHp<=0) return;
   var mon=this.mon;
-  var idx=E.firstAlive();
-  if (idx<0){ this.lose(); return; }
-  E.S.active=idx;
-  var pet=E.S.team[idx];
+  /* v6.4.1：保留玩家手动换宠的选择——当前出战宠物还活着就由它承受攻击，
+   * 只有当前出战宠物已倒下（或不存在）时才回退到 firstAlive。
+   * 旧逻辑无条件 E.S.active=firstAlive()，会把 switch 刚设置的 active 覆盖掉，
+   * 导致"换宠日志显示成功、实际立刻打回第一只"的 bug。 */
+  var cur=E.S.active;
+  if (cur==null || cur<0 || !E.S.team[cur] || E.S.team[cur].hp<=0){
+    var idx=E.firstAlive();
+    if (idx<0){ this.lose(); return; }
+    E.S.active=idx;
+  }
+  var pet=E.activePet();
   var r=E.monsterDamage(mon, pet, this.monLv);
   var dmg = this.playerGuard ? Math.round(r.value*0.4) : r.value;
   /* 🎯 针对性攻击：抓住薄弱点，锁定宠物属性弱点，伤害×1.6 且无视防御减伤 */
@@ -245,6 +253,20 @@ Battle.useItem = function(k){
   else if (k==='ether'){ pet.mp=Math.min(E.curMaxMp(pet),pet.mp+20); log('💎 恢复 20 MP'); if(FX)FX.healText('bMyImg',20); }
   else if (k==='antidote'){ log('🌿 使用了清醒草'); }
   else if (k==='candy'){ E.addExp(pet,60); log('🍬 获得 60 经验'); }
+  else if (k==='revive'){
+    /* 复活第一个倒下的宠物（HP<=0），没有则提示且不消耗道具 */
+    var down=-1;
+    for (var i=0;i<E.S.team.length;i++){ if (E.S.team[i].hp<=0){ down=i; break; } }
+    if (down<0){ log('🌸 队伍里没有倒下的宠物，先留着吧'); this.busy=false; return; }
+    var rp=E.S.team[down];
+    rp.hp=Math.round(E.curMaxHp(rp)*0.5);
+    E.S.active=down;   /* 复活的宠物接替出战 */
+    log('🌸 还魂草：'+D.PET_BY_ID[rp.id].name+' 复活！恢复 50% HP');
+    if(FX)FX.healText('bMyImg',rp.hp);
+    E.S.bag[k]--;   /* 消耗一个还魂草 */
+    E.save(); this.busy=true; this.enemyTurn();
+    return;
+  }
   E.S.bag[k]--; E.save(); this.busy=true; this.enemyTurn();
 };
 
@@ -266,12 +288,19 @@ Battle.win = function(){
   E.S.gold+=gold;
   var ups=[];
   E.alivePets().forEach(function(p){ E.addExp(p, exp, ups); });
-  /* v6.1.1：战斗胜利后全队存活宠物回复 25% MP（HP 不自动回）。
-   * 按最大 MP 的 25% 回复，超过上限截断到 100%——既缓解卡壳又保留资源管理。 */
-  E.alivePets().forEach(function(p){
-    var mx=E.curMaxMp(p);
-    p.mp=Math.min(mx, p.mp + Math.round(mx*0.25));
+  /* v6.4.1：战斗胜利后全队小幅回血 + 回蓝，倒下的宠物也会苏醒。
+   * HP/MP 各按最大值的 20%/25% 回复，超过上限截断到 100%。
+   * 这样战后不用频繁嗑药，倒下宠物也能自动复活（还魂草仍可战斗中救急）。 */
+  var revived=[];
+  E.S.team.forEach(function(p){
+    var mh=E.curMaxHp(p);
+    var wasDown=p.hp<=0;
+    p.hp=Math.min(mh, p.hp + Math.round(mh*0.20));
+    if (wasDown && p.hp>0) revived.push(D.PET_BY_ID[p.id].name);
+    var mm=E.curMaxMp(p);
+    p.mp=Math.min(mm, p.mp + Math.round(mm*0.25));
   });
+  if (revived.length) log('🌸 战斗结束，'+revived.join('、')+' 苏醒了！');
   var qp = E.bumpQuest('kill', this.mon.key);
   if (this.isBoss) E.bumpQuest('boss', this.mon.key);
   /* 支线进度：击杀 / Boss / 等级 */
@@ -289,7 +318,7 @@ Battle.win = function(){
     FX.lootBeam();
     if (ups && ups.length) (function(){ setTimeout(function(){ FX.levelUp('bMyImg'); }, 500); })();
   }
-  if (this.onEnd) this.onEnd({ win:true, exp:exp, gold:gold, ups:ups, quest:qp, drops:drops, isBoss:this.isBoss, mon:this.mon });
+  if (this.onEnd) this.onEnd({ win:true, exp:exp, gold:gold, ups:ups, quest:qp, drops:drops, isBoss:this.isBoss, mon:this.mon, revived:revived });
 };
 
 Battle.lose = function(){

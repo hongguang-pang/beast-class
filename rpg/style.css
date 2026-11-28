@@ -52,8 +52,14 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .hud-item{padding:5px 9px;border-radius:10px;background:#0009;font-size:12px;font-weight:700;color:#ffe6a0;}
 .hud-btn{padding:6px 10px;border-radius:10px;background:#0009;color:#fff;font-size:12px;font-weight:700;border:1px solid #ffffff33;}
 .hud-quest{position:absolute;top:48px;left:10px;right:10px;z-index:5;padding:6px 10px;border-radius:10px;
-  background:linear-gradient(90deg,#4a2f00cc,#2a1e4acc);border:1px solid #ffd35c55;color:#ffe6a0;font-size:11.5px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  background:linear-gradient(90deg,#4a2f00e6,#2a1e4ae6);border:1px solid #ffd35c77;color:#ffe6a0;font-size:11.5px;
+  display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;box-shadow:0 2px 8px #0006;}
+.hud-quest:active{transform:scale(.99);filter:brightness(1.15);}
+.hud-quest .hq-txt{flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hud-quest .hq-txt b{color:#fff3c4;}
+.hud-quest .hq-bar{flex:1;min-width:20px;height:5px;border-radius:3px;background:#0008;overflow:hidden;}
+.hud-quest .hq-bar i{display:block;height:100%;background:linear-gradient(90deg,#ffd35c,#ff9d3c);}
+.hud-quest .hq-go{flex:0 0 auto;color:#ffd35c;font-weight:800;font-size:10.5px;}
 .hud-team{position:absolute;top:80px;left:10px;display:flex;flex-direction:column;gap:4px;z-index:5;}
 .ht-item{display:flex;align-items:center;gap:4px;padding:3px 6px;border-radius:9px;background:#000a;border:1px solid #ffffff22;font-size:10px;}
 .ht-item.on{border-color:#ffd35c;background:#3a2a10cc;}
@@ -536,3 +542,43 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .fc-node.beaten{opacity:.6;}
 .fc-arrow{font-size:13px;color:#7a6f9a;}
 .fc-ring-tip{display:block;font-size:9.5px;color:#9d90b5;margin-top:5px;line-height:1.5;}
+
+/* ============================================================
+ * v6.4.3：任务中心（一站式任务面板，入口显眼 + 进度可视化 + 引导）
+ * ============================================================ */
+.quest-focus{position:relative;padding:14px;border-radius:14px;margin-bottom:14px;
+  background:linear-gradient(135deg,#5a3a06ee,#2e2050ee);border:1px solid #ffd35c77;
+  box-shadow:inset 0 1px 0 #ffffff18,0 4px 16px #0007;}
+.qf-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.qf-badge{display:inline-block;padding:2px 10px;border-radius:20px;background:#ffd35c;color:#3a2600;
+  font-size:10.5px;font-weight:900;letter-spacing:.5px;}
+.qf-npc{font-size:10.5px;color:#cbb8ff;}
+.qf-title{font-size:17px;color:#ffe9a8;font-weight:900;margin-bottom:4px;}
+.qf-desc{font-size:12.5px;color:#e8dcff;line-height:1.6;margin-bottom:8px;}
+.qf-guide{font-size:11.5px;color:#ffe0a0;line-height:1.6;padding:8px 10px;margin-bottom:10px;
+  background:#0005;border-left:3px solid #ffd35c;border-radius:8px;}
+.qf-guide b{color:#ffd35c;}
+.qf-progress{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#cfc6e8;margin-bottom:4px;}
+.qf-progress b{color:#8fe3a8;font-size:13px;}
+.qf-bar{height:8px;border-radius:5px;background:#0008;overflow:hidden;margin-bottom:8px;}
+.qf-bar i{display:block;height:100%;background:linear-gradient(90deg,#4fbf6a,#8fe3a8);transition:width .3s;}
+.qf-reward{font-size:11.5px;color:#ffd35c;margin-bottom:8px;}
+.qf-turnin{display:block;width:100%;margin-top:4px;padding:10px;border-radius:10px;
+  background:linear-gradient(135deg,#4fbf6a,#3a9e50);color:#fff;font-weight:900;font-size:13px;}
+.qf-tip{font-size:11px;color:#9a8fbf;margin-top:4px;}
+.qf-tip b{color:#cbb8ff;}
+/* 主线任务列表 */
+.quest-list{display:flex;flex-direction:column;gap:6px;}
+.ql-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;
+  background:#0006;border:1px solid #ffffff18;}
+.ql-item.cur{background:#3a2a10aa;border-color:#ffd35c88;}
+.ql-item.done{opacity:.55;}
+.ql-mark{flex:0 0 22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:#ffffff14;color:#cbb8ff;font-size:12px;font-weight:900;}
+.ql-item.cur .ql-mark{background:#ffd35c;color:#3a2600;}
+.ql-item.done .ql-mark{background:#4fbf6a;color:#fff;}
+.ql-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.ql-body b{font-size:12.5px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ql-body small{font-size:10px;color:#9a8fbf;}
+.ql-item.cur .ql-body small{color:#ffd35c;}
+.ql-npc{flex:0 0 auto;font-size:10px;color:#8fe3ff;}

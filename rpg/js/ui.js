@@ -36,7 +36,7 @@ function petImgTag(id, stageKey, cls){
 
 UI.show = function(view){
   this.view=view;
-  ['titleView','partyView','worldStage','battleView','codexView','switchView','talentsView'].forEach(function(v){
+  ['titleView','partyView','worldStage','battleView','codexView','switchView','talentsView','questView'].forEach(function(v){
     var el=$(v); if(el) el.classList.toggle('hidden', v!==view);
   });
   if (view==='worldStage'){
@@ -50,6 +50,7 @@ UI.show = function(view){
   } else { W.enabled=false; }
   if (view==='titleView'){ if(window.RPG_AUDIO) window.RPG_AUDIO.playBGM('none'); }
   if (view==='partyView') UI.renderParty();
+  if (view==='questView') UI.renderQuestCenter();
   if (view==='codexView') UI.renderCodex();
   if (view==='switchView') UI.renderSwitch();
   if (view==='talentsView') UI.renderTalents();
@@ -72,8 +73,18 @@ UI.updateHUD = function(){
   var el2=$('hudZone'); if(el2) el2.textContent=(window.__curZone||'知识大陆');
   UI.updateExplore();
   var q=E.curQuest();
-  var el3=$('hudQuest');
-  if(el3) el3.textContent = q ? (q.title+' '+(S.quests.prog[q.id]||0)+'/'+q.need) : '主线已完成 ✓';
+  var el3=$('hudQuestBar');
+  if(el3){
+    if(q){
+      var pr=Math.min(S.quests.prog[q.id]||0,q.need);
+      var pct=Math.round(pr/q.need*100);
+      el3.innerHTML='<span class="hq-txt">📜 '+esc(q.title)+' <b>'+pr+'/'+q.need+'</b></span>'+
+        '<span class="hq-bar"><i style="width:'+pct+'%"></i></span>'+
+        '<span class="hq-go">详情 ›</span>';
+    } else {
+      el3.innerHTML='<span class="hq-txt">🏆 主线全部完成</span><span class="hq-go">查看 ›</span>';
+    }
+  }
   /* 队伍缩略血条 */
   var bar=$('hudTeam');
   if(bar){
@@ -189,21 +200,7 @@ UI.renderParty = function(){
     }
   }
   /* 支线任务列表 */
-  var sideBox=$('sideBox');
-  if (sideBox){
-    var sides=D.SIDE_QUESTS;
-    var html='<div class="side-head">🔀 支线委托 <small>找对应 NPC 接取/交付</small></div>';
-    sides.forEach(function(s){
-      var accepted=E.S.side.accepted[s.id], done=E.S.side.done[s.id];
-      var prog=E.S.side.prog[s.id]||0;
-      var stat = done?'<span class="side-tag done">✓ 完成</span>'
-        : accepted?('<span class="side-tag doing">'+(prog>=s.need?'可交付':Math.min(prog,s.need)+'/'+s.need)+'</span>')
-        : '<span class="side-tag open">未接取</span>';
-      html+='<div class="side-item'+(done?' dim':'')+'"><div class="side-row"><b>'+esc(s.title)+'</b>'+stat+'</div>'+
-        '<div class="side-desc">'+esc(s.desc)+' <small>· '+esc(s.npc)+'</small></div></div>';
-    });
-    sideBox.innerHTML=html;
-  }
+  UI.renderSideBox($('sideBox'));
   /* 剧情关卡链（当前年级全部知识点/单元） */
   var cb=$('campaignBox');
   if (cb && window.RPG_CAMPAIGN && E.S.campaign){
@@ -236,6 +233,82 @@ UI.renderParty = function(){
       });
     });
   }
+};
+
+/* 支线委托渲染（队伍面板 / 任务中心共用） */
+UI.renderSideBox = function(sideBox){
+  if (!sideBox) return;
+  var sides=D.SIDE_QUESTS;
+  var html='<div class="side-head">🔀 支线委托 <small>找对应 NPC 接取/交付</small></div>';
+  sides.forEach(function(s){
+    var accepted=E.S.side.accepted[s.id], done=E.S.side.done[s.id];
+    var prog=E.S.side.prog[s.id]||0;
+    var stat = done?'<span class="side-tag done">✓ 完成</span>'
+      : accepted?('<span class="side-tag doing">'+(prog>=s.need?'可交付':Math.min(prog,s.need)+'/'+s.need)+'</span>')
+      : '<span class="side-tag open">未接取</span>';
+    html+='<div class="side-item'+(done?' dim':'')+'"><div class="side-row"><b>'+esc(s.title)+'</b>'+stat+'</div>'+
+      '<div class="side-desc">'+esc(s.desc)+' <small>· '+esc(s.npc)+'</small></div></div>';
+  });
+  sideBox.innerHTML=html;
+};
+
+/* ---------- 任务中心：当前任务 + 主线列表 + 支线（一站式） ---------- */
+UI.renderQuestCenter = function(){
+  var S=E.S; if(!S) return;
+  var q=E.curQuest();
+
+  /* 1. 当前任务大卡片 */
+  var focus=$('questFocus');
+  if (focus){
+    if (q){
+      var prog=Math.min(S.quests.prog[q.id]||0,q.need);
+      var pct=Math.round(prog/q.need*100);
+      var ready=prog>=q.need;
+      focus.innerHTML=
+        '<div class="qf-top"><span class="qf-badge">当前目标</span>'+
+          '<span class="qf-npc">交付人：'+esc(q.npc)+'</span></div>'+
+        '<div class="qf-title">📜 '+esc(q.title)+'</div>'+
+        '<div class="qf-desc">'+esc(q.desc)+'</div>'+
+        (q.hint?'<div class="qf-guide"><b>💡 怎么做</b><br>'+esc(q.hint)+'</div>':'')+
+        '<div class="qf-progress"><span>完成进度</span><b>'+prog+' / '+q.need+'</b></div>'+
+        '<div class="qf-bar"><i style="width:'+pct+'%"></i></div>'+
+        '<div class="qf-reward">🎁 奖励：'+q.reward.gold+' 金币 · '+q.reward.exp+' 经验</div>'+
+        (ready?'<button class="qf-turnin" id="btnQuestTurnIn">✅ 已完成 · 回 '+esc(q.npc)+' 处交付</button>':
+         '<div class="qf-tip">完成后回到 <b>'+esc(q.npc)+'</b> 处交付</div>');
+      var ti=$('btnQuestTurnIn'); if(ti) ti.addEventListener('click',function(){
+        if(E.turnInAvailable()){
+          var r=E.completeQuest();
+          UI.toast('任务完成！+'+r.q.reward.gold+' 金币 · '+r.q.reward.exp+' 经验');
+          UI.renderQuestCenter(); UI.updateHUD();
+        } else UI.toast('任务还没完成');
+      });
+    } else {
+      focus.innerHTML='<div class="qf-title">🏆 全部主线完成！</div>'+
+        '<div class="qf-desc">你是知识大陆的守护者了，继续探索图鉴与支线吧。</div>';
+    }
+  }
+
+  /* 2. 主线任务列表：完成 / 进行中 / 未解锁 */
+  var list=$('questList');
+  if (list){
+    var all=D.QUESTS||[], curId=q&&q.id;
+    var html='';
+    all.forEach(function(t,i){
+      var done=!!S.quests.done[t.id];
+      var isCur=t.id===curId;
+      var pr=Math.min(S.quests.prog[t.id]||0,t.need);
+      var cls='ql-item'+(done?' done':'')+(isCur?' cur':'');
+      var mark=done?'✓':(isCur?'▶':(i===0||S.quests.done[all[i-1].id]?'·':'🔒'));
+      var sub=done?'已完成':(isCur?(pr+'/'+t.need+' · 进行中'):(mark==='🔒'?'前置任务未完成':'待接取'));
+      html+='<div class="'+cls+'"><span class="ql-mark">'+mark+'</span>'+
+        '<span class="ql-body"><b>'+esc(t.title)+'</b><small>'+esc(sub)+'</small></span>'+
+        '<span class="ql-npc">'+esc(t.npc)+'</span></div>';
+    });
+    list.innerHTML=html;
+  }
+
+  /* 3. 支线委托 */
+  UI.renderSideBox($('questSide'));
 };
 
 /* ---------- 属性↔学科 提示条 ---------- */
@@ -437,7 +510,20 @@ UI.renderBattle = function(){
   if (cbar && window.RPG_CAMPAIGN){
     var L=window.RPG_CAMPAIGN.curLevel(E.S);
     var cov=window.RPG_CAMPAIGN.coverage(E.S);
-    if (L){
+    /* v6.4.1：本题学科/知识点优先——混合出题后顶部不再固定显示关卡单元，
+     * 否则「顶部写观察物体、实际答的是地理题」会让玩家困惑。
+     * 出题时 B.currentQuiz 带 subj/kn；答完清空后回到当前关卡单元信息。 */
+    var q=B.currentQuiz;
+    if (q && (q.subj || q.q)){
+      var ic = q.subj && window.RPG_CAMPAIGN ? window.RPG_CAMPAIGN.subjIcon(q.subj) : '📖';
+      var sn = q.subj ? (window.RPG_CAMPAIGN.subjName(q.subj)) : '知识挑战';
+      var kn = q.q && q.q.kn ? q.q.kn : '知识挑战';
+      var modeTag = q.mode==='weak' ? '🎯 薄弱巩固 · ' : '';
+      cbar.innerHTML='<span class="bcb-title">'+ic+' 本题 · '+esc(sn)+' · '+esc(kn)+'</span>'+
+        (modeTag?'<span class="bcb-weak">'+modeTag+'</span>':'')+
+        '<span class="bcb-global">全年级 '+cov.pct+'%</span>';
+      cbar.style.display='flex';
+    } else if (L){
       var doneK=L.kps.filter(function(k){ return E.S.campaign.covered[k]; }).length;
       var weakN=L.kps.filter(function(k){ return (E.S.campaign.weak[k]||0)>=2; }).length;
       cbar.innerHTML='<span class="bcb-title">'+esc(L.title)+'</span>'+
@@ -561,6 +647,8 @@ UI.openQuiz = function(kind, skill){
   /* 用题目真实学科判定暴击（混合出题后不能再用当前关卡学科），并保留 L 供覆盖结算 */
   var quizSubj = qSubj || q.subj || (L && L.subj) || null;
   B.currentQuiz={ q:q, kid:kid, mode:mode, level:L, subj:quizSubj };
+  /* v6.4.1：出题后立即刷新顶部信息条，让顶部知识点与本题一致 */
+  if (UI.renderBattle) UI.renderBattle();
   var box=$('quizQ'); box.textContent=q.q;
   var subjEl=$('quizSubj');
   if(subjEl){
@@ -774,7 +862,8 @@ UI.shop = function(){
 UI.battleEnd = function(r){
   if (r.win){
     var msg='🎉 胜利！<br>获得 '+r.exp+' 经验 · '+r.gold+' 金币'+
-      '<br><span style="color:#6ab8ff">💧 全队回复 25% MP，准备下一场战斗</span>';
+      '<br><span style="color:#6ab8ff">💗 全队回复 20% HP · 💧 25% MP</span>'+
+      (r.revived && r.revived.length ? '<br><span style="color:#ffb3d1">🌸 '+r.revived.join('、')+' 已苏醒</span>' : '');
     if (r.drops && r.drops.length){
       msg+='<br><span style="color:#8fe3a8">🎁 掉落：'+r.drops.map(function(d){
         var it=D.ITEMS[d.item]; return (it?it.emoji:'🎁')+(it?it.name:d.item)+'×'+d.n;

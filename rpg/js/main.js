@@ -148,6 +148,11 @@ function wire(){
   });
   $('hudParty').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('partyView'); });
   $('btnPartyBack').addEventListener('click',function(){ if(A)A.sfx('click'); U.show('worldStage'); });
+  /* 任务中心：HUD 任务按钮 + 地图上方进度条都可进入 */
+  function openQuestCenter(){ if(A)A.sfx('click'); U.show('questView'); }
+  var hudQuestBtn=$('hudQuest'); if(hudQuestBtn) hudQuestBtn.addEventListener('click',openQuestCenter);
+  var hudQuestBar=$('hudQuestBar'); if(hudQuestBar) hudQuestBar.addEventListener('click',openQuestCenter);
+  var btnQuestBack=$('btnQuestBack'); if(btnQuestBack) btnQuestBack.addEventListener('click',function(){ if(A)A.sfx('click'); U.show('worldStage'); });
 
   /* 切换宠物 / 编队 */
   var hudSwitch=$('hudSwitch');

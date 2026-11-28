@@ -380,7 +380,7 @@ World.draw = function(){
   });
   /* NPC（用生成的卡通图，带名字标签；好感度高时头顶显示爱心） */
   MAP.npcs.forEach(function(n){
-    self.imageSprite(D.npcImg(n), n.x, n.y, t*1.5, 0, 'rgba(0,0,0,.3)', n.name);
+    self.imageSprite(D.npcImg(n), n.x, n.y, t*1.5, 0, 'rgba(0,0,0,.3)', n.name, n.icon);
     if (window.RPG_NPCFRIEND && window.RPG_NPCFRIEND.level(n.name)>=1){
       var hx=n.x*t-this.camX+t/2, hy=n.y*t-this.camY-t*0.55;
       var pulse=0.85+0.15*Math.sin(now/300+n.x);
@@ -513,15 +513,24 @@ World.sprite = function(emoji, gx, gy, shadow, color){
   c.fillText(emoji, sx+t/2, sy+t/2);
 };
 /* 用图片绘制 sprite（透明底卡通图），失败时回退 emoji */
-World.imageSprite = function(src, gx, gy, size, bob, shadowColor, label){
+World.imageSprite = function(src, gx, gy, size, bob, shadowColor, label, emoji){
   var c=this.ctx,t=this.tile;
   var sx=gx*t-this.camX, sy=gy*t-this.camY+(bob||0);
   var sz=size||t*1.2;
   /* 地面阴影 */
   if (shadowColor){ c.fillStyle=shadowColor; c.beginPath(); c.ellipse(sx+t/2,sy+t*0.86,sz*0.32,sz*0.11,0,0,Math.PI*2); c.fill(); }
   var img=this.imgCache[src];
+  var cx=sx+t/2, cy=sy+t/2;
   if (img && img.complete && img.naturalWidth>0){
-    c.drawImage(img, sx+t/2-sz/2, sy+t/2-sz/2, sz, sz);
+    c.drawImage(img, cx-sz/2, cy-sz/2, sz, sz);
+  } else if (emoji){
+    /* v6.4.4：图片加载失败时画彩色人形兜底，不再只剩名字标签浮在空中 */
+    c.save();
+    c.fillStyle='rgba(255,255,255,.22)';
+    c.beginPath(); c.arc(cx,cy-sz*0.04,sz*0.42,0,Math.PI*2); c.fill();
+    c.font=(sz*0.78)+'px serif'; c.textAlign='center'; c.textBaseline='middle';
+    c.fillText(emoji,cx,cy-sz*0.04);
+    c.restore();
   }
   /* 名字标签 */
   if (label){

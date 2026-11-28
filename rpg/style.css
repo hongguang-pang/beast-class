@@ -283,6 +283,10 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 .pd-card:hover{border-color:#a78bfa;transform:translateY(-2px);box-shadow:0 6px 18px #7c3aed44;}
 .pd-stage{height:112px;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(180deg,#2b2149,#1a1430);border-radius:9px;margin-bottom:6px;overflow:hidden;}
+/* v6.4.4：静态首帧缩略图，按容器 contain 显示（不变形、不晃动）；点击后才换成动画精灵 */
+.pd-thumb{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;image-rendering:pixelated;}
+.pd-stage .pd-sprite.pd-fluid{max-width:100%;max-height:100%;}
+.pd-card.active{border-color:#ffd35c;box-shadow:0 0 0 2px #ffd35c66,0 6px 18px #7c3aed44;}
 .pd-name{font-size:13px;font-weight:700;color:#ffe08a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pd-slug{font-size:10px;color:#9d90b5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 

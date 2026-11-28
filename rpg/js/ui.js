@@ -78,7 +78,7 @@ UI.updateHUD = function(){
     if(q){
       var pr=Math.min(S.quests.prog[q.id]||0,q.need);
       var pct=Math.round(pr/q.need*100);
-      el3.innerHTML='<span class="hq-txt">📜 '+esc(q.title)+' <b>'+pr+'/'+q.need+'</b></span>'+
+      el3.innerHTML='<span class="hq-txt">🧒 '+esc(q.title)+' <b>'+pr+'/'+q.need+'</b></span>'+
         '<span class="hq-bar"><i style="width:'+pct+'%"></i></span>'+
         '<span class="hq-go">详情 ›</span>';
     } else {
@@ -181,7 +181,7 @@ UI.renderParty = function(){
     if(q){
       var prog=S.quests.prog[q.id]||0;
       var ready=prog>=q.need;
-      questBox.innerHTML='<div class="q-title">📜 '+esc(q.title)+'</div>'+
+      questBox.innerHTML='<div class="q-title">🧒 '+esc(q.title)+'</div>'+
         '<div class="q-desc">'+esc(q.desc)+'</div>'+
         (q.hint?'<div class="q-guide">💡 '+esc(q.hint)+'</div>':'')+
         '<div class="q-prog">进度 '+Math.min(prog,q.need)+' / '+q.need+'</div>'+
@@ -267,7 +267,7 @@ UI.renderQuestCenter = function(){
       focus.innerHTML=
         '<div class="qf-top"><span class="qf-badge">当前目标</span>'+
           '<span class="qf-npc">交付人：'+esc(q.npc)+'</span></div>'+
-        '<div class="qf-title">📜 '+esc(q.title)+'</div>'+
+        '<div class="qf-title">🧒 '+esc(q.title)+'</div>'+
         '<div class="qf-desc">'+esc(q.desc)+'</div>'+
         (q.hint?'<div class="qf-guide"><b>💡 怎么做</b><br>'+esc(q.hint)+'</div>':'')+
         '<div class="qf-progress"><span>完成进度</span><b>'+prog+' / '+q.need+'</b></div>'+

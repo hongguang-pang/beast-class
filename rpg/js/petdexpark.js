@@ -8,6 +8,8 @@
   var curState='idle';
   var curScale=1.6;
   var view=null, grid=null, tabBar=null;
+  var activeCard=null, activeId=null;   /* v6.4.4：当前互动中的卡片（状态按钮只作用于它） */
+  var animTimers=[];
 
   function $(id){ return document.getElementById(id); }
 
@@ -39,33 +41,41 @@
         curState=b.getAttribute('data-state');
         if(window.RPG_AUDIO) window.RPG_AUDIO.sfx('click');
         renderTabs();
-        applyAllStates();
+        if(activeCard && activeId) playAnim(activeCard,activeId,curState);
+        else if(window.RPG_UI) window.RPG_UI.toast('先点一只宠物，再选动作');
       };
     });
   }
+  /* 清理上一段动画定时器 */
+  function clearTimers(){ animTimers.forEach(clearTimeout); animTimers=[]; }
+  /* 播放一次互动动画（wave→jump→回到选中状态），结束后恢复静态缩略图，避免持续晃动 */
+  function playAnim(card, pdId, state){
+    clearTimers();
+    P.upgradeCardToSprite(card,pdId,'wave');
+    animTimers.push(setTimeout(function(){ P.setSpriteState(card,pdId,'jump'); },650));
+    animTimers.push(setTimeout(function(){ P.setSpriteState(card,pdId,state); },1350));
+    /* 3 秒后恢复静态，彻底停住晃动 */
+    animTimers.push(setTimeout(function(){ P.restoreCardThumb(card,pdId); },3000));
+  }
 
-  /* 渲染 24 只宠物卡片 */
+  /* 渲染 24 只宠物卡片（静态缩略图首屏，秒开不晃） */
   function renderGrid(){
     if(!grid) return;
-    grid.innerHTML=P.PETS.map(function(p){ return P.cardHTML(p,curState,curScale); }).join('');
-    /* 点击卡片：播放一次跳跃/挥手互动 */
+    clearTimers(); activeCard=null; activeId=null;
+    grid.innerHTML=P.PETS.map(function(p){ return P.cardHTML(p,'idle',curScale); }).join('');
     Array.prototype.forEach.call(grid.querySelectorAll('.pd-card'),function(card){
       card.onclick=function(){
         var id=card.getAttribute('data-pd');
-        var sp=card.querySelector('.pd-sprite');
         if(window.RPG_AUDIO) window.RPG_AUDIO.sfx('click');
-        /* 依次播放 挥手->跳跃->回到当前状态 */
-        P.setSpriteState(card,id,'wave');
-        setTimeout(function(){ P.setSpriteState(card,id,'jump'); },600);
-        setTimeout(function(){ P.setSpriteState(card,id,curState); },1300);
+        /* 若上一只正在播放动画，先恢复它的静态图 */
+        if(activeCard && activeCard!==card && activeId) P.restoreCardThumb(activeCard,activeId);
+        activeCard=card; activeId=id;
+        /* 高亮当前选中的卡片 */
+        Array.prototype.forEach.call(grid.querySelectorAll('.pd-card'),function(c){ c.classList.remove('active'); });
+        card.classList.add('active');
+        /* 点击才懒加载大图，播放一次互动动画 */
+        playAnim(card,id,curState);
       };
-    });
-  }
-
-  function applyAllStates(){
-    if(!grid) return;
-    Array.prototype.forEach.call(grid.querySelectorAll('.pd-card'),function(card){
-      P.setSpriteState(card,card.getAttribute('data-pd'),curState);
     });
   }
 

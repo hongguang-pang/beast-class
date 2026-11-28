@@ -6,6 +6,9 @@
 'use strict';
 (function(){
   var BASE='images/petdex/';
+  /* v6.4.4：静态首帧缩略图目录（24 张 WebP 合计约 92KB），用于伙伴乐园首屏，
+   * 避免一次性下载 5MB 精灵大图导致加载慢；只有点击某只宠物时才按需加载大图播放动画。 */
+  var THUMB='images/petdex/thumb/';
   /* 24 只宠物元数据（精灵图 8列×9/11行，每帧 96×104） */
   var PETS=[{"id": "PD00", "slug": "doraemon", "name": "Doraemon", "kind": "character", "file": "p00_doraemon.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 225, "by": "korkyzer", "cn": "哆啦A梦", "elem": "fire"}, {"id": "PD01", "slug": "boba", "name": "Boba", "kind": "creature", "file": "p01_boba.webp", "cols": 8, "rows": 11, "fw": 96, "fh": 104, "kb": 242, "by": "railly", "cn": "奶茶水獭", "elem": "water"}, {"id": "PD02", "slug": "lulu-capybara-2", "name": "噜噜", "kind": "creature", "file": "p02_lulu-capybara-2.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 160, "by": "gitcjp", "cn": "噜噜水豚", "elem": "wood"}, {"id": "PD03", "slug": "capvolt", "name": "Pikachu‌", "kind": "creature", "file": "p03_capvolt.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 239, "by": "zlss g.", "cn": "皮卡丘", "elem": "light"}, {"id": "PD04", "slug": "kirby", "name": "Kirby", "kind": "character", "file": "p04_kirby.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 154, "by": "Bao Chi P.", "cn": "卡比", "elem": "dark"}, {"id": "PD05", "slug": "chiikawa", "name": "Chiikawa", "kind": "character", "file": "p05_chiikawa.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 182, "by": "rui l.", "cn": "吉伊卡哇", "elem": "fire"}, {"id": "PD06", "slug": "totoro", "name": "Totoro", "kind": "creature", "file": "p06_totoro.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 203, "by": "vincentngo", "cn": "龙猫", "elem": "water"}, {"id": "PD07", "slug": "edogawa-conan", "name": "Edogawa Conan", "kind": "character", "file": "p07_edogawa-conan.webp", "cols": 8, "rows": 11, "fw": 96, "fh": 104, "kb": 242, "by": "brown", "cn": "柯南", "elem": "wood"}, {"id": "PD08", "slug": "hatsune-miku", "name": "Hatsune Miku", "kind": "character", "file": "p08_hatsune-miku.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 244, "by": "gway0521", "cn": "初音未来", "elem": "light"}, {"id": "PD09", "slug": "classic-qq-penguin", "name": "经典 QQ 企鹅", "kind": "creature", "file": "p09_classic-qq-penguin.webp", "cols": 8, "rows": 11, "fw": 96, "fh": 104, "kb": 234, "by": "志鸿 刘.", "cn": "QQ企鹅", "elem": "dark"}, {"id": "PD10", "slug": "shiba-4", "name": "Shiba", "kind": "creature", "file": "p10_shiba-4.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 236, "by": "franksong2702", "cn": "柴犬", "elem": "fire"}, {"id": "PD11", "slug": "milkfrog", "name": "奶蛙（naiwa）", "kind": "creature", "file": "p11_milkfrog.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 185, "by": "quantai1314", "cn": "奶蛙", "elem": "water"}, {"id": "PD12", "slug": "yueya-moon-fox", "name": "月芽 · Moon Fox", "kind": "creature", "file": "p12_yueya-moon-fox.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 131, "by": "Yux Y.", "cn": "月芽狐", "elem": "wood"}, {"id": "PD13", "slug": "glaucira-blue-dragon", "name": "Glaucira", "kind": "creature", "file": "p13_glaucira-blue-dragon.webp", "cols": 8, "rows": 11, "fw": 96, "fh": 104, "kb": 307, "by": "Reazent Z.", "cn": "蓝龙琪拉", "elem": "light"}, {"id": "PD14", "slug": "glitchcat", "name": "Glitchcat", "kind": "creature", "file": "p14_glitchcat.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 175, "by": "wangm23456", "cn": "故障猫", "elem": "dark"}, {"id": "PD15", "slug": "roubao", "name": "肉包", "kind": "creature", "file": "p15_roubao.webp", "cols": 8, "rows": 11, "fw": 96, "fh": 104, "kb": 202, "by": "happy y.", "cn": "肉包", "elem": "fire"}, {"id": "PD16", "slug": "maotuan", "name": "毛团", "kind": "creature", "file": "p16_maotuan.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 213, "by": "世华 唐.", "cn": "毛团", "elem": "water"}, {"id": "PD17", "slug": "daidai-bird-3", "name": "呆呆鸟", "kind": "creature", "file": "p17_daidai-bird-3.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 139, "by": "2230035325", "cn": "呆呆鸟", "elem": "wood"}, {"id": "PD18", "slug": "mo-tuan-tuan", "name": "墨团团", "kind": "creature", "file": "p18_mo-tuan-tuan.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 192, "by": "hui min T.", "cn": "墨团团", "elem": "light"}, {"id": "PD19", "slug": "naiwa-2", "name": "奶蛙", "kind": "creature", "file": "p19_naiwa-2.webp", "cols": 8, "rows": 11, "fw": 96, "fh": 104, "kb": 188, "by": "sandytruant", "cn": "奶蛙仔", "elem": "dark"}, {"id": "PD20", "slug": "biscuit", "name": "Biscuit", "kind": "creature", "file": "p20_biscuit.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 140, "by": "jiaao w.", "cn": "饼干猫", "elem": "fire"}, {"id": "PD21", "slug": "bytechomp-v2", "name": "Bytechomp v2", "kind": "creature", "file": "p21_bytechomp-v2.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 223, "by": "Carson K.", "cn": "小蓝鲨", "elem": "water"}, {"id": "PD22", "slug": "jinluan", "name": "锦鸾", "kind": "creature", "file": "p22_jinluan.webp", "cols": 8, "rows": 11, "fw": 96, "fh": 104, "kb": 245, "by": "相垠 郭.", "cn": "锦鸾", "elem": "wood"}, {"id": "PD23", "slug": "silver-byte", "name": "Silver Byte", "kind": "creature", "file": "p23_silver-byte.webp", "cols": 8, "rows": 9, "fw": 96, "fh": 104, "kb": 223, "by": "y17666", "cn": "银月byte", "elem": "light"}];
   var BY_ID={}; PETS.forEach(function(p){ BY_ID[p.id]=p; });
@@ -85,16 +88,55 @@
     return el;
   }
 
-  /* 伙伴乐园：渲染某只宠物的动画卡（HTML 字符串，供 innerHTML 使用） */
+  /* 伙伴乐园：渲染某只宠物的"静态缩略图"卡片（HTML 字符串，供 innerHTML 使用）
+   * v6.4.4：首屏只加载 ~4KB 的静态首帧，秒开且不晃；点击卡片时由 petdexpark.js
+   * 调用 upgradeCardToSprite() 才加载对应大精灵图并播放一次互动动画。 */
+  function thumbSrc(p){ return THUMB+p.id.toLowerCase()+'.webp'; }
   function cardHTML(p, state, scale){
     var row=STATE_ROW[state]!=null?STATE_ROW[state]:0;
-    return '<div class="pd-card" data-pd="'+p.id+'">'+
+    return '<div class="pd-card" data-pd="'+p.id+'" data-state="'+(state||'idle')+'">'+
       '<div class="pd-stage" data-row="'+row+'">'+
-        '<div class="pd-sprite" style="'+spriteStyle(p,row,scale||1.6,8)+'"></div>'+
+        '<img class="pd-thumb" src="'+thumbSrc(p)+'" alt="'+esc(p.cn)+'" loading="lazy" decoding="async">'+
       '</div>'+
       '<div class="pd-name">'+esc(p.cn)+'</div>'+
       '<div class="pd-slug">No.'+p.id.slice(2)+' · '+esc(p.name)+'</div>'+
     '</div>';
+  }
+  /* 点击卡片时：把静态缩略图替换为动画精灵，播放指定状态（懒加载大图）
+   * 返回 bool 表示是否已升级；同一卡片重复点击只重设状态不重复加载。 */
+  function upgradeCardToSprite(card, pdId, state){
+    var p=byId(pdId); if(!p||!card) return false;
+    var stage=card.querySelector('.pd-stage'); if(!stage) return false;
+    var row=STATE_ROW[state]!=null?STATE_ROW[state]:0;
+    injectKeyframes();
+    var sp=stage.querySelector('.pd-sprite');
+    if(!sp){
+      sp=document.createElement('div');
+      sp.className='pd-sprite pd-fluid';
+      /* 关键：精灵按容器 contain 缩放，视觉尺寸与静态 <img> 一致，避免放大/位移 */
+      sp.style.cssText='width:100%;height:100%;background-size:'+p.cols*100+'% '+p.rows*100+'%;background-repeat:no-repeat;image-rendering:pixelated;';
+      var thumb=stage.querySelector('.pd-thumb');
+      if(thumb) stage.replaceChild(sp,thumb); else stage.appendChild(sp);
+    }
+    var py = p.rows>1 ? (row/(p.rows-1)*100).toFixed(3) : 0;
+    sp.style.backgroundImage='url('+BASE+p.file+')';
+    sp.style.backgroundPosition='0% '+py+'%';
+    sp.style.animation='pdf_'+p.id+'_'+row+' '+(8/8).toFixed(2)+'s steps(7) infinite';
+    card.setAttribute('data-state',state);
+    return true;
+  }
+  /* 恢复为静态缩略图（互动动画播放结束后调用，消除持续晃动） */
+  function restoreCardThumb(card, pdId){
+    var p=byId(pdId); if(!p||!card) return;
+    var stage=card.querySelector('.pd-stage'); if(!stage) return;
+    var sp=stage.querySelector('.pd-sprite');
+    if(!sp) return;
+    var img=document.createElement('img');
+    img.className='pd-thumb';
+    img.src=thumbSrc(p);
+    img.alt=p.cn;
+    stage.replaceChild(img,sp);
+    card.setAttribute('data-state','idle');
   }
 
   /* 切换某个精灵元素的状态行 */
@@ -147,6 +189,7 @@
     byId:byId, isPD:isPD, makeSprite:makeSprite, cardHTML:cardHTML,
     spriteStyle:spriteStyle, fluidSpriteStyle:fluidSpriteStyle, stillSpriteStyle:stillSpriteStyle,
     setSpriteState:setSpriteState, stillFrame:stillFrame, injectKeyframes:injectKeyframes,
-    BASE:BASE
+    thumbSrc:thumbSrc, upgradeCardToSprite:upgradeCardToSprite, restoreCardThumb:restoreCardThumb,
+    BASE:BASE, THUMB:THUMB
   };
 })();

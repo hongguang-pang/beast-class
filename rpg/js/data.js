@@ -160,8 +160,16 @@ function getSharecode(){
   }catch(e){ return ''; }
 }
 var _sc=getSharecode();
-function monsterImg(m){ return '../images/mon/' + m.file + _sc; }
-function npcImg(n){ return '../images/npc/' + n.img + _sc; }
+/* v6.4.4：图片 URL 带内容版本号，强制绕过浏览器/SW 里可能残留的旧图缓存
+ * （历史上部分怪物图换过素材，旧缓存会导致"名字对不上形象"，如水滴史莱姆显示成狼）。
+ * 版本号放在 sharecode 之前，用 & 连接，两种节点都兼容。 */
+var IMG_V='?v=644';
+function imgQS(){
+  if(!_sc) return IMG_V;
+  return IMG_V+'&sharecode='+_sc.slice('?sharecode='.length);
+}
+function monsterImg(m){ return '../images/mon/' + m.file + imgQS(); }
+function npcImg(n){ return '../images/npc/' + n.img + imgQS(); }
 /* Boss 也用 monsterImg（文件在 images/mon/） */
 
 /* ---------- 道具 ---------- */
